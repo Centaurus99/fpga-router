@@ -82,7 +82,9 @@ module frame_datapath
     always @ (*)
     begin
         out = in;
-        out.meta.dest = 0;  // All frames are forwarded to interface 0!
+        out.meta.dest = in.meta.id;
+        out.data.dst = in.data.src;
+        out.data.src = in.data.dst;
     end
 
     wire out_ready;
