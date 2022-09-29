@@ -78,17 +78,26 @@ module frame_datapath
     // See the guide to figure out what you need to do with frames.
 
     frame_beat out;
-
-    always @ (*)
-    begin
-        out = in;
-        out.meta.dest = in.meta.id;
-        out.data.dst = in.data.src;
-        out.data.src = in.data.dst;
-    end
-
     wire out_ready;
     assign in_ready = out_ready || !out.valid;
+
+    always_ff @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            out <= 0;
+        end
+        else if (in_ready)
+        begin
+            out <= in;
+            if (`should_handle(in))
+            begin
+                out.meta.dest <= in.meta.id;
+                out.data.dst <= in.data.src;
+                out.data.src <= in.data.dst;
+            end
+        end
+    end
 
     reg out_is_first;
     always @ (posedge eth_clk or posedge reset)
