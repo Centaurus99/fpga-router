@@ -13,6 +13,9 @@ module frame_datapath
     input wire eth_clk,
     input wire reset,
 
+    input wire [ 47:0] mac[3:0],
+    input wire [127:0] ip [3:0],
+
     input wire [DATA_WIDTH - 1:0] s_data,
     input wire [DATA_WIDTH / 8 - 1:0] s_keep,
     input wire s_last,

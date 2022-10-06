@@ -5,12 +5,13 @@ module tb_config_address ();
     wire clk_125M;
     clock clock_i (.clk_125M(clk_125M));
 
-    reg          reset;
-    reg          we;
-    reg  [ 47:0] mac_in;
+    reg           reset;
+    reg           we;
+    reg   [ 47:0] mac_in;
 
-    wire [ 47:0] mac_out;
-    wire [127:0] ip_out;
+    wire  [ 47:0] mac_out;
+    wire  [127:0] ip_out;
+    logic [127:0] ip_ans;
 
     initial begin
         we = 0;
@@ -22,16 +23,16 @@ module tb_config_address ();
 
         #100;
         we     = 1;
-        mac_in = 48'h10_6E_B5_2F_21_00;  // 00:21:2F:B5:6E:10
+        mac_in = {<<8{48'h00_21_2F_B5_6E_10}};  // 00:21:2F:B5:6E:10
+        // 期望输出, MAC = mac_in, IPv6 = fe80::221:2fff:feb5:6e10
+        ip_ans = {<<8{128'hfe80_0000_0000_0000_0221_2fff_feb5_6e10}};
         $display("Set mac_in = %h", mac_in);
 
         #10;
         we = 0;
         // 模块输出
         $display("Output: mac = %h; ip = %h;", mac_out, ip_out);
-        // 期望输出, MAC = mac_in, IPv6 = fe80::221:2fff:feb5:6e10
-        $display("Expect: mac = %h; ip = %h;", mac_in,
-                 128'h106e_b5fe_ff2f_2102_0000_0000_0000_80fe);
+        $display("Expect: mac = %h; ip = %h;", mac_in, ip_ans);
 
         $finish;
     end
