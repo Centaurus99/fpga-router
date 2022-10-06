@@ -2,14 +2,47 @@
 `define _FRAME_DATAPATH_VH_
 
 // 'w' means wide.
-localparam DATAW_WIDTH = 8 * 56;
+localparam DATAW_WIDTH = 8 * 88;
 localparam ID_WIDTH = 3;
 
 // README: Your code here.
 
+typedef struct packed {
+    logic [15:0] padding;
+    logic [47:0] source_link_layer_address;
+    logic [127:0] target_address;
+    logic [31:0] reserved;
+    logic [15:0] checksum;
+    logic [7:0] code;
+    logic [7:0] type;
+} ns_mes;
+
+// ns包的信息
+
+typedef struct packed {
+    logic [15:0] padding;
+    logic [47:0] target_link_layer_address;
+    logic [127:0] target_address;
+    logic [28:0] reserved;
+    logic override_flag;
+    logic solicited_flag;
+    logic router_flag;
+    logic [15:0] checksum;
+    logic [7:0] code;
+    logic [7:0] type;
+} nd_mes;
+
+// nd包的信息
+
+typedef union packed {
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] raw_data;
+    ns_mes ns_data;
+    nd_mes nd_data;
+} mes_union;
+
 typedef struct packed
 {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] p;
+    mes_union p;
     logic [127:0] dst;
     logic [127:0] src;
     logic [7:0] hop_limit;
