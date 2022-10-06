@@ -35,7 +35,7 @@ module frame_datapath
 
     logic [127:0] nc_in_v6;
     logic [47:0] nc_in_mac, nc_out_mac;
-    logic nc_found;
+    logic nc_found, nc_we;
     neighbor_cache neighbor_cache_i (
         .clk   (eth_clk),
         .reset (reset),
