@@ -654,6 +654,31 @@ module tanlabs
     wire [ID_WIDTH - 1:0] dp_tx_dest;
     wire dp_tx_valid;
 
+    // FIXME: 硬编码 MAC 地址, 用于硬件调试
+    wire [47:0] preset_mac[3:0];
+    assign preset_mac[0] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h00}};
+    assign preset_mac[1] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h01}};
+    assign preset_mac[2] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h02}};
+    assign preset_mac[3] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h03}};
+
+    wire [ 47:0] mac[3:0];
+    wire [127:0] ip [3:0];
+    
+    generate
+        for (i = 0; i < 4; i = i + 1)
+        begin
+            config_address config_address_i (
+                .clk  (eth_clk),
+                .reset(reset_eth),
+
+                .we     (1'b1),
+                .mac_in (preset_mac[i]),
+                .mac_reg(mac[i]),
+                .ip_reg (ip[i])
+            );
+        end
+    endgenerate
+
     // README: Instantiate your datapath.
     frame_datapath
     #(
@@ -663,6 +688,9 @@ module tanlabs
     frame_datapath_i(
         .eth_clk(eth_clk),
         .reset(reset_eth),
+
+        .mac(mac),
+        .ip(ip),
 
         .s_data(dp_rx_data),
         .s_keep(dp_rx_keep),
