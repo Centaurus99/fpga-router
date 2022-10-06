@@ -8,8 +8,10 @@ localparam ID_WIDTH = 3;
 // README: Your code here.
 
 typedef struct packed {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 48 - 128 - 64) - 1:0] padding;
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
     logic [47:0] source_link_layer_address;
+    logic [7:0] length;
+    logic [7:0] option_type;
     logic [127:0] target_address;
     logic [31:0] reserved;
     logic [15:0] checksum;
@@ -18,10 +20,13 @@ typedef struct packed {
 } ns_mes;
 
 // ns包的信息
+// 原包24byte，option有8byte
 
 typedef struct packed {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 48 - 128 - 64) - 1:0] padding;
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
     logic [47:0] target_link_layer_address;
+    logic [7:0] length;
+    logic [7:0] option_type;
     logic [127:0] target_address;
     logic [28:0] reserved;
     logic override_flag;
