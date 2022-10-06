@@ -33,6 +33,20 @@ module frame_datapath
     input wire m_ready
 );
 
+    logic [127:0] nc_in_v6;
+    logic [47:0] nc_in_mac, nc_out_mac;
+    logic nc_found, nc_we;
+    neighbor_cache neighbor_cache_i (
+        .clk   (eth_clk),
+        .reset (reset),
+        .we    (nc_we),
+        .in_v6 (nc_in_v6),
+        .in_mac(nc_in_mac),
+
+        .out_mac(nc_out_mac),
+        .found  (nc_found)
+    );
+
     frame_beat in8, in;
     wire in_ready;
 
@@ -80,9 +94,105 @@ module frame_datapath
     // README: Your code here.
     // See the guide to figure out what you need to do with frames.
 
+    frame_beat s1;
+    wire s1_ready;
+    assign in_ready = s1_ready || !in.valid;
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            s1 <= 0;
+        end
+        else if (s1_ready)
+        begin
+            s1 <= in;
+            if (`should_handle(in))
+            begin
+            end
+        end
+    end
+
+    frame_beat s2;
+    wire s2_ready;
+    assign s1_ready = s2_ready || !s1.valid;
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            s2 <= 0;
+        end
+        else if (s2_ready)
+        begin
+            s2 <= s1;
+            if (`should_handle(s1))
+            begin
+            end
+        end
+    end   
+
+    typedef enum
+    {
+        ST_SEND_RECV,
+        ST_QUERY,
+        ST_BAR,
+        ST_BAZ
+    } s3_state_t;
+    
+    frame_beat s3_reg, s3;
+    s3_state_t s3_state;
+    wire s3_ready;
+    assign s2_ready = (s3_ready && s3_state == ST_SEND_RECV) || !s2.valid;
+
+    always @ (*)
+    begin
+        s3 = s3_reg;
+        s3.valid = s3_reg.valid && s3_state == ST_SEND_RECV;
+    end
+
+    always @ (posedge eth_clk or posedge reset)
+    begin
+        if (reset)
+        begin
+            s3_reg <= 0;
+            s3_state <= ST_SEND_RECV;
+        end
+        else
+        begin
+            // feature 3: query neighbor cache
+            case (s3_state)
+            ST_SEND_RECV: begin
+                if (s3_ready)
+                begin
+                    s3_reg <= s2;
+                    if (`should_handle(s2))
+                    begin
+                        s3_state <= ST_QUERY;
+                        nc_in_v6 <= s2.data.ip6.dst;
+                    end
+                end
+            end
+            ST_QUERY: begin
+                if (nc_found) begin
+                    s3_reg.data.dst <= nc_out_mac;
+                end else begin  // 在邻居缓存里找不到的时候 丢掉 并且发一个NS
+                    s3_reg.last <= 1;
+                    s3_reg.meta.drop_next <= 1;
+                    s3_reg.data.ip6.p.ns_data.icmp_type <= 8'd133;
+                    s3_reg.data.ip6.p.ns_data.code <= DROP_AND_SEND_NS_CODE;
+                end
+                s3_state <= ST_SEND_RECV;
+            end
+            default: begin
+                s3_state <= ST_SEND_RECV;
+            end
+            endcase
+        end
+    end
+
+
     frame_beat out;
     wire out_ready;
-    assign in_ready = out_ready || !out.valid;
+    assign s3_ready = out_ready || !out.valid;
 
     always_ff @ (posedge eth_clk or posedge reset)
     begin
@@ -93,12 +203,12 @@ module frame_datapath
         else if (in_ready)
         begin
             out <= in;
-            if (`should_handle(in))
-            begin
-                out.meta.dest <= in.meta.id;
-                out.data.dst <= in.data.src;
-                out.data.src <= in.data.dst;
-            end
+            // if (`should_handle(in))
+            // begin
+            //     out.meta.dest <= in.meta.id;
+            //     out.data.dst <= in.data.src;
+            //     out.data.src <= in.data.dst;
+            // end
         end
     end
 

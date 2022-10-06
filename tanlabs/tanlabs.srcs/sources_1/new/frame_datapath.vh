@@ -16,7 +16,7 @@ typedef struct packed {
     logic [31:0] reserved;
     logic [15:0] checksum;
     logic [7:0] code;
-    logic [7:0] type;
+    logic [7:0] icmp_type;
 } ns_mes;
 
 // ns包的信息
@@ -34,16 +34,15 @@ typedef struct packed {
     logic router_flag;
     logic [15:0] checksum;
     logic [7:0] code;
-    logic [7:0] type;
-} nd_mes;
+    logic [7:0] icmp_type;
+} na_mes;
 
-// nd包的信息
-// 原包24byte，option有8byte
+// na包的信息
 
 typedef union packed {
     logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] raw_data;
     ns_mes ns_data;
-    nd_mes nd_data;
+    na_mes na_data;
 } mes_union;
 
 typedef struct packed
@@ -106,5 +105,7 @@ typedef struct packed
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
 localparam ETHERTYPE_IP6 = 16'hdd86;
+
+localparam DROP_AND_SEND_NS_CODE = 8'ha7;
 
 `endif
