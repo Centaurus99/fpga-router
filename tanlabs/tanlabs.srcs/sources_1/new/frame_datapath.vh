@@ -8,19 +8,19 @@ localparam ID_WIDTH = 3;
 // README: Your code here.
 
 typedef struct packed {
-    logic [15:0] padding;
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 48 - 128 - 64) - 1:0] padding;
     logic [47:0] source_link_layer_address;
     logic [127:0] target_address;
     logic [31:0] reserved;
     logic [15:0] checksum;
     logic [7:0] code;
-    logic [7:0] type;
+    logic [7:0] icmp_type;
 } ns_mes;
 
 // ns包的信息
 
 typedef struct packed {
-    logic [15:0] padding;
+    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 48 - 128 - 64) - 1:0] padding;
     logic [47:0] target_link_layer_address;
     logic [127:0] target_address;
     logic [28:0] reserved;
@@ -29,15 +29,15 @@ typedef struct packed {
     logic router_flag;
     logic [15:0] checksum;
     logic [7:0] code;
-    logic [7:0] type;
-} nd_mes;
+    logic [7:0] icmp_type;
+} na_mes;
 
-// nd包的信息
+// na包的信息
 
 typedef union packed {
     logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] raw_data;
     ns_mes ns_data;
-    nd_mes nd_data;
+    na_mes na_data;
 } mes_union;
 
 typedef struct packed
@@ -100,5 +100,7 @@ typedef struct packed
 localparam ID_CPU = 3'd4;  // The interface ID of CPU is 4.
 
 localparam ETHERTYPE_IP6 = 16'hdd86;
+
+localparam DROP_AND_SEND_NS_CODE = 8'ha7;
 
 `endif
