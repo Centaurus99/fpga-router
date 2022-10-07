@@ -16,9 +16,9 @@ module ndp_datapath
     input wire [ 47:0] mac[3:0],
     input wire [127:0] ip [3:0],
 
-    output wire nc_we,
-    output wire nc_in_v6_w,
-    output wire nc_in_mac,
+    output reg nc_we,
+    output reg [127:0] nc_in_v6_w,
+    output reg [47:0] nc_in_mac,
 
     input wire [DATA_WIDTH - 1:0] s_data,
     input wire [DATA_WIDTH / 8 - 1:0] s_keep,
@@ -84,26 +84,65 @@ module ndp_datapath
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
+
     ip6_hdr in_ip6;
     assign in_ip6 = in.data.ip6;
+
+    // 生成组播地址
+    wire [127:0] in_multicast_ip;
+    wire [127:0] in_multicast_mac;
+    unicast_to_multicast unicast_to_multicast_i(
+        .ip_in (in_ip6.dst),
+        .ip_out(in_multicast_ip),
+        .mac_out(in_multicast_mac)
+    );
+
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s1 <= 0;
         end else if (s1_ready) begin
             s1 <= in;
+            nc_we <= 0;
             if (`should_handle(in) && in_ip6.next_hdr == IP6_TYPE_ICMP) begin
                 // Receipt of Neighbor Solicitations
                 if (in_ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
                     // TODO: 补充完成 NS 包(ICMPv6 部分)的合法性检验
-                    if (in_ip6.hop_limit != 255) begin
+                    if (in_ip6.hop_limit != 8'd255) begin
                         s1.meta.drop <= 1'b1;
                     
-                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 暂定各接口均需发送
-                    end else if (in_ip6.p.ns_data.code != DROP_AND_SEND_NS_CODE) begin
+                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 对应接口在之前的路由表中获得, 故向原有网口发送
+                    end else if (in_ip6.p.ns_data.code == DROP_AND_SEND_NS_CODE) begin
 
-                    // Target Address 须为接受口地址
-                    end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
-                        s1.meta.drop <= 1'b1;
+                        // ICMPv6 部分
+                        s1.data.ip6.p.ns_data.code <= 8'b0;
+                        s1.data.ip6.p.ns_data.checksum <= 16'b0;
+                        s1.data.ip6.p.ns_data.reserved <= 32'b0;
+                        s1.data.ip6.p.ns_data.target_address <= in_ip6.dst;
+                        s1.data.ip6.p.ns_data.option_type <= 8'd1;
+                        s1.data.ip6.p.ns_data.length <= 8'd1;
+                        s1.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.id];
+
+                        // IPv6 部分
+                        s1.data.ip6.flow_hi <= 4'b0;
+                        s1.data.ip6.version <= 4'd6;
+                        s1.data.ip6.flow_lo <= 24'b0;
+                        s1.data.ip6.payload_len <= 16'h20_00;
+                        s1.data.ip6.next_hdr <= IP6_TYPE_ICMP;
+                        s1.data.ip6.hop_limit <= 8'd255;
+                        s1.data.ip6.src <= ip[in.meta.id];
+                        s1.data.ip6.dst <= in_multicast_ip;
+
+                        // MAC 部分
+                        s1.data.dst <= in_multicast_mac;
+                        s1.data.src <= mac[in.meta.id];
+                        s1.data.ethertype <= ETHERTYPE_IP6;
+
+                        // frame 部分
+                        s1.meta.dest <= in.meta.id;
+
+                    // FIXME: [调试时不启用] Target Address 须为接受口地址
+                    // end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
+                    //     s1.meta.drop <= 1'b1;
 
                     // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
                     // IPv6 Source Address 为未指定地址
@@ -112,9 +151,36 @@ module ndp_datapath
 
                     // 组播 NS
                     end else if (in_ip6.dst[7:0] == 8'hff) begin
-                        // TODO: 更新邻居缓存
-
+                        // 更新邻居缓存
+                        nc_in_v6_w <= in_ip6.p.na_data.target_address;
+                        nc_in_mac <= in_ip6.p.na_data.target_link_layer_address;
+                        nc_we <= 1;
                         // TODO: 发送 NA 包
+                        s1.data.dst <= in.data.src;
+                        s1.data.src <= mac[in.meta.id];
+                        s1.data.ethertype <= ETHERTYPE_IP6;
+                        s1.data.ip6.flow_hi <= 0;
+                        s1.data.ip6.version <= 4'h6;
+                        s1.data.ip6.flow_lo <= 0;
+                        s1.data.ip6.payload_len <= 16'h20_00;
+                        s1.data.ip6.next_hdr <= IP6_TYPE_ICMP;
+                        s1.data.ip6.hop_limit <= 8'hff;
+                        s1.data.ip6.src <= ip[in.meta.id];
+                        s1.data.ip6.dst <= in_ip6.src;
+                        s1.data.ip6.p.na_data.icmp_type <= ICMP_TYPE_NA;
+                        s1.data.ip6.p.na_data.code <= 0;
+                        s1.data.ip6.p.na_data.checksum <= 0;
+                        s1.data.ip6.p.na_data.router_flag <= 1;
+                        s1.data.ip6.p.na_data.solicited_flag <= 1;
+                        s1.data.ip6.p.na_data.override_flag <= 1; // should be set?
+                        s1.data.ip6.p.na_data.reserved <= 0;
+                        s1.data.ip6.p.na_data.target_address <= in_ip6.src;
+                        s1.data.ip6.p.na_data.option_type <= 8'd2;
+                        s1.data.ip6.p.na_data.length <= 1;
+                        s1.data.ip6.p.na_data.target_link_layer_address <= mac[in.meta.id];
+
+                        // frame 部分
+                        s1.meta.dest <= in.meta.id;
 
                     // 单播 NS
                     end else begin
@@ -125,7 +191,7 @@ module ndp_datapath
                 // Receipt of Neighbor Advertisements
                 end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
                     // TODO: 补充完成 NA 包(ICMPv6 部分)的合法性检验
-                    if (in_ip6.hop_limit != 255) begin
+                    if (in_ip6.hop_limit != 8'd255) begin
                         s1.meta.drop <= 1'b1;
 
                     // 组播 NA, 丢弃
@@ -134,8 +200,11 @@ module ndp_datapath
 
                     // 单播 NA
                     end else begin
-                        // TODO: 更新邻居缓存
-
+                        // 更新邻居缓存
+                        nc_in_v6_w <= in_ip6.p.na_data.target_address;
+                        nc_in_mac <= in_ip6.p.na_data.target_link_layer_address;
+                        nc_we <= 1;
+                        s1.meta.drop <= 1'b1;
                     end
                 end else begin
                     s1.meta.drop <= 1'b1;

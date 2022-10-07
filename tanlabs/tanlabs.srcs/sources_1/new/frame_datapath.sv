@@ -193,26 +193,10 @@ module frame_datapath
 
 
     frame_beat out;
+    assign out = s3;
+
     wire out_ready;
     assign s3_ready = out_ready || !out.valid;
-
-    always_ff @ (posedge eth_clk or posedge reset)
-    begin
-        if (reset)
-        begin
-            out <= 0;
-        end
-        else if (in_ready)
-        begin
-            out <= s3;
-            // if (`should_handle(in))
-            // begin
-            //     out.meta.dest <= in.meta.id;
-            //     out.data.dst <= in.data.src;
-            //     out.data.src <= in.data.dst;
-            // end
-        end
-    end
 
     reg out_is_first;
     always @ (posedge eth_clk or posedge reset)
@@ -325,7 +309,7 @@ module frame_datapath
         .m_last(m_last),
         .m_user(m_user),
         .m_dest(m_dest),
-        .m_valid(m_data),
+        .m_valid(m_valid),
         .m_ready(m_ready)
     );
 
