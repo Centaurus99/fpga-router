@@ -67,7 +67,7 @@ module ndp_datapath
     // (MAC 14 + IPv6 40 + round up 2) to ensure that L2 (MAC) and L3 (IPv6) headers appear
     // in one beat (the first beat) facilitating our processing.
     // You can remove this.
-    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH) frame_beat_upsizer(
+    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH_ND) frame_beat_upsizer(
         .clk(eth_clk),
         .rst(reset),
 
@@ -80,28 +80,58 @@ module ndp_datapath
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
+    ip6_hdr in_ip6;
+    assign in_ip6 = in.data.ip6;
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s1 <= 0;
         end else if (s1_ready) begin
             s1 <= in;
-            if (`should_handle(in) && in.data.ip6.next_hdr == 8'h3a) begin
+            if (`should_handle(in) && in_ip6.next_hdr == 8'h3a) begin
                 // Receipt of Neighbor Solicitations
-                if (in.data.ip6.p.icmp_type == 135) begin
-                    // TODO: 补充完成包的合法性检验
-                    if (in.data.ip6.hop_limit != 255) begin
+                if (in_ip6.p.ns_data.icmp_type == 135) begin
+                    // TODO: 补充完成 NS 包(ICMPv6 部分)的合法性检验
+                    if (in_ip6.hop_limit != 255) begin
                         s1.meta.drop <= 1'b1;
+                    
+                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 暂定各接口均需发送
+                    end else if (in_ip6.p.ns_data.code != DROP_AND_SEND_NS_CODE) begin
+
+                    // Target Address 须为接受口地址
+                    end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
+                        s1.meta.drop <= 1'b1;
+
+                    // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
+                    // IPv6 Source Address 为未指定地址
+                    end else if (in_ip6.src == 128'b0)begin
+                        s1.meta.drop <= 1'b1;
+
+                    // 组播 NS
+                    end else if (in_ip6.dst[7:0] == 8'hff) begin
+                        // TODO: 更新邻居缓存
+
+                        // TODO: 发送 NA 包
+
+                    // 单播 NS
                     end else begin
-                        
+                        // TODO: 响应邻居不可达检测 (Neighbor Unreachability Detection, NUD)
+
                     end
 
                 // Receipt of Neighbor Advertisements
-                end else if (in.data.ip6.p.icmp_type == 136) begin
-                    // TODO: 补充完成包的合法性检验
-                    if (in.data.ip6.hop_limit != 255) begin
+                end else if (in_ip6.p.na_data.icmp_type == 136) begin
+                    // TODO: 补充完成 NA 包(ICMPv6 部分)的合法性检验
+                    if (in_ip6.hop_limit != 255) begin
                         s1.meta.drop <= 1'b1;
+
+                    // 组播 NA, 丢弃
+                    end else if (in_ip6.dst[7:0] == 8'hff) begin
+                        s1.meta.drop <= 1'b1;
+
+                    // 单播 NA
                     end else begin
-                        
+                        // TODO: 更新邻居缓存
+
                     end
                 end else begin
                     s1.meta.drop <= 1'b1;
@@ -159,7 +189,7 @@ module ndp_datapath
 
     frame_filter
     #(
-        .DATA_WIDTH(DATAW_WIDTH),
+        .DATA_WIDTH(DATAW_WIDTH_ND),
         .ID_WIDTH(ID_WIDTH)
     )
     frame_filter_i(
@@ -187,7 +217,7 @@ module ndp_datapath
 
     // README: Change the width back. You can remove this.
     frame_beat out8;
-    frame_beat_width_converter #(DATAW_WIDTH, DATA_WIDTH) frame_beat_downsizer(
+    frame_beat_width_converter #(DATAW_WIDTH_ND, DATA_WIDTH) frame_beat_downsizer(
         .clk(eth_clk),
         .rst(reset),
 
