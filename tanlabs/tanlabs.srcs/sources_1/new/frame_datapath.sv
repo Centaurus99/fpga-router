@@ -165,8 +165,9 @@ module frame_datapath
                 if (s3_ready)
                 begin
                     s3_reg <= s2;
-                    if (`should_handle(s2))
-                    begin
+                    if (`should_handle(s2)) begin
+                        if (s2.data.ip6.p.ns_data.icmp_type != ICMP_TYPE_NS && 
+                            s2.data.ip6.p.ns_data.icmp_type != ICMP_TYPE_NA)
                         s3_state <= ST_QUERY;
                         nc_in_v6_r <= s2.data.ip6.dst;
                     end
@@ -178,7 +179,7 @@ module frame_datapath
                 end else begin  // 在邻居缓存里找不到的时候 丢掉 并且发一个NS
                     s3_reg.last <= 1;
                     s3_reg.meta.drop_next <= 1;
-                    s3_reg.data.ip6.p.ns_data.icmp_type <= 8'd133;
+                    s3_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
                     s3_reg.data.ip6.p.ns_data.code <= DROP_AND_SEND_NS_CODE;
                 end
                 s3_state <= ST_SEND_RECV;
