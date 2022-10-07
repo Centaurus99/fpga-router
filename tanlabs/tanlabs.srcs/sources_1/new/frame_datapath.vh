@@ -29,10 +29,11 @@ typedef struct packed {
     logic [7:0] length;
     logic [7:0] option_type;
     logic [127:0] target_address;
-    logic [28:0] reserved;
-    logic override_flag;
-    logic solicited_flag;
+    logic [23:0] reserved_lo;
     logic router_flag;
+    logic solicited_flag;
+    logic override_flag;
+    logic [4:0] reserved_hi;
     logic [15:0] checksum;
     logic [7:0] code;
     logic [7:0] icmp_type;
