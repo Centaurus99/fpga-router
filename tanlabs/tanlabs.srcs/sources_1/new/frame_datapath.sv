@@ -33,14 +33,15 @@ module frame_datapath
     input wire m_ready
 );
 
-    logic [127:0] nc_in_v6;
+    logic [127:0] nc_in_v6_r, nc_in_v6_w;
     logic [47:0] nc_in_mac, nc_out_mac;
     logic nc_found, nc_we;
     neighbor_cache neighbor_cache_i (
         .clk   (eth_clk),
         .reset (reset),
         .we    (nc_we),
-        .in_v6 (nc_in_v6),
+        .in_v6_w (nc_in_v6_w),
+        .in_v6_r (nc_in_v6_r),
         .in_mac(nc_in_mac),
 
         .out_mac(nc_out_mac),
@@ -81,7 +82,7 @@ module frame_datapath
     // (MAC 14 + IPv6 40 + round up 2) to ensure that L2 (MAC) and L3 (IPv6) headers appear
     // in one beat (the first beat) facilitating our processing.
     // You can remove this.
-    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH) frame_beat_upsizer(
+    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH_V6) frame_beat_upsizer(
         .clk(eth_clk),
         .rst(reset),
 
@@ -164,20 +165,21 @@ module frame_datapath
                 if (s3_ready)
                 begin
                     s3_reg <= s2;
-                    if (`should_handle(s2))
-                    begin
+                    if (`should_handle(s2)) begin
+                        if (s2.data.ip6.p.ns_data.icmp_type != ICMP_TYPE_NS && 
+                            s2.data.ip6.p.ns_data.icmp_type != ICMP_TYPE_NA)
                         s3_state <= ST_QUERY;
-                        nc_in_v6 <= s2.data.ip6.dst;
+                        nc_in_v6_r <= s2.data.ip6.dst;
                     end
                 end
             end
-            ST_QUERY: begin
+            ST_QUERY: begin  // 目前查询只需要一周期
                 if (nc_found) begin
                     s3_reg.data.dst <= nc_out_mac;
                 end else begin  // 在邻居缓存里找不到的时候 丢掉 并且发一个NS
                     s3_reg.last <= 1;
                     s3_reg.meta.drop_next <= 1;
-                    s3_reg.data.ip6.p.ns_data.icmp_type <= 8'd133;
+                    s3_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
                     s3_reg.data.ip6.p.ns_data.code <= DROP_AND_SEND_NS_CODE;
                 end
                 s3_state <= ST_SEND_RECV;
@@ -202,7 +204,7 @@ module frame_datapath
         end
         else if (in_ready)
         begin
-            out <= in;
+            out <= s3;
             // if (`should_handle(in))
             // begin
             //     out.meta.dest <= in.meta.id;
@@ -255,7 +257,7 @@ module frame_datapath
 
     frame_filter
     #(
-        .DATA_WIDTH(DATAW_WIDTH),
+        .DATA_WIDTH(DATAW_WIDTH_V6),
         .ID_WIDTH(ID_WIDTH)
     )
     frame_filter_i(
@@ -283,7 +285,7 @@ module frame_datapath
 
     // README: Change the width back. You can remove this.
     frame_beat out8;
-    frame_beat_width_converter #(DATAW_WIDTH, DATA_WIDTH) frame_beat_downsizer(
+    frame_beat_width_converter #(DATAW_WIDTH_V6, DATA_WIDTH) frame_beat_downsizer(
         .clk(eth_clk),
         .rst(reset),
 

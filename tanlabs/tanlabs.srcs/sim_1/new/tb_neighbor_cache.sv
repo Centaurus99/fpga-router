@@ -7,7 +7,7 @@ module tb_neighbor_cache #(
     reg          reset;
 
     reg          we;
-    reg  [127:0] in_v6;
+    reg  [127:0] in_v6_r, in_v6_w;
     reg  [ 47:0] in_mac;
 
     // neighbor_cache Outputs
@@ -19,25 +19,21 @@ module tb_neighbor_cache #(
         #500 reset = 0;
 
         for (int i = 0; i < 8; i = i + 1) begin
-            in_v6[127:96] = $urandom();
-            in_v6[95:64]  = $urandom();
-            in_v6[63:32]  = $urandom();
-            in_v6[31:0]   = $urandom();
-
+            in_v6_w[127:96] = $urandom();
+            in_v6_w[95:64]  = $urandom();
+            in_v6_w[63:32]  = $urandom();
+            in_v6_w[31:0]   = $urandom();
+            in_v6_r = in_v6_w;
             for (int j = 0; j < 32; j = j + 1) begin
                 #100
-                    if ($urandom & 1) begin
-                        in_v6[7:0] = in_v6[7:0] - $urandom_range(2);
-                        in_v6[15:8] = in_v6[15:8] - $urandom_range(2);
-                        #100;
-                    end else begin
-                        in_v6[7:0] = in_v6[7:0] + $urandom_range(2);
-                        in_v6[15:8] = in_v6[15:8] + $urandom_range(2);
-                        in_mac = $urandom();
-                        we = 1;
-                        #100 we = 0;
-                        in_mac = 0;
-                    end
+                    in_v6_r[7:0] = in_v6_w[7:0] - $urandom_range(2);
+                    in_v6_r[15:8] = in_v6_w[15:8] - $urandom_range(2);
+                    in_v6_w[7:0] = in_v6_w[7:0] + $urandom_range(2);
+                    in_v6_w[15:8] = in_v6_w[15:8] + $urandom_range(2);
+                    in_mac = $urandom();
+                    we = 1;
+                    #100 we = 0;
+                    in_mac = 0;
                 #1000;
             end
         end
@@ -57,7 +53,8 @@ module tb_neighbor_cache #(
         .clk   (clk_125M),
         .reset (reset),
         .we    (we),
-        .in_v6 (in_v6),
+        .in_v6_w (in_v6_w),
+        .in_v6_r (in_v6_r),
         .in_mac(in_mac),
 
         .out_mac(out_mac),
