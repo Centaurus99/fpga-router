@@ -284,6 +284,7 @@ module frame_datapath
     );
 
     // README: Change the width back. You can remove this.
+    wire out8_ready;
     frame_beat out8;
     frame_beat_width_converter #(DATAW_WIDTH_V6, DATA_WIDTH) frame_beat_downsizer(
         .clk(eth_clk),
@@ -292,13 +293,46 @@ module frame_datapath
         .in(filtered),
         .in_ready(filtered_ready),
         .out(out8),
-        .out_ready(m_ready)
+        .out_ready(out8_ready)
     );
 
-    assign m_valid = out8.valid;
-    assign m_data = out8.data;
-    assign m_keep = out8.keep;
-    assign m_last = out8.last;
-    assign m_dest = out8.meta.dest;
-    assign m_user = out8.user;
+    ndp_datapath
+    #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ID_WIDTH(ID_WIDTH)
+    )
+    ndp_datapath_i(
+        .eth_clk(eth_clk),
+        .reset(reset),
+
+        .mac(mac),
+        .ip(ip),
+
+        .nc_we(nc_we),
+        .nc_in_v6_w(nc_in_v6_w),
+        .nc_in_mac(nc_in_mac),
+
+        .s_data(out8.data),
+        .s_keep(out8.keep),
+        .s_last(out8.last),
+        .s_user(out8.user),
+        .s_id(out8.meta.dest),
+        .s_valid(out8.valid),
+        .s_ready(out8_ready),
+
+        .m_data(m_data),
+        .m_keep(m_keep),
+        .m_last(m_last),
+        .m_user(m_user),
+        .m_dest(m_dest),
+        .m_valid(m_data),
+        .m_ready(m_ready)
+    );
+
+    // assign m_valid = out8.valid;
+    // assign m_data = out8.data;
+    // assign m_keep = out8.keep;
+    // assign m_last = out8.last;
+    // assign m_dest = out8.meta.dest;
+    // assign m_user = out8.user;
 endmodule

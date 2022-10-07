@@ -16,6 +16,10 @@ module ndp_datapath
     input wire [ 47:0] mac[3:0],
     input wire [127:0] ip [3:0],
 
+    output wire nc_we,
+    output wire nc_in_v6_w,
+    output wire nc_in_mac,
+
     input wire [DATA_WIDTH - 1:0] s_data,
     input wire [DATA_WIDTH / 8 - 1:0] s_keep,
     input wire s_last,
@@ -87,9 +91,9 @@ module ndp_datapath
             s1 <= 0;
         end else if (s1_ready) begin
             s1 <= in;
-            if (`should_handle(in) && in_ip6.next_hdr == 8'h3a) begin
+            if (`should_handle(in) && in_ip6.next_hdr == IP6_TYPE_ICMP) begin
                 // Receipt of Neighbor Solicitations
-                if (in_ip6.p.ns_data.icmp_type == 135) begin
+                if (in_ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
                     // TODO: 补充完成 NS 包(ICMPv6 部分)的合法性检验
                     if (in_ip6.hop_limit != 255) begin
                         s1.meta.drop <= 1'b1;
@@ -119,7 +123,7 @@ module ndp_datapath
                     end
 
                 // Receipt of Neighbor Advertisements
-                end else if (in_ip6.p.na_data.icmp_type == 136) begin
+                end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
                     // TODO: 补充完成 NA 包(ICMPv6 部分)的合法性检验
                     if (in_ip6.hop_limit != 255) begin
                         s1.meta.drop <= 1'b1;
