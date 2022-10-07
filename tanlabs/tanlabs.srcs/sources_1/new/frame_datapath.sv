@@ -33,14 +33,15 @@ module frame_datapath
     input wire m_ready
 );
 
-    logic [127:0] nc_in_v6;
+    logic [127:0] nc_in_v6_r, nc_in_v6_w;
     logic [47:0] nc_in_mac, nc_out_mac;
     logic nc_found, nc_we;
     neighbor_cache neighbor_cache_i (
         .clk   (eth_clk),
         .reset (reset),
         .we    (nc_we),
-        .in_v6 (nc_in_v6),
+        .in_v6_w (nc_in_v6_w),
+        .in_v6_r (nc_in_v6_r),
         .in_mac(nc_in_mac),
 
         .out_mac(nc_out_mac),
@@ -167,11 +168,11 @@ module frame_datapath
                     if (`should_handle(s2))
                     begin
                         s3_state <= ST_QUERY;
-                        nc_in_v6 <= s2.data.ip6.dst;
+                        nc_in_v6_r <= s2.data.ip6.dst;
                     end
                 end
             end
-            ST_QUERY: begin
+            ST_QUERY: begin  // 目前查询只需要一周期
                 if (nc_found) begin
                     s3_reg.data.dst <= nc_out_mac;
                 end else begin  // 在邻居缓存里找不到的时候 丢掉 并且发一个NS
