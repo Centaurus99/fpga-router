@@ -110,6 +110,5 @@ localparam ETHERTYPE_IP6 = 16'hdd86;
 localparam ICMP_TYPE_NS = 8'd135;
 localparam ICMP_TYPE_NA = 8'd134;
 localparam DROP_AND_SEND_NS_CODE = 8'ha7;
-localparam DROP_AND_SEND_NS_CODE = 8'ha7;
 
 `endif
