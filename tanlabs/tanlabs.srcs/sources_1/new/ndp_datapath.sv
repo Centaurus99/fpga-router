@@ -170,10 +170,11 @@ module ndp_datapath
                         s1.data.ip6.p.na_data.icmp_type <= ICMP_TYPE_NA;
                         s1.data.ip6.p.na_data.code <= 0;
                         s1.data.ip6.p.na_data.checksum <= 0;
+                        s1.data.ip6.p.na_data.reserved_lo <= 0;
                         s1.data.ip6.p.na_data.router_flag <= 1;
                         s1.data.ip6.p.na_data.solicited_flag <= 1;
                         s1.data.ip6.p.na_data.override_flag <= 1; // should be set?
-                        s1.data.ip6.p.na_data.reserved <= 0;
+                        s1.data.ip6.p.na_data.reserved_hi <= 0;
                         s1.data.ip6.p.na_data.target_address <= in_ip6.src;
                         s1.data.ip6.p.na_data.option_type <= 8'd2;
                         s1.data.ip6.p.na_data.length <= 1;
