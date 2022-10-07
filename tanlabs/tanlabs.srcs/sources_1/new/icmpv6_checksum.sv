@@ -48,6 +48,6 @@ module icmpv6_checksum (
     sum_reg = sum_reg + {beat.data.ip6[8 * 83 - 1:8 * 82], beat.data.ip6[8 * 84 - 1:8 * 83]};
     sum_reg = sum_reg + {beat.data.ip6[8 * 85 - 1:8 * 84], beat.data.ip6[8 * 86 - 1:8 * 85]};
     sum_reg = sum_reg + {beat.data.ip6[8 * 87 - 1:8 * 86], beat.data.ip6[8 * 88 - 1:8 * 87]};
-    assign sum = sum_reg[15:0];
+    assign sum = ~sum_reg[15:0];
 
 endmodule
