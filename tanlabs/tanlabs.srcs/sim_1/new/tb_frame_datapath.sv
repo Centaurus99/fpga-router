@@ -50,11 +50,40 @@ module tb_frame_datapath
     wire [ID_WIDTH - 1:0] out_dest;
     wire out_valid;
     wire out_ready;
+    
+    // FIXME: 硬编码 MAC 地址, 用于硬件调试
+    wire [47:0] preset_mac[3:0];
+    assign preset_mac[0] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h00}};
+    assign preset_mac[1] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h01}};
+    assign preset_mac[2] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h02}};
+    assign preset_mac[3] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h03}};
+
+    wire [ 47:0] mac[3:0];
+    wire [127:0] ip [3:0];
+    
+    genvar i;
+    generate
+        for (i = 0; i < 4; i = i + 1)
+        begin
+            config_address config_address_i (
+                .clk  (clk_125M),
+                .reset(reset),
+
+                .we     (1'b1),
+                .mac_in (preset_mac[i]),
+                .mac_reg(mac[i]),
+                .ip_reg (ip[i])
+            );
+        end
+    endgenerate
 
     // README: Instantiate your datapath.
     frame_datapath dut(
         .eth_clk(clk_125M),
         .reset(reset),
+        
+        .mac(mac),
+        .ip(ip),
 
         .s_data(in_data),
         .s_keep(in_keep),

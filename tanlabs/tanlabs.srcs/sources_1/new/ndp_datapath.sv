@@ -107,10 +107,10 @@ module ndp_datapath
                 // Receipt of Neighbor Solicitations
                 if (in_ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
                     // TODO: 补充完成 NS 包(ICMPv6 部分)的合法性检验
-                    if (in_ip6.hop_limit != 255) begin
+                    if (in_ip6.hop_limit != 8'd255) begin
                         s1.meta.drop <= 1'b1;
                     
-                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 暂定向 0 号口发送, 之后拓展为向各接口发送
+                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 对应接口在之前的路由表中获得, 故向原有网口发送
                     end else if (in_ip6.p.ns_data.code == DROP_AND_SEND_NS_CODE) begin
 
                         // ICMPv6 部分
@@ -120,29 +120,29 @@ module ndp_datapath
                         s1.data.ip6.p.ns_data.target_address <= in_ip6.dst;
                         s1.data.ip6.p.ns_data.option_type <= 8'd1;
                         s1.data.ip6.p.ns_data.length <= 8'd1;
-                        s1.data.ip6.p.ns_data.source_link_layer_address <= mac[0];
+                        s1.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.id];
 
                         // IPv6 部分
                         s1.data.ip6.flow_hi <= 4'b0;
                         s1.data.ip6.version <= 4'd6;
                         s1.data.ip6.flow_lo <= 24'b0;
-                        s1.data.ip6.payload_len <= 16'd32;
+                        s1.data.ip6.payload_len <= 16'h20_00;
                         s1.data.ip6.next_hdr <= IP6_TYPE_ICMP;
                         s1.data.ip6.hop_limit <= 8'd255;
-                        s1.data.ip6.src <= ip[0];
+                        s1.data.ip6.src <= ip[in.meta.id];
                         s1.data.ip6.dst <= in_multicast_ip;
 
                         // MAC 部分
                         s1.data.dst <= in_multicast_mac;
-                        s1.data.src <= mac[0];
+                        s1.data.src <= mac[in.meta.id];
                         s1.data.ethertype <= ETHERTYPE_IP6;
 
                         // frame 部分
-                        s1.meta.dest = 0;
+                        s1.meta.dest <= in.meta.id;
 
-                    // Target Address 须为接受口地址
-                    end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
-                        s1.meta.drop <= 1'b1;
+                    // FIXME: [调试时不启用] Target Address 须为接受口地址
+                    // end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
+                    //     s1.meta.drop <= 1'b1;
 
                     // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
                     // IPv6 Source Address 为未指定地址
@@ -157,15 +157,15 @@ module ndp_datapath
                         nc_we <= 1;
                         // TODO: 发送 NA 包
                         s1.data.dst <= in.data.src;
-                        s1.data.src <= mac[in.meta.dest];
+                        s1.data.src <= mac[in.meta.id];
                         s1.data.ethertype <= ETHERTYPE_IP6;
-                        s1.data.flow_hi <= 0;
+                        s1.data.ip6.flow_hi <= 0;
                         s1.data.ip6.version <= 4'h6;
                         s1.data.ip6.flow_lo <= 0;
-                        s1.data.ip6.payload_len <= 16'd32;
+                        s1.data.ip6.payload_len <= 16'h20_00;
                         s1.data.ip6.next_hdr <= IP6_TYPE_ICMP;
                         s1.data.ip6.hop_limit <= 8'hff;
-                        s1.data.ip6.src <= ip[in.meta.dest];
+                        s1.data.ip6.src <= ip[in.meta.id];
                         s1.data.ip6.dst <= in_ip6.src;
                         s1.data.ip6.p.na_data.icmp_type <= ICMP_TYPE_NA;
                         s1.data.ip6.p.na_data.code <= 0;
@@ -177,8 +177,10 @@ module ndp_datapath
                         s1.data.ip6.p.na_data.target_address <= in_ip6.src;
                         s1.data.ip6.p.na_data.option_type <= 8'd2;
                         s1.data.ip6.p.na_data.length <= 1;
-                        s1.data.ip6.p.na_data.target_link_layer_address <= mac[in.meta.dest];
+                        s1.data.ip6.p.na_data.target_link_layer_address <= mac[in.meta.id];
 
+                        // frame 部分
+                        s1.meta.dest <= in.meta.id;
 
                     // 单播 NS
                     end else begin
@@ -189,7 +191,7 @@ module ndp_datapath
                 // Receipt of Neighbor Advertisements
                 end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
                     // TODO: 补充完成 NA 包(ICMPv6 部分)的合法性检验
-                    if (in_ip6.hop_limit != 255) begin
+                    if (in_ip6.hop_limit != 8'd255) begin
                         s1.meta.drop <= 1'b1;
 
                     // 组播 NA, 丢弃
