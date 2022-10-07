@@ -65,7 +65,7 @@ module frame_datapath_example
     // (MAC 14 + IPv6 40 + round up 2) to ensure that L2 (MAC) and L3 (IPv6) headers appear
     // in one beat (the first beat) facilitating our processing.
     // You can remove this.
-    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH) frame_beat_upsizer(
+    frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH_V6) frame_beat_upsizer(
         .clk(eth_clk),
         .rst(reset),
 
@@ -285,7 +285,7 @@ module frame_datapath_example
 
     frame_filter
     #(
-        .DATA_WIDTH(DATAW_WIDTH),
+        .DATA_WIDTH(DATAW_WIDTH_V6),
         .ID_WIDTH(ID_WIDTH)
     )
     frame_filter_i(
@@ -313,7 +313,7 @@ module frame_datapath_example
 
     // README: Change the width back. You can remove this.
     frame_beat out8;
-    frame_beat_width_converter #(DATAW_WIDTH, DATA_WIDTH) frame_beat_downsizer(
+    frame_beat_width_converter #(DATAW_WIDTH_V6, DATA_WIDTH) frame_beat_downsizer(
         .clk(eth_clk),
         .rst(reset),
 

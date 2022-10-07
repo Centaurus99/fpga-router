@@ -2,13 +2,14 @@
 `define _FRAME_DATAPATH_VH_
 
 // 'w' means wide.
-localparam DATAW_WIDTH = 8 * 88;
+localparam DATAW_WIDTH_ND = 8 * 88;
+localparam DATAW_WIDTH_V6 = 8 * 56;
 localparam ID_WIDTH = 3;
 
 // README: Your code here.
 
 typedef struct packed {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
+    logic [(DATAW_WIDTH_ND - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
     logic [47:0] source_link_layer_address;
     logic [7:0] length;
     logic [7:0] option_type;
@@ -23,7 +24,7 @@ typedef struct packed {
 // 原包24byte，option有8byte
 
 typedef struct packed {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
+    logic [(DATAW_WIDTH_ND - 8 * 40 - 8 * 14 - 8 * 24 - 8 * 8) - 1:0] padding;
     logic [47:0] target_link_layer_address;
     logic [7:0] length;
     logic [7:0] option_type;
@@ -40,7 +41,7 @@ typedef struct packed {
 // na包的信息
 
 typedef union packed {
-    logic [(DATAW_WIDTH - 8 * 40 - 8 * 14) - 1:0] raw_data;
+    logic [(DATAW_WIDTH_ND - 8 * 40 - 8 * 14) - 1:0] raw_data;
     ns_mes ns_data;
     na_mes na_data;
 } mes_union;
@@ -87,9 +88,9 @@ typedef struct packed
 {
     // AXI-Stream signals.
     ether_hdr data;
-    logic [DATAW_WIDTH / 8 - 1:0] keep;
+    logic [DATAW_WIDTH_ND / 8 - 1:0] keep;
     logic last;
-    logic [DATAW_WIDTH / 8 - 1:0] user;
+    logic [DATAW_WIDTH_ND / 8 - 1:0] user;
     logic valid;
 
     // Handy signals.
