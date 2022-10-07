@@ -84,8 +84,19 @@ module ndp_datapath
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
+
     ip6_hdr in_ip6;
     assign in_ip6 = in.data.ip6;
+
+    // 生成组播地址
+    wire [127:0] in_multicast_ip;
+    wire [127:0] in_multicast_mac;
+    unicast_to_multicast unicast_to_multicast_i(
+        .ip_in (in_ip6.dst),
+        .ip_out(in_multicast_ip),
+        .mac_out(in_multicast_mac)
+    );
+
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s1 <= 0;
@@ -98,8 +109,35 @@ module ndp_datapath
                     if (in_ip6.hop_limit != 255) begin
                         s1.meta.drop <= 1'b1;
                     
-                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 暂定各接口均需发送
-                    end else if (in_ip6.p.ns_data.code != DROP_AND_SEND_NS_CODE) begin
+                    // TODO: 转发时邻居缓存未命中, 发送 NS 包查询, 暂定向 0 号口发送, 之后拓展为向各接口发送
+                    end else if (in_ip6.p.ns_data.code == DROP_AND_SEND_NS_CODE) begin
+
+                        // ICMPv6 部分
+                        s1.data.ip6.p.ns_data.code <= 8'b0;
+                        s1.data.ip6.p.ns_data.checksum <= 16'b0;
+                        s1.data.ip6.p.ns_data.reserved <= 32'b0;
+                        s1.data.ip6.p.ns_data.target_address <= in_ip6.dst;
+                        s1.data.ip6.p.ns_data.option_type <= 8'd1;
+                        s1.data.ip6.p.ns_data.length <= 8'd1;
+                        s1.data.ip6.p.ns_data.source_link_layer_address <= mac[0];
+
+                        // IPv6 部分
+                        s1.data.ip6.flow_hi <= 4'b0;
+                        s1.data.ip6.version <= 4'd6;
+                        s1.data.ip6.flow_lo <= 24'b0;
+                        s1.data.ip6.payload_len <= 16'd32;
+                        s1.data.ip6.next_hdr <= IP6_TYPE_ICMP;
+                        s1.data.ip6.hop_limit <= 8'd255;
+                        s1.data.ip6.src <= ip[0];
+                        s1.data.ip6.dst <= in_multicast_ip;
+
+                        // MAC 部分
+                        s1.data.dst <= in_multicast_mac;
+                        s1.data.src <= mac[0];
+                        s1.data.ethertype <= ETHERTYPE_IP6;
+
+                        // frame 部分
+                        s1.meta.dest = 0;
 
                     // Target Address 须为接受口地址
                     end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
