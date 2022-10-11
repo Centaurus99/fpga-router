@@ -4,27 +4,26 @@ module config_address (
     input wire clk,
     input wire reset,
 
-    input wire        we,
-    input wire [47:0] mac_in,
+    input wire         we_mac,
+    input wire         we_ip,
+    input wire [ 47:0] mac_in,
+    input wire [127:0] ip_in,
 
     output reg [ 47:0] mac_reg,
     output reg [127:0] ip_reg
 );
 
-    logic [127:0] ip_eui64_comb;
-
-    eui64 eui64_i (
-        .mac(mac_in),
-        .ip (ip_eui64_comb)
-    );
-
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             mac_reg <= 48'b0;
             ip_reg  <= 128'b0;
-        end else if (we) begin
-            mac_reg <= mac_in;
-            ip_reg  <= ip_eui64_comb;
+        end else begin
+            if (we_mac) begin
+                mac_reg <= mac_in;
+            end
+            if (we_ip) begin
+                ip_reg <= ip_in;
+            end
         end
     end
 
