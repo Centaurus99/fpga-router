@@ -51,26 +51,31 @@ module tb_frame_datapath
     wire out_valid;
     wire out_ready;
     
-    // FIXME: 硬编码 MAC 地址, 用于硬件调试
-    wire [47:0] preset_mac[3:0];
-    assign preset_mac[0] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h00}};
-    assign preset_mac[1] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h01}};
-    assign preset_mac[2] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h02}};
-    assign preset_mac[3] = {<<8{8'h00, 8'h00, 8'h00, 8'h03, 8'h0A, 8'h03}};
-
     wire [ 47:0] mac[3:0];
     wire [127:0] ip [3:0];
-    
-    genvar i;
+
+    // FIXME: 硬编码 MAC 地址, 用于硬件调试
+    wire [47:0] preset_mac[3:0];
+    assign preset_mac[0] = {<<8{48'h00_00_00_03_0A_00}};
+    assign preset_mac[1] = {<<8{48'h00_00_00_03_0A_01}};
+    assign preset_mac[2] = {<<8{48'h00_00_00_03_0A_02}};
+    assign preset_mac[3] = {<<8{48'h00_00_00_03_0A_03}};
+
+    wire [127:0] ip_eui64_comb[3:0];
     generate
-        for (i = 0; i < 4; i = i + 1)
-        begin
+        for (genvar i = 0; i < 4; i = i + 1) begin
+            eui64 eui64_i (
+                .mac(preset_mac[i]),
+                .ip (ip_eui64_comb[i])
+            );
             config_address config_address_i (
                 .clk  (clk_125M),
                 .reset(reset),
 
-                .we     (1'b1),
+                .we_mac (1'b1),
+                .we_ip  (1'b1),
                 .mac_in (preset_mac[i]),
+                .ip_in  (ip_eui64_comb[i]),
                 .mac_reg(mac[i]),
                 .ip_reg (ip[i])
             );
