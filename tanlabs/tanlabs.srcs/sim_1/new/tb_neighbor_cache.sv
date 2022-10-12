@@ -15,30 +15,38 @@ module tb_neighbor_cache #(
     wire         found;
 
     initial begin
-        #100 reset = 1;
-        #500 reset = 0;
+        #10 reset = 1;
+        #50 reset = 0;
 
+        in_v6_w[127:96] = $urandom();
+        in_v6_w[95:64]  = $urandom();
+        in_v6_w[63:32]  = $urandom();
+        in_v6_w[31:0]   = $urandom();
         for (int i = 0; i < 8; i = i + 1) begin
-            in_v6_w[127:96] = $urandom();
-            in_v6_w[95:64]  = $urandom();
-            in_v6_w[63:32]  = $urandom();
-            in_v6_w[31:0]   = $urandom();
+            in_v6_w[7:0] = i;
             in_v6_r = in_v6_w;
-            for (int j = 0; j < 32; j = j + 1) begin
-                #100
-                    in_v6_r[7:0] = in_v6_w[7:0] - $urandom_range(2);
-                    in_v6_r[15:8] = in_v6_w[15:8] - $urandom_range(2);
-                    in_v6_w[7:0] = in_v6_w[7:0] + $urandom_range(2);
-                    in_v6_w[15:8] = in_v6_w[15:8] + $urandom_range(2);
-                    in_mac = $urandom();
+            // 写入5个冲突的
+            for (int j = 0; j < 5; j = j + 1) begin
+                #10
+                    in_mac = i * 32 + j + 1;
                     we = 1;
-                    #100 we = 0;
+                    #10 we = 0;
                     in_mac = 0;
-                #1000;
+                    in_v6_w[127:120] = in_v6_w[127:120] ^ (1<<j);
+                    in_v6_w[119:112] = in_v6_w[119:112] ^ (1<<j);
+                #20;
+            end
+            // 倒着读出来
+            in_v6_r = in_v6_w;
+            for (int j = 4; j >= 0; j = j - 1) begin
+                #10
+                    in_v6_r[127:120] = in_v6_r[127:120] ^ (1<<j);
+                    in_v6_r[119:112] = in_v6_r[119:112] ^ (1<<j);
+                #20;
             end
         end
 
-        #10000 $finish;
+        #100 $finish;
     end
 
     wire clk_125M;
