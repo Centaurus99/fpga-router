@@ -54,10 +54,7 @@ module tb_neighbor_cache #(
     clock clock_i (.clk_125M(clk_125M));
 
 
-    neighbor_cache #(
-        .DATA_WIDTH(DATA_WIDTH),
-        .ADDR_WIDTH(ADDR_WIDTH)
-    ) dut (
+    neighbor_cache dut (
         .clk   (clk_125M),
         .reset (reset),
         .we    (we),
