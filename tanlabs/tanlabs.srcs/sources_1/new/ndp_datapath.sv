@@ -124,20 +124,30 @@ module ndp_datapath #(
                         s1.data.ip6.p.ns_data.length <= 8'd1;
                         s1.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.dest];
 
-                        // TODO: 补充完成 NS 包(ICMPv6 部分)的合法性检验
-                    end else if (in_ip6.hop_limit != 8'd255) begin
+                        // 补充完成 NS 包(ICMPv6 部分)的合法性检验
+                    end else if (
+                        in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
+                        // TODO: ICMP Checksum is valid
+                        in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
+                        in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
+                        in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
+                        in_ip6.p.ns_data.length <= 0  // All included options have a length that is greater than zero
+                        // If the IP source address is the unspecified address, the IP destination address is a solicited-node multicast address
+                        // If the IP source address is the unspecified address, there is no source link-layer address option in the message
+                        // 但我们不处理重复地址检测
+                    ) begin
                         s1.meta.drop <= 1'b1;
 
-                        // FIXME: [调试时不启用] Target Address 须为接受口地址
-                        // end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
-                        //     s1.meta.drop <= 1'b1;
+                    // FIXME: [调试时不启用] Target Address 须为接受口地址
+                    // end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
+                    //     s1.meta.drop <= 1'b1;
 
-                        // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
-                        // IPv6 Source Address 为未指定地址
+                    // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
+                    // IPv6 Source Address 为未指定地址
                     end else if (in_ip6.src == 128'b0) begin
                         s1.meta.drop <= 1'b1;
 
-                        // 收到 NS, 发送单播 NA 进行响应
+                    // 收到 NS, 发送单播 NA 进行响应
                     end else begin
                         // 组播 NS, SHOULD 更新邻居缓存
                         if (in_ip6.dst[7:0] == 8'hff) begin
@@ -188,10 +198,18 @@ module ndp_datapath #(
 
                     end
 
-                    // Receipt of Neighbor Advertisements
+                // Receipt of Neighbor Advertisements
                 end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
-                    // TODO: 补充完成 NA 包(ICMPv6 部分)的合法性检验
-                    if (in_ip6.hop_limit != 8'd255) begin
+                    // 补充完成 NA 包(ICMPv6 部分)的合法性检验
+                    if (
+                        in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
+                        // TODO: ICMP Checksum is valid
+                        in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
+                        in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
+                        in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
+                        // If the IP Destination Address is a multicast address the Solicited flag is zero 但我们不处理组播NA
+                        in_ip6.p.ns_data.length <= 0 // All included options have a length that is greater than zero
+                    ) begin
                         s1.meta.drop <= 1'b1;
 
                         // 组播 NA, 丢弃
