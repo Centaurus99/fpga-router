@@ -4,7 +4,7 @@
 
 module neighbor_cache #(
     parameter DATA_WIDTH = 176,
-    parameter ADDR_WIDTH = 5
+    parameter ADDR_WIDTH = 8
 ) (
     input wire clk,
     input wire reset,
@@ -19,22 +19,30 @@ module neighbor_cache #(
     // output wire       ready  // 当前为空闲
 );
     wire [ADDR_WIDTH - 1:0] addra, addrb;
-    logic [DATA_WIDTH - 1:0] dina, doutb;
+    logic [DATA_WIDTH - 1:0] dina, douta[3:0], doutb[3:0];
     // logic bram_en;
 
-    // blk_mem_gen_0 bram_i (
-    //     .clka(clk),    // input wire clka
-    //     .wea(we),      // input wire [0 : 0] wea
-    //     .addra(addra),  // input wire [4 : 0] addra
-    //     .dina(dina),    // input wire [175 : 0] dina
-    //     .clkb(clk),    // input wire clkb
-    //     .addrb(addrb),  // input wire [4 : 0] addrb
-    //     .doutb(doutb)  // output wire [175 : 0] doutb
-    // );
-    // assign addra = hash_w;
-    // assign addrb = hash_r;
+    logic wea [3:0];
+    genvar i;
+    generate
+        for (i = 0; i < 4; ++i) begin: brams
+            blk_mem_gen_0 bram_i (
+                .clka(clk),    // input wire clka
+                .wea(wea[i]),      // input wire [0 : 0] wea
+                .addra(addra),  // input wire [7 : 0] addra
+                .dina(dina),    // input wire [175 : 0] dina
+                .douta(douta[i]),  // output wire [175 : 0] douta
+                .clkb(clk),    // input wire clkb
+                .web(0),      // input wire [0 : 0] web
+                .addrb(addrb),  // input wire [7 : 0] addrb
+                .dinb(0),    // input wire [175 : 0] dinb
+                .doutb(doutb[i])  // output wire [175 : 0] doutb
+            );
+        end
+        
+    endgenerate
 
-    logic [DATA_WIDTH - 1:0] data[3:0][31:0];
+    // logic [DATA_WIDTH - 1:0] data[3:0][31:0];
 
     // typedef enum logic [3:0] {
     //     ST_INIT,
@@ -51,32 +59,34 @@ module neighbor_cache #(
     always_comb begin
         // 循环异或
         hash0_r = in_v6_r[127:96] ^ in_v6_r[95:64] ^ in_v6_r[63:32] ^ in_v6_r[31:0];
-        hash0_r[7:0] = hash0_r[31:24] ^ hash0_r[23:16] ^ hash0_r[15:8] ^ hash0_r[7:0];
-        hash_r = hash0_r[7:8-ADDR_WIDTH] ^ hash0_r[ADDR_WIDTH-1:0];
+        hash_r = hash0_r[31:24] ^ hash0_r[23:16] ^ hash0_r[15:8] ^ hash0_r[7:0];
+        // hash_r = hash0_r[7:8-ADDR_WIDTH] ^ hash0_r[ADDR_WIDTH-1:0];
 
         hash0_w = in_v6_w[127:96] ^ in_v6_w[95:64] ^ in_v6_w[63:32] ^ in_v6_w[31:0];
-        hash0_w[7:0] = hash0_w[31:24] ^ hash0_w[23:16] ^ hash0_w[15:8] ^ hash0_w[7:0];
-        hash_w = hash0_w[7:8-ADDR_WIDTH] ^ hash0_w[ADDR_WIDTH-1:0];
+        hash_w = hash0_w[31:24] ^ hash0_w[23:16] ^ hash0_w[15:8] ^ hash0_w[7:0];
+        // hash_w = hash0_w[7:8-ADDR_WIDTH] ^ hash0_w[ADDR_WIDTH-1:0];
     end
+    assign addra = hash_w;
+    assign addrb = hash_r;
 
     wire [3:0] match_w, match_r, exist_w;
     assign match_w = {
-        in_v6_w == data[3][hash_w][127:0],
-        in_v6_w == data[2][hash_w][127:0],
-        in_v6_w == data[1][hash_w][127:0],
-        in_v6_w == data[0][hash_w][127:0]
+        in_v6_w == douta[3][127:0],
+        in_v6_w == douta[2][127:0],
+        in_v6_w == douta[1][127:0],
+        in_v6_w == douta[0][127:0]
     };
     assign match_r = {
-        in_v6_r == data[3][hash_r][127:0],
-        in_v6_r == data[2][hash_r][127:0],
-        in_v6_r == data[1][hash_r][127:0],
-        in_v6_r == data[0][hash_r][127:0]
+        in_v6_r == doutb[3][127:0],
+        in_v6_r == doutb[2][127:0],
+        in_v6_r == doutb[1][127:0],
+        in_v6_r == doutb[0][127:0]
     };
     assign exist_w = {
-        data[3][hash_w] != 0,
-        data[2][hash_w] != 0,
-        data[1][hash_w] != 0,
-        data[0][hash_w] != 0
+        douta[3] != 0,
+        douta[2] != 0,
+        douta[1] != 0,
+        douta[0] != 0
     };
 
     assign dina = {in_mac, in_v6_w};
@@ -95,36 +105,57 @@ module neighbor_cache #(
         out_mac = 0;
         found   = 1;
         case (match_r)
-            4'b1000: out_mac = data[3][hash_r][175:128];
-            4'b0100: out_mac = data[2][hash_r][175:128];
-            4'b0010: out_mac = data[1][hash_r][175:128];
-            4'b0001: out_mac = data[0][hash_r][175:128];
+            4'b1000: out_mac = doutb[3][175:128];
+            4'b0100: out_mac = doutb[2][175:128];
+            4'b0010: out_mac = doutb[1][175:128];
+            4'b0001: out_mac = doutb[0][175:128];
             default: found = 0;
         endcase
     end
 
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
-            data <= '{default: 0};
+    always_comb begin
+        if (we) begin
+            case (match_w)
+                4'b0001: wea[0] = 1;
+                4'b0010: wea[1] = 1;
+                4'b0100: wea[2] = 1;
+                4'b1000: wea[3] = 1;
+                default: begin
+                    case (exist_w)
+                        4'b0001: wea[1] = 1;
+                        4'b0011: wea[2] = 1;
+                        4'b0111: wea[3] = 1;
+                        default: wea[0] = 1;
+                    endcase
+                end
+            endcase
         end else begin
-            if (we) begin
-                case (match_w)
-                    4'b0001: data[0][hash_w] <= dina;
-                    4'b0010: data[1][hash_w] <= dina;
-                    4'b0100: data[2][hash_w] <= dina;
-                    4'b1000: data[3][hash_w] <= dina;
-                    default: begin
-                        case (exist_w)
-                            4'b0001: data[1][hash_w] <= dina;
-                            4'b0011: data[2][hash_w] <= dina;
-                            4'b0111: data[3][hash_w] <= dina;
-                            default: data[0][hash_w] <= dina;
-                        endcase
-                    end
-                endcase
-            end
+            wea = '{default: 0};
         end
     end
+
+    // always_ff @(posedge clk or posedge reset) begin
+    //     if (reset) begin
+    //         data <= '{default: 0};
+    //     end else begin
+    //         if (we) begin
+    //             case (match_w)
+    //                 4'b0001: dina[0][hash_w] <= dina;
+    //                 4'b0010: dina[1][hash_w] <= dina;
+    //                 4'b0100: dina[2][hash_w] <= dina;
+    //                 4'b1000: dina[3][hash_w] <= dina;
+    //                 default: begin
+    //                     case (exist_w)
+    //                         4'b0001: data[1][hash_w] <= dina;
+    //                         4'b0011: data[2][hash_w] <= dina;
+    //                         4'b0111: data[3][hash_w] <= dina;
+    //                         default: data[0][hash_w] <= dina;
+    //                     endcase
+    //                 end
+    //             endcase
+    //         end
+    //     end
+    // end
 
     // always_ff @(posedge clk or posedge reset) begin
     //     if (reset) current <= ST_INIT;
