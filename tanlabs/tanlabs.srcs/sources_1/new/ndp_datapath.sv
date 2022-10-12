@@ -102,7 +102,7 @@ module ndp_datapath #(
                         end
                         s1.last <= 1'b1;
                         s1.keep <= '1;
-                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 1] = 2'b00;
+                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 2] <= 2'b00;
 
                         // IPv6 模板
                         s1.data <= IPv6_packet(
@@ -152,14 +152,13 @@ module ndp_datapath #(
 
                         // 发送 NA 包
                         // frame 部分
-                        // TODO: keep 和 last 信号的设置
                         s1.meta.dest <= in.meta.id;
                         if (in.last == 1'b0) begin
                             s1.meta.drop_next <= 1'b1;
                         end
                         s1.last <= 1'b1;
                         s1.keep <= '1;
-                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 1] = 2'b00;
+                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 2] <= 2'b00;
 
                         // IPv6 模板
                         s1.data <= IPv6_packet(
