@@ -82,7 +82,9 @@ typedef struct packed
     // You can do so by setting both last and drop_next.
     logic drop_next;
 
-    // README: Your code here.
+    // 该数据包由 datapath 生成和发送
+    logic send_from_datapath;
+
 } frame_meta;
 
 typedef struct packed
@@ -112,6 +114,5 @@ localparam IP6_TYPE_ICMP = 8'h3a;
 
 localparam ICMP_TYPE_NS = 8'd135;
 localparam ICMP_TYPE_NA = 8'd136;
-localparam DROP_AND_SEND_NS_CODE = 8'ha7;
 
 `endif
