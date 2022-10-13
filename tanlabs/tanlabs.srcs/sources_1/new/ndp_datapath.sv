@@ -85,6 +85,12 @@ module ndp_datapath #(
         .mac_out(in_multicast_mac)
     );
 
+    logic [15:0] in_sum;
+    icmpv6_checksum icmpv6_checksum_i_check (
+        .beat(in),
+        .sum (in_sum)
+    );
+
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s1 <= 0;
@@ -127,10 +133,10 @@ module ndp_datapath #(
                         s1.data.ip6.p.ns_data.length <= 8'd1;
                         s1.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.dest];
 
-                        // 补充完成 NS 包(ICMPv6 部分)的合法性检验
+                    // NS 包(ICMPv6 部分)的合法性检验
                     end else if (
                         in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                        // TODO: ICMP Checksum is valid
+                        in_sum != 0 || // ICMP Checksum is valid
                         in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
                         in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
                         in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
@@ -203,10 +209,10 @@ module ndp_datapath #(
 
                 // Receipt of Neighbor Advertisements
                 end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
-                    // 补充完成 NA 包(ICMPv6 部分)的合法性检验
+                    // NA 包(ICMPv6 部分)的合法性检验
                     if (
                         in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                        // TODO: ICMP Checksum is valid
+                        in_sum != 0 || // ICMP Checksum is valid
                         in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
                         in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
                         in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
@@ -230,6 +236,26 @@ module ndp_datapath #(
                 end else begin
                     s1.meta.drop <= 1'b1;
                 end
+            end
+        end
+    end
+
+    frame_beat s2;
+    wire       s2_ready;
+    assign s1_ready = s2_ready || !s1.valid;
+    logic [15:0] s1_sum;
+    icmpv6_checksum icmpv6_checksum_i_calc (
+        .beat(s1),
+        .sum (s1_sum)
+    );
+    // 生成发出去的 NS/NA 包的 checksum
+    always_ff @(posedge eth_clk or posedge reset) begin
+        if (reset) begin
+            s2 <= 0;
+        end else if (s2_ready) begin
+            s2 <= s1;
+            if (s1.valid && s1.is_first && !s1.meta.drop && s1.meta.ndp_packet) begin
+                s2.data.ip6.p.na_data.checksum <= s1_sum;
             end
         end
     end
