@@ -11,13 +11,17 @@ module icmpv6_checksum #(
 );
 
     // 注意这样的代码只能算单包 88 Byte
-    reg [23:0] sum_reg = 6'h000000;
+    reg [23:0] sum_reg = 24'h000000;
+    reg [23:0] sum_reg_temp         [7:0] = '{default: 0};
     always_comb begin
         // 加上next_header和payload_len
         sum_reg = beat.data.ip6.next_hdr;
         sum_reg = sum_reg + {beat.data.ip6.payload_len[7:0], beat.data.ip6.payload_len[15:8]};
-        for (int i = 8; i < 72; i = i + 2) begin
-            sum_reg = sum_reg + {beat.data.ip6[8*i+:8], beat.data.ip6[8*(i+1)+:8]};
+        for (int i = 0; i < 8; i = i + 1) begin
+            for (int j = 8 + 8 * i; j < 8 + 8 * i + 8; j = j + 2) begin
+                sum_reg_temp[i]  = sum_reg_temp[i] + {beat.data.ip6[8*j+:8], beat.data.ip6[8*(j+1)+:8]};
+            end
+            sum_reg = sum_reg + sum_reg_temp[i];
         end
         sum_reg = {8'b0, sum_reg[15:0]} + sum_reg[23:16];
         sum_reg = {8'b0, sum_reg[15:0]} + sum_reg[23:16];
