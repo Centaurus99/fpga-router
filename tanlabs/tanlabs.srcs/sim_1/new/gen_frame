@@ -35,8 +35,8 @@ IFACE_DEFAULT_ROUTE = 3
 MAC_DEFAULT_ROUTE = '54:45:53:54:5f:33'
 
 if SEND_FRAMES:
-  MAC_DUT0 = '54:57:44:32:5f:30'
-  MAC_DUT1 = '54:57:44:32:5f:31'
+  MAC_DUT0 = '00:00:00:03:0a:00'
+  MAC_DUT1 = '00:00:00:03:0a:01'
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
@@ -45,13 +45,13 @@ if SEND_FRAMES:
 #   3. The IP addresses of Interface 2 of the router are link-local and prefix:2::1/64.
 #   4. The IP addresses of Interface 3 of the router are link-local and prefix:3::1/64.
 #   5. There exists a 2000::/3 route (not default route), and its next hop is Interface 3, TESTER3.
-IP_PREFIX = '2a0e:aa06:497:'
+IP_PREFIX = '2a0e:aa06:497:0a0'
 IP_TESTER0 = IP_PREFIX + '0::2'
 IP_TESTER1 = IP_PREFIX + '1::2'
-IP_DUT0 = 'fe80::5657:44ff:fe32:5f30'  # Device under test.
+IP_DUT0 = 'fe80::200:ff:fe03:a00'  # Device under test.
 IP_DUT0_GUA = IP_PREFIX + '0::1'
-IP_DUT1 = 'fe80::5657:44ff:fe32:5f31'
-IP_DUT3 = 'fe80::5657:44ff:fe32:5f33'
+IP_DUT1 = 'fe80::200:ff:fe03:a01'
+IP_DUT3 = 'fe80::200:ff:fe03:a03'
 IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'  # The IP address of the default route.
 IP_TEST_NDP = 'fe80::8888'
 IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.

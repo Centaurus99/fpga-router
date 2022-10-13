@@ -39,7 +39,7 @@ module ndp_datapath #(
     frame_beat in8, in;
     wire in_ready;
 
-    always @(*) begin
+    always_comb begin
         in8.meta  = s_meta;
         in8.valid = s_valid;
         in8.data  = s_data;
@@ -49,7 +49,7 @@ module ndp_datapath #(
     end
 
     // Track frames and figure out when it is the first beat.
-    always @(posedge eth_clk or posedge reset) begin
+    always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             in8.is_first <= 1'b1;
         end else begin
@@ -78,7 +78,7 @@ module ndp_datapath #(
 
     // 生成 in.data.ip6.dst 对应的组播地址
     wire [127:0] in_multicast_ip;
-    wire [127:0] in_multicast_mac;
+    wire [ 47:0] in_multicast_mac;
     unicast_to_multicast unicast_to_multicast_i (
         .ip_in  (in_ip6.dst),
         .ip_out (in_multicast_ip),
@@ -91,8 +91,10 @@ module ndp_datapath #(
         end else if (s1_ready) begin
             s1    <= in;
             nc_we <= 0;
-            if (`should_handle(in) && in_ip6.next_hdr == IP6_TYPE_ICMP) begin
+            if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
                 // Receipt of Neighbor Solicitations
+                // 解除锁定
+                s1.meta.dont_touch <= 1'b0;
                 if (in_ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
                     // 转发时邻居缓存未命中, 发送 NS 包查询, 对应接口在之前的路由表中获得, 故不做更改
                     if (in.meta.send_from_datapath) begin
@@ -102,7 +104,7 @@ module ndp_datapath #(
                         end
                         s1.last <= 1'b1;
                         s1.keep <= '1;
-                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 2] <= 2'b00;
+                        s1.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
 
                         // IPv6 模板
                         s1.data <= IPv6_packet(
@@ -116,6 +118,7 @@ module ndp_datapath #(
                         );
 
                         // ICMPv6 部分
+                        s1.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
                         s1.data.ip6.p.ns_data.code <= 8'b0;
                         s1.data.ip6.p.ns_data.checksum <= 16'b0;
                         s1.data.ip6.p.ns_data.reserved <= 32'b0;
@@ -128,9 +131,9 @@ module ndp_datapath #(
                     end else if (in_ip6.hop_limit != 8'd255) begin
                         s1.meta.drop <= 1'b1;
 
-                        // FIXME: [调试时不启用] Target Address 须为接受口地址
-                        // end else if (in_ip6.p.ns_data.target_address != ip[s_id]) begin
-                        //     s1.meta.drop <= 1'b1;
+                        // HACK: [调试时不启用] Target Address 须为接受口地址
+                    end else if (in_ip6.p.ns_data.target_address != ip[in.meta.id]) begin
+                        s1.meta.drop <= 1'b1;
 
                         // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
                         // IPv6 Source Address 为未指定地址
@@ -158,7 +161,7 @@ module ndp_datapath #(
                         end
                         s1.last <= 1'b1;
                         s1.keep <= '1;
-                        s1.keep[DATAW_WIDTH_ND / 8 - 1:DATAW_WIDTH_ND / 8 - 2] <= 2'b00;
+                        s1.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
 
                         // IPv6 模板
                         s1.data <= IPv6_packet(
@@ -220,7 +223,7 @@ module ndp_datapath #(
     assign s1_ready = out_ready || !out.valid;
 
     reg out_is_first;
-    always @(posedge eth_clk or posedge reset) begin
+    always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             out_is_first <= 1'b1;
         end else begin
@@ -232,7 +235,7 @@ module ndp_datapath #(
 
     reg [ID_WIDTH - 1:0] dest;
     reg                  drop_by_prev;  // Dropped by the previous frame?
-    always @(posedge eth_clk or posedge reset) begin
+    always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             dest         <= 0;
             drop_by_prev <= 1'b0;
@@ -247,8 +250,8 @@ module ndp_datapath #(
     // Rewrite dest.
     wire       [ID_WIDTH - 1:0] dest_current = out_is_first ? out.meta.dest : dest;
 
-    frame_beat filtered;
-    wire       filtered_ready;
+    frame_beat                                                                      filtered;
+    wire                                                                            filtered_ready;
 
     frame_filter #(
         .DATA_WIDTH(DATAW_WIDTH_ND),
