@@ -114,6 +114,7 @@ module neighbor_cache #(
     end
 
     always_comb begin
+        wea = '{default: 0};
         if (we) begin
             case (match_w)
                 4'b0001: wea[0] = 1;
@@ -129,8 +130,6 @@ module neighbor_cache #(
                     endcase
                 end
             endcase
-        end else begin
-            wea = '{default: 0};
         end
     end
 
