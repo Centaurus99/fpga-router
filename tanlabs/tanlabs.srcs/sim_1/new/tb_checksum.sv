@@ -1,24 +1,23 @@
-`include ""
+`timescale 1ns / 1ps `default_nettype none
 
-module tb_checksum
-#(
-    parameter PACKET_LENGTH = 88;
-    parameter MOD = 4'd0;
-)
-(
-    
-);
+`include "frame_datapath.vh"
 
-    frame_beat in;
-    reg [15:0] sum;
+module tb_checksum #(
+    parameter PACKET_LENGTH = 88,
+    parameter MOD = 4'd0
+) ();
 
-    icmpv6_checksum dut(
-        .beat(in);
-        .sum(sum);
+    frame_beat        in;
+    reg        [15:0] sum;
+
+    initial begin
+
+        $finish;
+    end
+
+    icmpv6_checksum dut (
+        .beat(in),
+        .sum (sum)
     );
-
-    #2000
-    assign in.ip6 = 4'h
-
 
 endmodule
