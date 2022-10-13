@@ -51,6 +51,8 @@ module axis_model
             ST_READ:
                 if ($feof(fd))
                 begin
+                    #200000;
+                    $finish;
                     $rewind(fd);
                     state <= ST_READ;
                 end
@@ -59,6 +61,8 @@ module axis_model
                     ret = $fscanf(fd, "%d%d", iface, len);
                     if (ret != 2)
                     begin
+                        #200000;
+                        $finish;
                         $rewind(fd);
                         state <= ST_READ;
                     end

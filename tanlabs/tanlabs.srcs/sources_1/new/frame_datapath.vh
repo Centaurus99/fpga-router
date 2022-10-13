@@ -75,7 +75,10 @@ typedef struct packed
     logic [ID_WIDTH - 1:0] id;  // The ingress interface.
     logic [ID_WIDTH - 1:0] dest;  // The egress interface.
     logic drop;  // Drop this frame (i.e., this beat and the following beats till the last)?
-    logic dont_touch;  // Do not touch this beat!
+
+    // Do not touch this beat!
+    // 目前用于表示发给软件的包和接收的 NS/NA 包
+    logic dont_touch;  
 
     // Drop the next frame? It is useful when you need to shrink a frame
     // (e.g., replace an IPv6 packet to an ND solicitation).
@@ -84,6 +87,8 @@ typedef struct packed
 
     // 该数据包由 datapath 生成和发送
     logic send_from_datapath;
+    // 该数据包须由 ndp_datapath 接收
+    logic ndp_packet;
 
 } frame_meta;
 
