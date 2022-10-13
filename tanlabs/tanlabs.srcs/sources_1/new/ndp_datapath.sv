@@ -261,10 +261,10 @@ module ndp_datapath #(
     end
 
     frame_beat out;
-    assign out = s1;
+    assign out = s2;
 
     wire out_ready;
-    assign s1_ready = out_ready || !out.valid;
+    assign s2_ready = out_ready || !out.valid;
 
     reg out_is_first;
     always_ff @(posedge eth_clk or posedge reset) begin
