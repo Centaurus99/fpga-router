@@ -77,10 +77,8 @@ module icmpv6_checksum #(
                 end
                 default: begin
                     sum_reg <= sum_reg + {s1_reg.data.ip6[8*(s1_state+0)+:8], s1_reg.data.ip6[8*(s1_state+1)+:8]}
-                                       + {s1_reg.data.ip6[8*(s1_state+2)+:8], s1_reg.data.ip6[8*(s1_state+3)+:8]}
-                                       + {s1_reg.data.ip6[8*(s1_state+4)+:8], s1_reg.data.ip6[8*(s1_state+5)+:8]}
-                                       + {s1_reg.data.ip6[8*(s1_state+6)+:8], s1_reg.data.ip6[8*(s1_state+7)+:8]};
-                    s1_state <= s1_state + 8;
+                                       + {s1_reg.data.ip6[8*(s1_state+2)+:8], s1_reg.data.ip6[8*(s1_state+3)+:8]};
+                    s1_state <= s1_state + 4;
                 end
             endcase
         end
