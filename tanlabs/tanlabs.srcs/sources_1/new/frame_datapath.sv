@@ -146,10 +146,12 @@ module frame_datapath #(
                         s2.meta.dest <= ID_CPU;
                     end
 
-                    // 否则需要转发, 检验 hop_limit
+                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
                 end else begin
                     if (s1.data.ip6.hop_limit <= 1) begin
                         // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
+                        s2.meta.drop <= 1;
+                    end else if (s1.data.ip6.dst[7:0] == 8'hff) begin
                         s2.meta.drop <= 1;
                     end
                 end
