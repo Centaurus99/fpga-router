@@ -109,7 +109,7 @@ module frame_datapath #(
             if (`should_handle(in)) begin
                 if (in.data.dst != mac[in.meta.id] && in.data.dst != in_multicast_mac && in.data.dst != broadcast_mac) begin
                     s1.meta.drop <= 1;
-                // drop non ipv6 packet
+                    // drop non ipv6 packet
                 end else if (in.data.ip6.version != 4'd6) begin
                     s1.meta.drop <= 1;
                 end else if (in.data.ip6.hop_limit == 0) begin
@@ -143,8 +143,14 @@ module frame_datapath #(
                     end else begin
                         s2.meta.dest <= ID_CPU;
                     end
+
+                    // 否则需要转发, 检验 hop_limit
+                end else begin
+                    if (s1.data.ip6.hop_limit <= 1) begin
+                        // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
+                        s2.meta.drop <= 1;
+                    end
                 end
-                // 否则需要转发, 又之后的转发逻辑处理
             end
         end
     end
@@ -165,10 +171,10 @@ module frame_datapath #(
     );
 
     typedef enum {
-        ST_SEND_RECV,   // 初始阶段
-        ST_QUERY_WAIT1, // 等待查询邻居缓存
-        ST_QUERY_WAIT2, // 等待查询邻居缓存
-        ST_QUERY_FIN    // 查询到邻居缓存
+        ST_SEND_RECV,  // 初始阶段
+        ST_QUERY_WAIT1,  // 等待查询邻居缓存
+        ST_QUERY_WAIT2,  // 等待查询邻居缓存
+        ST_QUERY_FIN  // 查询到邻居缓存
     } s3_state_t;
 
     frame_beat s3_reg, s3;
@@ -184,8 +190,8 @@ module frame_datapath #(
     // 转发逻辑
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s3_reg   <= '{default: 0};
-            s3_state <= ST_SEND_RECV;
+            s3_reg     <= '{default: 0};
+            s3_state   <= ST_SEND_RECV;
             nc_in_v6_r <= 0;
         end else begin
             case (s3_state)
@@ -193,17 +199,9 @@ module frame_datapath #(
                     if (s3_ready) begin
                         s3_reg <= forwarded;
                         if (`should_handle(forwarded)) begin
-                            // 检验 hop_limit
-                            if (forwarded.data.ip6.hop_limit <= 1) begin
-                                // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
-                                s3_reg.meta.drop <= 1;
-
-                                // 通过检验, 执行转发逻辑
-                            end else begin
-                                s3_state                  <= ST_QUERY_WAIT1;
-                                nc_in_v6_r                <= forwarded_next_hop_ip;
-                                s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
-                            end
+                            s3_state                  <= ST_QUERY_WAIT1;
+                            nc_in_v6_r                <= forwarded_next_hop_ip;
+                            s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
                         end
                     end
                 end
