@@ -109,8 +109,10 @@ module frame_datapath #(
             if (`should_handle(in)) begin
                 if (in.data.dst != mac[in.meta.id] && in.data.dst != in_multicast_mac && in.data.dst != broadcast_mac) begin
                     s1.meta.drop <= 1;
-                end
-                if (in.data.ip6.hop_limit == 0) begin
+                // drop non ipv6 packet
+                end else if (in.data.ip6.version != 4'd6) begin
+                    s1.meta.drop <= 1;
+                end else if (in.data.ip6.hop_limit == 0) begin
                     s1.meta.drop <= 1;
                 end
             end
