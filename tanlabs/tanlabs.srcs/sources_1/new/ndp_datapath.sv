@@ -36,8 +36,7 @@ module ndp_datapath #(
     input  wire                        m_ready
 );
 
-    frame_beat in8, in;
-    wire in_ready;
+    frame_beat in8;
 
     always_comb begin
         in8.meta  = s_meta;
@@ -59,13 +58,32 @@ module ndp_datapath #(
         end
     end
 
+    frame_beat check;
+    wire       check_ready;
+
     frame_beat_width_converter #(DATA_WIDTH, DATAW_WIDTH_ND) frame_beat_upsizer (
         .clk(eth_clk),
         .rst(reset),
 
         .in       (in8),
         .in_ready (s_ready),
+        .out      (check),
+        .out_ready(check_ready)
+    );
+
+    frame_beat        in;
+    wire              in_ready;
+    logic      [15:0] in_sum;
+
+    icmpv6_checksum icmpv6_checksum_i_check (
+        .clk  (eth_clk),
+        .reset(reset),
+
+        .in      (check),
+        .in_ready(check_ready),
+
         .out      (in),
+        .sum      (in_sum),
         .out_ready(in_ready)
     );
 
@@ -85,11 +103,6 @@ module ndp_datapath #(
         .mac_out(in_multicast_mac)
     );
 
-    logic [15:0] in_sum;
-    icmpv6_checksum icmpv6_checksum_i_check (
-        .beat(in),
-        .sum (in_sum)
-    );
 
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
@@ -133,10 +146,10 @@ module ndp_datapath #(
                         s1.data.ip6.p.ns_data.length <= 8'd1;
                         s1.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.dest];
 
-                    // NS 包(ICMPv6 部分)的合法性检验
+                        // NS 包(ICMPv6 部分)的合法性检验
                     end else if (
                         in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                        in_sum != 0 || // ICMP Checksum is valid
+                        in_sum != 0 ||  // ICMP Checksum is valid
                         in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
                         in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
                         in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
@@ -144,19 +157,19 @@ module ndp_datapath #(
                         // If the IP source address is the unspecified address, the IP destination address is a solicited-node multicast address
                         // If the IP source address is the unspecified address, there is no source link-layer address option in the message
                         // 但我们不处理重复地址检测
-                    ) begin
+                        ) begin
                         s1.meta.drop <= 1'b1;
 
-                    // HACK: [调试时不启用] Target Address 须为接受口地址
+                        // HACK: [调试时不启用] Target Address 须为接受口地址
                     end else if (in_ip6.p.ns_data.target_address != ip[in.meta.id]) begin
                         s1.meta.drop <= 1'b1;
 
-                    // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
-                    // IPv6 Source Address 为未指定地址
+                        // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
+                        // IPv6 Source Address 为未指定地址
                     end else if (in_ip6.src == 128'b0) begin
                         s1.meta.drop <= 1'b1;
 
-                    // 收到 NS, 发送单播 NA 进行响应
+                        // 收到 NS, 发送单播 NA 进行响应
                     end else begin
                         // 组播 NS, SHOULD 更新邻居缓存
                         if (in_ip6.dst[7:0] == 8'hff) begin
@@ -207,18 +220,17 @@ module ndp_datapath #(
 
                     end
 
-                // Receipt of Neighbor Advertisements
+                    // Receipt of Neighbor Advertisements
                 end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
                     // NA 包(ICMPv6 部分)的合法性检验
-                    if (
-                        in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                        in_sum != 0 || // ICMP Checksum is valid
+                    if (in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
+                        in_sum != 0 ||  // ICMP Checksum is valid
                         in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
                         in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
                         in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
                         // If the IP Destination Address is a multicast address the Solicited flag is zero 但我们不处理组播NA
                         in_ip6.p.ns_data.length <= 0 // All included options have a length that is greater than zero
-                    ) begin
+                        ) begin
                         s1.meta.drop <= 1'b1;
 
                         // 组播 NA, 丢弃
@@ -240,22 +252,32 @@ module ndp_datapath #(
         end
     end
 
+    frame_beat        s1_checked;
+    wire              s1_checked_ready;
+    logic      [15:0] s1_checked_sum;
+    icmpv6_checksum icmpv6_checksum_i_calc (
+        .clk  (eth_clk),
+        .reset(reset),
+
+        .in      (s1),
+        .in_ready(s1_ready),
+
+        .out      (s1_checked),
+        .sum      (s1_checked_sum),
+        .out_ready(s1_checked_ready)
+    );
+
     frame_beat s2;
     wire       s2_ready;
-    assign s1_ready = s2_ready || !s1.valid;
-    logic [15:0] s1_sum;
-    icmpv6_checksum icmpv6_checksum_i_calc (
-        .beat(s1),
-        .sum (s1_sum)
-    );
+    assign s1_checked_ready = s2_ready || !s1_checked.valid;
     // 生成发出去的 NS/NA 包的 checksum
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s2 <= 0;
         end else if (s2_ready) begin
-            s2 <= s1;
-            if (s1.valid && s1.is_first && !s1.meta.drop && s1.meta.ndp_packet) begin
-                s2.data.ip6.p.na_data.checksum <= s1_sum;
+            s2 <= s1_checked;
+            if (s1_checked.valid && s1_checked.is_first && !s1_checked.meta.drop && s1_checked.meta.ndp_packet) begin
+                s2.data.ip6.p.na_data.checksum <= s1_checked_sum;
             end
         end
     end
