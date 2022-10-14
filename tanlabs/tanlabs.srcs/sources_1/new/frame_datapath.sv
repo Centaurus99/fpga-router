@@ -31,7 +31,7 @@ module frame_datapath #(
 
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
     logic [47:0] nc_in_mac, nc_out_mac;
-    logic nc_found, nc_we;
+    logic nc_found, nc_we, nc_ready;
     neighbor_cache neighbor_cache_i (
         .clk    (eth_clk),
         .reset  (reset),
@@ -41,7 +41,8 @@ module frame_datapath #(
         .in_mac (nc_in_mac),
 
         .out_mac(nc_out_mac),
-        .found  (nc_found)
+        .found  (nc_found),
+        .ready  (nc_ready)
     );
 
     frame_beat in8, in;
@@ -260,6 +261,7 @@ module frame_datapath #(
         .nc_we     (nc_we),
         .nc_in_v6_w(nc_in_v6_w),
         .nc_in_mac (nc_in_mac),
+        .nc_ready  (nc_ready),
 
         .s_meta (ndp.meta),
         .s_data (ndp.data),
