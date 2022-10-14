@@ -4,7 +4,7 @@
 
 module neighbor_cache #(
     parameter DATA_WIDTH = 176,
-    parameter ADDR_WIDTH = 8
+    parameter ADDR_WIDTH = 10
 ) (
     input wire clk,
     input wire reset,
@@ -13,6 +13,8 @@ module neighbor_cache #(
     input wire [127:0] in_v6_w,
     input wire [127:0] in_v6_r,
     input wire [ 47:0] in_mac,
+    input wire   [1:0] in_id_w,
+    input wire   [1:0] in_id_r,
 
     output reg  [47:0] out_mac,
     output reg         found,
@@ -31,12 +33,12 @@ module neighbor_cache #(
             blk_mem_gen_0 bram_i (
                 .clka (clk),       // input wire clka
                 .wea  (wea[i]),    // input wire [0 : 0] wea
-                .addra(addra),     // input wire [7 : 0] addra
+                .addra(addra),     // input wire [9 : 0] addra
                 .dina (dina),      // input wire [175 : 0] dina
                 .douta(douta[i]),  // output wire [175 : 0] douta
                 .clkb (clk),       // input wire clkb
                 .web  (0),         // input wire [0 : 0] web
-                .addrb(addrb),     // input wire [7 : 0] addrb
+                .addrb(addrb),     // input wire [9 : 0] addrb
                 .dinb (0),         // input wire [175 : 0] dinb
                 .doutb(doutb[i])   // output wire [175 : 0] doutb
             );
@@ -48,14 +50,15 @@ module neighbor_cache #(
 
     typedef enum logic [3:0] {
         ST_INIT,
-        ST_READ_RAM,
+        ST_READ_RAM_1,
+        ST_READ_RAM_2,
         ST_WRITE_RAM
     } state_t;
     state_t current, nxt;
     assign ready = current == ST_INIT;
 
     logic [31:0] hash0_r, hash0_w;
-    logic [ADDR_WIDTH-1:0] hash_r, hash_w;
+    logic [7:0] hash_r, hash_w;
 
     always_comb begin
         // 循环异或
@@ -68,7 +71,7 @@ module neighbor_cache #(
         // hash_w = hash0_w[7:8-ADDR_WIDTH] ^ hash0_w[ADDR_WIDTH-1:0];
     end
     // assign addra = hash_w;
-    assign addrb = hash_r;
+    assign addrb = {in_id_r, hash_r};
 
     wire [3:0] match_w, match_r, exist_w;
     assign match_w = {
@@ -140,11 +143,12 @@ module neighbor_cache #(
         case (current)
             ST_INIT: begin
                 if (we) begin
-                    nxt <= ST_READ_RAM;
+                    nxt = ST_READ_RAM_1;
                 end
             end
-            ST_READ_RAM:  nxt <= ST_WRITE_RAM;
-            ST_WRITE_RAM: nxt <= ST_INIT;
+            ST_READ_RAM_1: nxt = ST_READ_RAM_2;
+            ST_READ_RAM_2: nxt = ST_WRITE_RAM;
+            ST_WRITE_RAM: nxt = ST_INIT;
 
         endcase
     end
@@ -153,7 +157,7 @@ module neighbor_cache #(
         case (current)
             ST_INIT: begin
                 wea <= '{default: 0};
-                addra <= hash_w;
+                addra <= {in_id_w, hash_w};
                 dina <= {in_mac, in_v6_w};
             end
             ST_WRITE_RAM: begin

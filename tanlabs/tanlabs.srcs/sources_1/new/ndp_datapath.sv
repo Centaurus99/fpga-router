@@ -18,6 +18,7 @@ module ndp_datapath #(
     output reg         nc_we,
     output reg [127:0] nc_in_v6_w,
     output reg [ 47:0] nc_in_mac,
+    output reg   [1:0] nc_in_id_w,
     input wire         nc_ready,
 
     input  frame_meta                        s_meta,
@@ -122,6 +123,7 @@ module ndp_datapath #(
             nc_we <= 0;
             nc_in_mac <= 0;
             nc_in_v6_w <= 0;
+            nc_in_id_w <= 0;
             s1_state <= ST_SEND_RECV;
         end else if (s1_state == ST_SEND_RECV) begin
             if (s1_ready) begin
@@ -194,6 +196,7 @@ module ndp_datapath #(
                                 // HACK: in.data.src 源 MAC 地址暂时不知在哪里检验
                                 if (in.data.src == in_ip6.p.ns_data.source_link_layer_address) begin
                                     nc_in_v6_w <= in_ip6.src;
+                                    nc_in_id_w <= in.meta.id[1:0];
                                     nc_in_mac  <= in_ip6.p.ns_data.source_link_layer_address;
                                     nc_we      <= 1;
                                     if (!nc_ready)  s1_state <= ST_WAIT_NC_READY;
@@ -259,6 +262,7 @@ module ndp_datapath #(
                         end else begin
                             // 更新邻居缓存
                             nc_in_v6_w   <= in_ip6.p.na_data.target_address;
+                            nc_in_id_w   <= in.meta.id[1:0];
                             nc_in_mac    <= in_ip6.p.na_data.target_link_layer_address;
                             nc_we        <= 1;
                             s1_reg.meta.drop <= 1'b1;

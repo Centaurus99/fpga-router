@@ -22,7 +22,7 @@ module forwarding_table (
     assign in_ready = s1_ready || !in.valid;
 
     // FIXME: 硬编码直连路由表, 出口网口号为下标
-    logic [64:0] ip_prefix[3:0];
+    logic [63:0] ip_prefix[3:0];
     assign ip_prefix[0] = {<<8{64'h2a0e_aa06_497_0a00}};
     assign ip_prefix[1] = {<<8{64'h2a0e_aa06_497_0a01}};
     assign ip_prefix[2] = {<<8{64'h2a0e_aa06_497_0a02}};

@@ -32,6 +32,7 @@ module frame_datapath #(
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
     logic [47:0] nc_in_mac, nc_out_mac;
     logic nc_found, nc_we, nc_ready;
+    logic [1:0] nc_in_id_r, nc_in_id_w;
     neighbor_cache neighbor_cache_i (
         .clk    (eth_clk),
         .reset  (reset),
@@ -39,6 +40,8 @@ module frame_datapath #(
         .in_v6_w(nc_in_v6_w),
         .in_v6_r(nc_in_v6_r),
         .in_mac (nc_in_mac),
+        .in_id_w(nc_in_id_w),
+        .in_id_r(nc_in_id_r),
 
         .out_mac(nc_out_mac),
         .found  (nc_found),
@@ -203,6 +206,7 @@ module frame_datapath #(
                             end else begin
                                 s3_state                  <= ST_QUERY_WAIT1;
                                 nc_in_v6_r                <= forwarded_next_hop_ip;
+                                nc_in_id_r                <= forwarded.meta.dest[1:0];
                                 s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
                             end
                         end
@@ -263,6 +267,7 @@ module frame_datapath #(
         .nc_we     (nc_we),
         .nc_in_v6_w(nc_in_v6_w),
         .nc_in_mac (nc_in_mac),
+        .nc_in_id_w(nc_in_id_w),
         .nc_ready  (nc_ready),
 
         .s_meta (ndp.meta),
