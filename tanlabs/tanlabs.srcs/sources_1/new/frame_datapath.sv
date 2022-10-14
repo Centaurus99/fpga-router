@@ -185,6 +185,7 @@ module frame_datapath #(
         if (reset) begin
             s3_reg   <= '{default: 0};
             s3_state <= ST_SEND_RECV;
+            nc_in_v6_r <= 0;
         end else begin
             case (s3_state)
                 ST_SEND_RECV: begin
