@@ -23,18 +23,18 @@ module forwarding_table (
 
     // FIXME: 硬编码直连路由表, 出口网口号为下标
     logic [63:0] ip_prefix[3:0];
-    assign ip_prefix[0] = {<<8{64'h2a0e_aa06_497_0a00}};
-    assign ip_prefix[1] = {<<8{64'h2a0e_aa06_497_0a01}};
-    assign ip_prefix[2] = {<<8{64'h2a0e_aa06_497_0a02}};
-    assign ip_prefix[3] = {<<8{64'h2a0e_aa06_497_0a03}};
+    assign ip_prefix[0] = {<<8{64'h2a0e_aa06_0497_0a00}};
+    assign ip_prefix[1] = {<<8{64'h2a0e_aa06_0497_0a01}};
+    assign ip_prefix[2] = {<<8{64'h2a0e_aa06_0497_0a02}};
+    assign ip_prefix[3] = {<<8{64'h2a0e_aa06_0497_0a03}};
 
     // 匹配直连路由表
     wire [3:0] in_match;
     assign in_match = {
-        in.data.ip6.dst[127:64] == ip_prefix[3],
-        in.data.ip6.dst[127:64] == ip_prefix[2],
-        in.data.ip6.dst[127:64] == ip_prefix[1],
-        in.data.ip6.dst[127:64] == ip_prefix[0]
+        in.data.ip6.dst[63:0] == ip_prefix[3],
+        in.data.ip6.dst[63:0] == ip_prefix[2],
+        in.data.ip6.dst[63:0] == ip_prefix[1],
+        in.data.ip6.dst[63:0] == ip_prefix[0]
     };
 
     always_ff @(posedge clk or posedge reset) begin
