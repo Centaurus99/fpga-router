@@ -166,7 +166,8 @@ module frame_datapath #(
 
     typedef enum {
         ST_SEND_RECV,   // 初始阶段
-        ST_QUERY_WAIT,  // 等待查询邻居缓存
+        ST_QUERY_WAIT1, // 等待查询邻居缓存
+        ST_QUERY_WAIT2, // 等待查询邻居缓存
         ST_QUERY_FIN    // 查询到邻居缓存
     } s3_state_t;
 
@@ -199,7 +200,7 @@ module frame_datapath #(
 
                                 // 通过检验, 执行转发逻辑
                             end else begin
-                                s3_state                  <= ST_QUERY_WAIT;
+                                s3_state                  <= ST_QUERY_WAIT1;
                                 nc_in_v6_r                <= forwarded_next_hop_ip;
                                 s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
                             end
@@ -208,7 +209,8 @@ module frame_datapath #(
                 end
 
                 // 等待查询
-                ST_QUERY_WAIT: s3_state <= ST_QUERY_FIN;
+                ST_QUERY_WAIT1: s3_state <= ST_QUERY_WAIT2;
+                ST_QUERY_WAIT2: s3_state <= ST_QUERY_FIN;
 
                 // 查询邻居缓存, 更新 MAC 地址
                 ST_QUERY_FIN: begin
