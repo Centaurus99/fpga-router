@@ -107,6 +107,9 @@ module ndp_datapath #(
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
             s1 <= 0;
+            nc_we <= 0;
+            nc_in_mac <= 0;
+            nc_in_v6_w <= 0;
         end else if (s1_ready) begin
             s1    <= in;
             nc_we <= 0;
