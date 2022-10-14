@@ -101,7 +101,7 @@ module frame_datapath #(
     );
     assign broadcast_mac = 48'hff_ff_ff_ff_ff_ff;
 
-    // 检验 MAC 地址以及 hop_limit 是否非零
+    // 检验 MAC 地址以及是否为 IPv6 包
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
@@ -115,8 +115,6 @@ module frame_datapath #(
                     s1.meta.drop <= 1;
                     // drop non ipv6 packet
                 end else if (in.data.ip6.version != 4'd6) begin
-                    s1.meta.drop <= 1;
-                end else if (in.data.ip6.hop_limit == 0) begin
                     s1.meta.drop <= 1;
                 end
             end
