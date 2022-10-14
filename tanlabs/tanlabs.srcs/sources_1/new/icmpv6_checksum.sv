@@ -61,11 +61,15 @@ module icmpv6_checksum #(
                 0: begin
                     if (s1_ready) begin
                         s1_reg <= in;
-                        if (in.valid && in.is_first && !in.meta.drop) begin
-                            sum_reg <= {8'b0, in.data.ip6.next_hdr} + {in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
-                            s1_state <= 8;
+                        if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
+                            sum_reg  <= {8'b0, in.data.ip6.next_hdr};
+                            s1_state <= 1;
                         end
                     end
+                end
+                1: begin
+                    sum_reg <= sum_reg + {s1_reg.data.ip6.payload_len[7:0], s1_reg.data.ip6.payload_len[15:8]};
+                    s1_state <= 8;
                 end
                 72: begin
                     sum_over_in <= sum_reg;
