@@ -26,14 +26,14 @@ module icmpv6_checksum #(
         s1.valid = s1_state == 0;
     end
 
-    // 娉ㄦ剰杩欐牱鐨勪唬鐮佸彧鑳界畻鍗曞寘 88 Byte
+    // 注意这样的代码只能算单包 88 Byte
     reg   [8 * 127:0] long_sum_pack = 0;
     reg   [8 * 127:0] long_sum_pack_copy = 0;
     reg   [8 * 127:0] long_sum_pack_sum = 0;
     reg   [31:0] move_reg;
 
     // always_comb begin
-    //     // 鍔犱笂next_header鍜宲ayload_len
+    //     // 加上next_header和payload_len
     //     sum_reg = in.data.ip6.next_hdr;
     //     sum_reg = sum_reg + {in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
     //     for (int i = 8; i < 72; i = i + 2) begin
@@ -61,7 +61,7 @@ module icmpv6_checksum #(
                     end
                 end
                 7: begin
-                    out.data.ip6.p[31 : 16] <= long_sum_pack[15 : 0]; // sum_reg浠呬粎鏄暟鍊煎拰
+                    out.data.ip6.p[31 : 16] <= long_sum_pack[15 : 0]; // sum_reg仅仅是数值和
                     s1_state <= 0;
                 end
                 default: begin
