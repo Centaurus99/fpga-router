@@ -51,27 +51,33 @@ module icmpv6_checksum #(
                 0: begin
                     if (s1_ready) begin
                         s1 <= in;
-                        move_reg = 8;
+                        move_reg = 16;
                         long_sum_pack[8 * 72 - 1 : 0] = in.data.ip6[8 * 86 - 1 : 8 * 8];
-                        long_sum_pack[8 * 73 - 1 : 8 * 72] = {8'h00, in.data.ip6.next_hdr};
-                        long_sum_pack[8 * 74 - 1 : 8 * 73] = {in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
+                        long_sum_pack[8 * 74 - 1 : 8 * 72] = {8'h00, in.data.ip6.next_hdr};
+                        long_sum_pack[8 * 76 - 1 : 8 * 74] = {in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
                         if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
                             s1_state <= 10;
                         end
                     end
                 end
-                7: begin
+                10: begin
+                    for(int i = 0; i < 64; i ++) begin
+                        long_sum_pack[(16*i)+:16] = {long_sum_pack[(16*i)+:8], long_sum_pack[(16*i + 8)+:8]}
+                    end
+                end
+                6: begin
                     out.data.ip6.p[31 : 16] <= long_sum_pack[15 : 0]; // sum_reg仅仅是数值和
                     s1_state <= 0;
                 end
                 default: begin
                     long_sum_pack_copy <= long_sum_pack >>> move_reg;
-                    for(int i = 0; i < 128; i ++) begin
-                        long_sum_pack_sum[(8 * i)+ : 8] <= long_sum_pack_copy[(8 * i)+ : 8] + long_sum_pack[(8 * i)+ : 8];
-                        if({8'b0, long_sum_pack_sum[(8 * i)+ : 8]} < {8'b0, long_sum_pack_copy[(8 * i)+:8]} + {8'b0, long_sum_pack[(8 * i)+:8]}) begin
-                            long_sum_pack_sum[(8 * i)+ : 8] <= long_sum_pack_sum[(8 * i)+ : 8] + 1;
+                    for(int i = 0; i < 64; i ++) begin
+                        long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_copy[(16 * i)+:16] + long_sum_pack[(16 * i)+:16];
+                        if({8'b0, long_sum_pack_sum[(16 * i)+:16]} < {8'b0, long_sum_pack_copy[(16 * i)+:16]} + {8'b0, long_sum_pack[(16 * i)+:16]}) begin
+                            long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_sum[(16 * i)+:16] + 1;
                         end
                     end
+                    long_sum_pack <= long_sum_pack_sum
                     move_reg <= move_reg * 2;
                     s1_state <= s1_state + 1;
                 end
