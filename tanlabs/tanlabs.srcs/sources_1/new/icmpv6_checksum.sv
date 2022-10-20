@@ -62,8 +62,9 @@ module icmpv6_checksum #(
                 end
                 10: begin
                     for(int i = 0; i < 64; i ++) begin
-                        long_sum_pack[(16*i)+:16] = {long_sum_pack[(16*i)+:8], long_sum_pack[(16*i + 8)+:8]}
+                        long_sum_pack[(16*i)+:16] = {long_sum_pack[(16*i)+:8], long_sum_pack[(16*i + 8)+:8]};
                     end
+                    s1_state <= 1;
                 end
                 6: begin
                     out.data.ip6.p[31 : 16] <= long_sum_pack[15 : 0]; // sum_reg仅仅是数值和
@@ -71,13 +72,13 @@ module icmpv6_checksum #(
                 end
                 default: begin
                     long_sum_pack_copy <= long_sum_pack >>> move_reg;
-                    for(int i = 0; i < 64; i ++) begin
+                    for(int i = 0; i < 64; i += 2) begin
                         long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_copy[(16 * i)+:16] + long_sum_pack[(16 * i)+:16];
                         if({8'b0, long_sum_pack_sum[(16 * i)+:16]} < {8'b0, long_sum_pack_copy[(16 * i)+:16]} + {8'b0, long_sum_pack[(16 * i)+:16]}) begin
                             long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_sum[(16 * i)+:16] + 1;
                         end
                     end
-                    long_sum_pack <= long_sum_pack_sum
+                    long_sum_pack <= long_sum_pack_sum;
                     move_reg <= move_reg * 2;
                     s1_state <= s1_state + 1;
                 end
