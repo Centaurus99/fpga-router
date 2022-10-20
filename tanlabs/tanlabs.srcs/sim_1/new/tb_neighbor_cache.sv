@@ -61,6 +61,8 @@ module tb_neighbor_cache #(
         .in_v6_w (in_v6_w),
         .in_v6_r (in_v6_r),
         .in_mac(in_mac),
+        .in_id_w (4'h0),
+        .in_id_r (4'h0),
 
         .out_mac(out_mac),
         .found  (found)

@@ -4,7 +4,7 @@
 
 module neighbor_cache #(
     parameter DATA_WIDTH = 176,
-    parameter ADDR_WIDTH = 8
+    parameter ADDR_WIDTH = 10
 ) (
     input wire clk,
     input wire reset,
@@ -13,61 +13,65 @@ module neighbor_cache #(
     input wire [127:0] in_v6_w,
     input wire [127:0] in_v6_r,
     input wire [ 47:0] in_mac,
+    input wire   [1:0] in_id_w,
+    input wire   [1:0] in_id_r,
 
-    output reg [47:0] out_mac,
-    output reg        found
-    // output wire       ready  // 当前为空闲
+    output reg  [47:0] out_mac,
+    output reg         found,
+    output wire        ready     // 当前可以写
 );
-    wire [ADDR_WIDTH - 1:0] addra, addrb;
+
+    reg [ADDR_WIDTH - 1:0] addra;
+    wire [ADDR_WIDTH - 1:0] addrb;
     logic [DATA_WIDTH - 1:0] dina, douta[3:0], doutb[3:0];
     // logic bram_en;
 
-    logic wea [3:0];
+    logic wea[3:0];
     genvar i;
     generate
-        for (i = 0; i < 4; ++i) begin: brams
+        for (i = 0; i < 4; ++i) begin : brams
             blk_mem_gen_0 bram_i (
-                .clka(clk),    // input wire clka
-                .wea(wea[i]),      // input wire [0 : 0] wea
-                .addra(addra),  // input wire [7 : 0] addra
-                .dina(dina),    // input wire [175 : 0] dina
+                .clka (clk),       // input wire clka
+                .wea  (wea[i]),    // input wire [0 : 0] wea
+                .addra(addra),     // input wire [9 : 0] addra
+                .dina (dina),      // input wire [175 : 0] dina
                 .douta(douta[i]),  // output wire [175 : 0] douta
-                .clkb(clk),    // input wire clkb
-                .web(0),      // input wire [0 : 0] web
-                .addrb(addrb),  // input wire [7 : 0] addrb
-                .dinb(0),    // input wire [175 : 0] dinb
-                .doutb(doutb[i])  // output wire [175 : 0] doutb
+                .clkb (clk),       // input wire clkb
+                .web  (0),         // input wire [0 : 0] web
+                .addrb(addrb),     // input wire [9 : 0] addrb
+                .dinb (0),         // input wire [175 : 0] dinb
+                .doutb(doutb[i])   // output wire [175 : 0] doutb
             );
         end
-        
+
     endgenerate
 
     // logic [DATA_WIDTH - 1:0] data[3:0][31:0];
 
-    // typedef enum logic [3:0] {
-    //     ST_INIT,
-    //     ST_READ_RAM,
-    //     ST_WRITE_RAM,
-    //     ST_OUTPUT
-    // } state_t;
-    // state_t current, nxt;
-    // assign ready = current == ST_INIT;
+    typedef enum logic [3:0] {
+        ST_INIT,
+        ST_READ_RAM_1,
+        ST_READ_RAM_2,
+        ST_WRITE_RAM
+    } state_t;
+    state_t current, nxt;
+    assign ready = current == ST_INIT;
 
     logic [31:0] hash0_r, hash0_w;
-    logic [ADDR_WIDTH-1:0] hash_r, hash_w;
+    logic [7:0] hash_r, hash_w;
 
     always_comb begin
         // 循环异或
         hash0_r = in_v6_r[127:96] ^ in_v6_r[95:64] ^ in_v6_r[63:32] ^ in_v6_r[31:0];
-        hash_r = hash0_r[31:24] ^ hash0_r[23:16] ^ hash0_r[15:8] ^ hash0_r[7:0];
+        hash_r  = hash0_r[31:24] ^ hash0_r[23:16] ^ hash0_r[15:8] ^ hash0_r[7:0];
         // hash_r = hash0_r[7:8-ADDR_WIDTH] ^ hash0_r[ADDR_WIDTH-1:0];
 
         hash0_w = in_v6_w[127:96] ^ in_v6_w[95:64] ^ in_v6_w[63:32] ^ in_v6_w[31:0];
-        hash_w = hash0_w[31:24] ^ hash0_w[23:16] ^ hash0_w[15:8] ^ hash0_w[7:0];
+        hash_w  = hash0_w[31:24] ^ hash0_w[23:16] ^ hash0_w[15:8] ^ hash0_w[7:0];
         // hash_w = hash0_w[7:8-ADDR_WIDTH] ^ hash0_w[ADDR_WIDTH-1:0];
     end
-    assign addra = hash_w;
-    assign addrb = hash_r;
+    // assign addra = hash_w;
+    assign addrb = {in_id_r, hash_r};
 
     wire [3:0] match_w, match_r, exist_w;
     assign match_w = {
@@ -82,14 +86,9 @@ module neighbor_cache #(
         in_v6_r == doutb[1][127:0],
         in_v6_r == doutb[0][127:0]
     };
-    assign exist_w = {
-        douta[3] != 0,
-        douta[2] != 0,
-        douta[1] != 0,
-        douta[0] != 0
-    };
+    assign exist_w = {douta[3] != 0, douta[2] != 0, douta[1] != 0, douta[0] != 0};
 
-    assign dina = {in_mac, in_v6_w};
+    // assign dina = {in_mac, in_v6_w};
 
     // always_comb begin
     //     if (in_v6_r == doutb[127:0]) begin
@@ -113,97 +112,72 @@ module neighbor_cache #(
         endcase
     end
 
-    always_comb begin
-        if (we) begin
-            case (match_w)
-                4'b0001: wea[0] = 1;
-                4'b0010: wea[1] = 1;
-                4'b0100: wea[2] = 1;
-                4'b1000: wea[3] = 1;
-                default: begin
-                    case (exist_w)
-                        4'b0001: wea[1] = 1;
-                        4'b0011: wea[2] = 1;
-                        4'b0111: wea[3] = 1;
-                        default: wea[0] = 1;
-                    endcase
-                end
-            endcase
-        end else begin
-            wea = '{default: 0};
-        end
-    end
-
-    // always_ff @(posedge clk or posedge reset) begin
-    //     if (reset) begin
-    //         data <= '{default: 0};
-    //     end else begin
-    //         if (we) begin
-    //             case (match_w)
-    //                 4'b0001: dina[0][hash_w] <= dina;
-    //                 4'b0010: dina[1][hash_w] <= dina;
-    //                 4'b0100: dina[2][hash_w] <= dina;
-    //                 4'b1000: dina[3][hash_w] <= dina;
-    //                 default: begin
-    //                     case (exist_w)
-    //                         4'b0001: data[1][hash_w] <= dina;
-    //                         4'b0011: data[2][hash_w] <= dina;
-    //                         4'b0111: data[3][hash_w] <= dina;
-    //                         default: data[0][hash_w] <= dina;
-    //                     endcase
-    //                 end
-    //             endcase
-    //         end
+    // always_comb begin
+    //     wea = '{default: 0};
+    //     if (we) begin
+    //         case (match_w)
+    //             4'b0001: wea[0] = 1;
+    //             4'b0010: wea[1] = 1;
+    //             4'b0100: wea[2] = 1;
+    //             4'b1000: wea[3] = 1;
+    //             default: begin
+    //                 case (exist_w)
+    //                     4'b0001: wea[1] = 1;
+    //                     4'b0011: wea[2] = 1;
+    //                     4'b0111: wea[3] = 1;
+    //                     default: wea[0] = 1;
+    //                 endcase
+    //             end
+    //         endcase
     //     end
     // end
 
-    // always_ff @(posedge clk or posedge reset) begin
-    //     if (reset) current <= ST_INIT;
-    //     else current <= nxt;
-    // end
 
-    // always_comb begin
-    //     nxt = ST_INIT;
-    //     case (current)
-    //         ST_INIT: begin
-    //             if (trigger) begin
-    //                 if (is_query) nxt <= ST_READ_RAM;
-    //                 else if (is_update) nxt <= ST_WRITE_RAM;
-    //             end
-    //         end
-    //         ST_READ_RAM: nxt <= ST_OUTPUT;
-    //         ST_OUTPUT: nxt <= ST_INIT;
-    //         ST_WRITE_RAM: nxt <= ST_INIT;
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) current <= ST_INIT;
+        else current <= nxt;
+    end
 
-    //     endcase
-    // end
+    always_comb begin
+        nxt = ST_INIT;
+        case (current)
+            ST_INIT: begin
+                if (we) begin
+                    nxt = ST_READ_RAM_1;
+                end
+            end
+            ST_READ_RAM_1: nxt = ST_READ_RAM_2;
+            ST_READ_RAM_2: nxt = ST_WRITE_RAM;
+            ST_WRITE_RAM: nxt = ST_INIT;
 
-    // always_ff @(posedge clk) begin
-    //     case (current)
-    //         ST_INIT: begin
-    //             bram_en <= 0;
-    //             bram_we <= 0;
-    //         end
-    //         ST_READ_RAM: begin
-    //             addr <= hash;
-    //             bram_en <= 1;
-    //         end
-    //         ST_OUTPUT: begin
-    //             if (dout[127:0] == in_v6) begin
-    //                 out_mac <= dout[176:128];
-    //                 found <= 1;
-    //             end else begin
-    //                 found <= 0;
-    //             end
-    //         end
-    //         ST_WRITE_RAM: begin
-    //             addr <= hash;
-    //             din <= {in_mac, in_v6};
-    //             bram_en <= 1;
-    //             bram_we <= 1;
-    //         end
+        endcase
+    end
 
-    //     endcase
-    // end
+    always_ff @(posedge clk) begin
+        case (current)
+            ST_INIT: begin
+                wea <= '{default: 0};
+                addra <= {in_id_w, hash_w};
+                dina <= {in_mac, in_v6_w};
+            end
+            ST_WRITE_RAM: begin
+                case (match_w)
+                    4'b0001: wea[0] = 1;
+                    4'b0010: wea[1] = 1;
+                    4'b0100: wea[2] = 1;
+                    4'b1000: wea[3] = 1;
+                    default: begin
+                        case (exist_w)
+                            4'b0001: wea[1] = 1;
+                            4'b0011: wea[2] = 1;
+                            4'b0111: wea[3] = 1;
+                            default: wea[0] = 1;
+                        endcase
+                    end
+                endcase
+            end
+
+        endcase
+    end
 
 endmodule

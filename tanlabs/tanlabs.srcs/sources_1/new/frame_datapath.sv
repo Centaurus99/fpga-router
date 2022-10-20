@@ -31,7 +31,8 @@ module frame_datapath #(
 
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
     logic [47:0] nc_in_mac, nc_out_mac;
-    logic nc_found, nc_we;
+    logic nc_found, nc_we, nc_ready;
+    logic [1:0] nc_in_id_r, nc_in_id_w;
     neighbor_cache neighbor_cache_i (
         .clk    (eth_clk),
         .reset  (reset),
@@ -39,9 +40,12 @@ module frame_datapath #(
         .in_v6_w(nc_in_v6_w),
         .in_v6_r(nc_in_v6_r),
         .in_mac (nc_in_mac),
+        .in_id_w(nc_in_id_w),
+        .in_id_r(nc_in_id_r),
 
         .out_mac(nc_out_mac),
-        .found  (nc_found)
+        .found  (nc_found),
+        .ready  (nc_ready)
     );
 
     frame_beat in8, in;
@@ -97,7 +101,7 @@ module frame_datapath #(
     );
     assign broadcast_mac = 48'hff_ff_ff_ff_ff_ff;
 
-    // 检验 MAC 地址以及 hop_limit 是否非零
+    // 检验 MAC 地址以及是否为 IPv6 包
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
@@ -109,8 +113,8 @@ module frame_datapath #(
             if (`should_handle(in)) begin
                 if (in.data.dst != mac[in.meta.id] && in.data.dst != in_multicast_mac && in.data.dst != broadcast_mac) begin
                     s1.meta.drop <= 1;
-                end
-                if (in.data.ip6.hop_limit == 0) begin
+                    // drop non ipv6 packet
+                end else if (in.data.ip6.version != 4'd6) begin
                     s1.meta.drop <= 1;
                 end
             end
@@ -141,8 +145,16 @@ module frame_datapath #(
                     end else begin
                         s2.meta.dest <= ID_CPU;
                     end
+
+                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
+                end else begin
+                    if (s1.data.ip6.hop_limit <= 1) begin
+                        // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
+                        s2.meta.drop <= 1;
+                    end else if (s1.data.ip6.dst[7:0] == 8'hff) begin
+                        s2.meta.drop <= 1;
+                    end
                 end
-                // 否则需要转发, 又之后的转发逻辑处理
             end
         end
     end
@@ -163,9 +175,10 @@ module frame_datapath #(
     );
 
     typedef enum {
-        ST_SEND_RECV,   // 初始阶段
-        ST_QUERY_WAIT,  // 等待查询邻居缓存
-        ST_QUERY_FIN    // 查询到邻居缓存
+        ST_SEND_RECV,  // 初始阶段
+        ST_QUERY_WAIT1,  // 等待查询邻居缓存
+        ST_QUERY_WAIT2,  // 等待查询邻居缓存
+        ST_QUERY_FIN  // 查询到邻居缓存
     } s3_state_t;
 
     frame_beat s3_reg, s3;
@@ -181,31 +194,26 @@ module frame_datapath #(
     // 转发逻辑
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s3_reg   <= '{default: 0};
-            s3_state <= ST_SEND_RECV;
+            s3_reg     <= '{default: 0};
+            s3_state   <= ST_SEND_RECV;
+            nc_in_v6_r <= 0;
         end else begin
             case (s3_state)
                 ST_SEND_RECV: begin
                     if (s3_ready) begin
                         s3_reg <= forwarded;
                         if (`should_handle(forwarded)) begin
-                            // 检验 hop_limit
-                            if (forwarded.data.ip6.hop_limit <= 1) begin
-                                // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
-                                s3_reg.meta.drop <= 1;
-
-                                // 通过检验, 执行转发逻辑
-                            end else begin
-                                s3_state                  <= ST_QUERY_WAIT;
-                                nc_in_v6_r                <= forwarded_next_hop_ip;
-                                s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
-                            end
+                            s3_state                  <= ST_QUERY_WAIT1;
+                            nc_in_v6_r                <= forwarded_next_hop_ip;
+                            nc_in_id_r                <= forwarded.meta.dest[1:0];
+                            s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
                         end
                     end
                 end
 
                 // 等待查询
-                ST_QUERY_WAIT: s3_state <= ST_QUERY_FIN;
+                ST_QUERY_WAIT1: s3_state <= ST_QUERY_WAIT2;
+                ST_QUERY_WAIT2: s3_state <= ST_QUERY_FIN;
 
                 // 查询邻居缓存, 更新 MAC 地址
                 ST_QUERY_FIN: begin
@@ -257,6 +265,8 @@ module frame_datapath #(
         .nc_we     (nc_we),
         .nc_in_v6_w(nc_in_v6_w),
         .nc_in_mac (nc_in_mac),
+        .nc_in_id_w(nc_in_id_w),
+        .nc_ready  (nc_ready),
 
         .s_meta (ndp.meta),
         .s_data (ndp.data),
