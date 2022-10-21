@@ -17,20 +17,27 @@ module icmpv6_checksum #(
     input  wire              out_ready
 );
 
-    frame_beat s1;
-    int  s1_state;
+    typedef enum {
+        ST_INIT,  
+        ST_CALC1, 
+        ST_CALC2,  
+        ST_CALC3,
+        ST_FINISHED  
+    } s1_state_t;
+
+    frame_beat s1, s1_reg;
+    s1_state_t  s1_state;
     wire s1_ready;
-    assign in_ready = (s1_ready && s1_state == 0) || !in.valid;
+    assign in_ready = (s1_ready && s1_state == ST_INIT) || !in.valid;
 
     always_comb begin
-        s1.valid = s1_state == 0;
+        s1       = s1_reg;
+        s1.valid = s1_reg.valid && s1_state == ST_INIT;
     end
 
     // 注意这样的代码只能算单包 88 Byte
-    reg   [8 * 127:0] long_sum_pack = 0;
-    reg   [8 * 127:0] long_sum_pack_copy = 0;
-    reg   [8 * 127:0] long_sum_pack_sum = 0;
-    reg   [31:0] move_reg;
+    reg   [8 * 68 - 1:0] sum_reg;
+    reg   [24 * 8 - 1:0] temp_sum_reg;
 
     // always_comb begin
     //     // 加上next_header和payload_len
@@ -45,42 +52,59 @@ module icmpv6_checksum #(
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            s1_state    <= 0;
+            s1_reg       <= 0;
+            s1_state     <= ST_INIT;
+            sum          <= 16'h000000;
+            sum_reg      <= 544'h000000;
+            temp_sum_reg <= 192'h000000;
         end else begin
             case (s1_state)
-                0: begin
+                ST_INIT: begin
                     if (s1_ready) begin
-                        s1 <= in;
-                        move_reg = 16;
-                        long_sum_pack[8 * 72 - 1 : 0] = in.data.ip6[8 * 86 - 1 : 8 * 8];
-                        long_sum_pack[8 * 74 - 1 : 8 * 72] = {8'h00, in.data.ip6.next_hdr};
-                        long_sum_pack[8 * 76 - 1 : 8 * 74] = {in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
+                        s1_reg <= in;
                         if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
-                            s1_state <= 10;
+                            sum_reg  <= {in.data.ip6[8*72:8*8], 8'b0, in.data.ip6.next_hdr, in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
+                            s1_state <= ST_CALC1;
                         end
                     end
                 end
-                10: begin
-                    for(int i = 0; i < 64; i ++) begin
-                        long_sum_pack[(16*i)+:16] = {long_sum_pack[(16*i)+:8], long_sum_pack[(16*i + 8)+:8]};
+                ST_CALC1: begin
+                    for(int i = 0; i < 7; i ++) begin
+                        if(i !== 8) begin 
+                            temp_sum_reg[(24*i)+:24] <= {8'b0, sum_reg[(8*(8*i))+:8], sum_reg[(8*(8*i+1))+:8]} + 
+                                                        {8'b0, sum_reg[(8*(8*i+2))+:8], sum_reg[(8*(8*i+3))+:8]} +
+                                                        {8'b0, sum_reg[(8*(8*i+4))+:8], sum_reg[(8*(8*i+5))+:8]} +
+                                                        {8'b0, sum_reg[(8*(8*i+6))+:8], sum_reg[(8*(8*i+7))+:8]};
+                        end else begin
+                            temp_sum_reg[(24*i)+:24] <= {8'b0, sum_reg[(8*(8*i))+:8], sum_reg[(8*(8*i+1))+:8]} + 
+                                                        {8'b0, sum_reg[(8*(8*i+2))+:8], sum_reg[(8*(8*i+3))+:8]} +
+                                                        {8'b0, sum_reg[(8*(8*i+4))+:8], sum_reg[(8*(8*i+5))+:8]} +
+                                                        {8'b0, sum_reg[(8*(8*i+6))+:8], sum_reg[(8*(8*i+7))+:8]} + 
+                                                        {8'b0, sum_reg[(8*(8*i+8))+:8], sum_reg[(8*(8*i+9))+:8]} +
+                                                        {8'b0, sum_reg[(8*(8*i+10))+:8], sum_reg[(8*(8*i+11))+:8]};
+                        end                            
                     end
-                    s1_state <= 1;
+                    s1_state <= ST_CALC2;
                 end
-                6: begin
-                    out.data.ip6.p[31 : 16] <= long_sum_pack[15 : 0]; // sum_reg仅仅是数值和
-                    s1_state <= 0;
+                ST_CALC2: begin
+                    temp_sum_reg[23:0] <= temp_sum_reg[23:0] + temp_sum_reg[47:24] + temp_sum_reg[71:48] + temp_sum_reg[95:72];
+                    temp_sum_reg[23+96:0+96] <= temp_sum_reg[23+96:0+96] + temp_sum_reg[47+96:24+96] + temp_sum_reg[71+96:48+96] + temp_sum_reg[95+96:72+96];   
+                    s1_state <= ST_CALC2;
+                end
+                ST_CALC3: begin
+                    temp_sum_reg[23:0] = temp_sum_reg[23:0] + temp_sum_reg[23+96:0+96];  // sum_reg仅仅是数值和
+                    temp_sum_reg[23:0] = {8'b0, temp_sum_reg[15:0]} + {16'b0, temp_sum_reg[7:0]};
+                    temp_sum_reg[23:0] = {8'b0, temp_sum_reg[15:0]} + {16'b0, temp_sum_reg[7:0]};
+                    s1_state <= ST_FINISHED;
+                end
+                ST_FINISHED: begin
+                    s1_state <= ST_FINISHED;
                 end
                 default: begin
-                    long_sum_pack_copy <= long_sum_pack >>> move_reg;
-                    for(int i = 0; i < 64; i += 2) begin
-                        long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_copy[(16 * i)+:16] + long_sum_pack[(16 * i)+:16];
-                        if({8'b0, long_sum_pack_sum[(16 * i)+:16]} < {8'b0, long_sum_pack_copy[(16 * i)+:16]} + {8'b0, long_sum_pack[(16 * i)+:16]}) begin
-                            long_sum_pack_sum[(16 * i)+:16] <= long_sum_pack_sum[(16 * i)+:16] + 1;
-                        end
-                    end
-                    long_sum_pack <= long_sum_pack_sum;
-                    move_reg <= move_reg * 2;
-                    s1_state <= s1_state + 1;
+                    // 理论上不会到
+                    s1_reg.data.ip6.p[31:16] <= temp_sum_reg[15:0];
+                    sum <= temp_sum_reg[15:0];
+                    s1_state <= ST_INIT;
                 end
             endcase
         end
