@@ -39,12 +39,14 @@ module icmpv6_checksum #(
     reg   [8 * 68 - 1:0] sum_reg;
     reg   [24 * 8 - 1:0] temp_sum_reg;
     reg           [23:0] sum_overflow_reg;
+    reg           [23:0] sum_overflow_reg_copy;
 
     always_comb begin
         // 溢出处理
-        sum_overflow_reg[23:0] = sum_overflow_reg[23:0] + sum_overflow_reg[23+96:0+96]; 
-        sum_overflow_reg[23:0] = {8'b0, sum_overflow_reg[15:0]} + {16'b0, sum_overflow_reg[7:0]};
-        sum_overflow_reg[23:0] = {8'b0, sum_overflow_reg[15:0]} + {16'b0, sum_overflow_reg[7:0]};
+        sum_overflow_reg_copy = sum_overflow_reg;
+        sum_overflow_reg_copy[23:0] = sum_overflow_reg_copy[23:0] + sum_overflow_reg_copy[23+96:0+96]; 
+        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[7:0]};
+        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[7:0]};
     end 
 
     // always_comb begin
@@ -104,7 +106,7 @@ module icmpv6_checksum #(
                     s1_state <= ST_FINISHED;
                 end
                 ST_FINISHED: begin
-                    sum <= sum_overflow_reg[15:0];
+                    sum <= sum_overflow_reg_copy[15:0];
                     s1_state <= ST_INIT;
                 end
                 default: begin
