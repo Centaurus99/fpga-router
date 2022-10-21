@@ -38,6 +38,14 @@ module icmpv6_checksum #(
     // 注意这样的代码只能算单包 88 Byte
     reg   [8 * 68 - 1:0] sum_reg;
     reg   [24 * 8 - 1:0] temp_sum_reg;
+    reg           [23:0] sum_overflow_reg;
+
+    always_comb begin
+        // 溢出处理
+        sum_overflow_reg[23:0] = sum_overflow_reg[23:0] + sum_overflow_reg[23+96:0+96]; 
+        sum_overflow_reg[23:0] = {8'b0, sum_overflow_reg[15:0]} + {16'b0, sum_overflow_reg[7:0]};
+        sum_overflow_reg[23:0] = {8'b0, sum_overflow_reg[15:0]} + {16'b0, sum_overflow_reg[7:0]};
+    end 
 
     // always_comb begin
     //     // 加上next_header和payload_len
@@ -92,18 +100,16 @@ module icmpv6_checksum #(
                     s1_state <= ST_CALC2;
                 end
                 ST_CALC3: begin
-                    temp_sum_reg[23:0] = temp_sum_reg[23:0] + temp_sum_reg[23+96:0+96];  // sum_reg仅仅是数值和
-                    temp_sum_reg[23:0] = {8'b0, temp_sum_reg[15:0]} + {16'b0, temp_sum_reg[7:0]};
-                    temp_sum_reg[23:0] = {8'b0, temp_sum_reg[15:0]} + {16'b0, temp_sum_reg[7:0]};
+                    sum_overflow_reg <= temp_sum_reg[23:0] + temp_sum_reg[23+96:0+96]; 
                     s1_state <= ST_FINISHED;
                 end
                 ST_FINISHED: begin
-                    s1_state <= ST_FINISHED;
+                    s1_reg.data.ip6.p[31:16] <= sum_overflow_reg[15:0];
+                    sum <= sum_overflow_reg[15:0];
+                    s1_state <= ST_INIT;
                 end
                 default: begin
                     // 理论上不会到
-                    s1_reg.data.ip6.p[31:16] <= temp_sum_reg[15:0];
-                    sum <= temp_sum_reg[15:0];
                     s1_state <= ST_INIT;
                 end
             endcase
