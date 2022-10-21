@@ -69,8 +69,8 @@ module icmpv6_checksum #(
                     end
                 end
                 ST_CALC1: begin
-                    for(int i = 0; i < 7; i ++) begin
-                        if(i !== 8) begin 
+                    for(int i = 0; i < 8; i ++) begin
+                        if(i !== 7) begin 
                             temp_sum_reg[(24*i)+:24] <= {8'b0, sum_reg[(8*(8*i))+:8], sum_reg[(8*(8*i+1))+:8]} + 
                                                         {8'b0, sum_reg[(8*(8*i+2))+:8], sum_reg[(8*(8*i+3))+:8]} +
                                                         {8'b0, sum_reg[(8*(8*i+4))+:8], sum_reg[(8*(8*i+5))+:8]} +
