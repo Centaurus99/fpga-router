@@ -64,9 +64,10 @@ module icmpv6_checksum #(
         if (reset) begin
             s1_reg       <= 0;
             s1_state     <= ST_INIT;
-            sum          <= 16'h000000;
-            sum_reg      <= 544'h000000;
-            temp_sum_reg <= 192'h000000;
+            sum          <= 16'h0000;
+            sum_overflow_reg <= 24'h000000;
+            sum_reg      <= 544'h0;
+            temp_sum_reg <= 192'h0;
         end else begin
             case (s1_state)
                 ST_INIT: begin
@@ -99,7 +100,7 @@ module icmpv6_checksum #(
                 ST_CALC2: begin
                     temp_sum_reg[23:0] <= temp_sum_reg[23:0] + temp_sum_reg[47:24] + temp_sum_reg[71:48] + temp_sum_reg[95:72];
                     temp_sum_reg[23+96:0+96] <= temp_sum_reg[23+96:0+96] + temp_sum_reg[47+96:24+96] + temp_sum_reg[71+96:48+96] + temp_sum_reg[95+96:72+96];   
-                    s1_state <= ST_CALC2;
+                    s1_state <= ST_CALC3;
                 end
                 ST_CALC3: begin
                     sum_overflow_reg <= temp_sum_reg[23:0] + temp_sum_reg[23+96:0+96]; 
