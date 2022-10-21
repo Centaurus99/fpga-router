@@ -114,7 +114,7 @@ module icmpv6_checksum #(
                 end
                 ST_FINISHED: begin
                     // 计算完成
-                    sum <= ~sum_overflow_reg_copy[15:0];
+                    sum <= ~{sum_overflow_reg_copy[7:0], sum_overflow_reg_copy[15:8]};
                     s1_state <= ST_INIT;
                 end
                 default: begin
