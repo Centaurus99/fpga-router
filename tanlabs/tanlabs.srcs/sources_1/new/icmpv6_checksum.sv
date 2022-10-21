@@ -74,7 +74,11 @@ module icmpv6_checksum #(
                         s1_reg <= in;
                         if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
                             // 因为后面会反过来，这个里面也采用网络字节序
-                            sum_reg  <= {in.data.ip6[8*72-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len};
+                            if(in.data.ip6.payload_len === 16'h2000) begin
+                                sum_reg  <= {in.data.ip6[8*72-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len};
+                            end else if(in.data.ip6.payload_len === 16'h2000) begin
+                                sum_reg  <= {in.data.ip6[8*64-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len, 64'b0};
+                            end 
                             s1_state <= ST_CALC1;
                         end
                     end
