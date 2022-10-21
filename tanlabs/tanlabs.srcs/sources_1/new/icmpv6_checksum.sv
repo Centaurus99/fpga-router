@@ -104,7 +104,6 @@ module icmpv6_checksum #(
                     s1_state <= ST_FINISHED;
                 end
                 ST_FINISHED: begin
-                    s1_reg.data.ip6.p[31:16] <= sum_overflow_reg[15:0];
                     sum <= sum_overflow_reg[15:0];
                     s1_state <= ST_INIT;
                 end
