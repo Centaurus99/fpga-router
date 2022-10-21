@@ -8,14 +8,6 @@ module tb_checksum #(
 ) ();
 
     reg reset;
-    initial begin
-        reset = 0;
-        #1000
-        reset = 1;
-        #1000
-        reset = 0;
-    end
-
     wire clk_125M;
 
     clock clock_i(
@@ -29,6 +21,12 @@ module tb_checksum #(
     reg         out_ready = 1;
 
     initial begin
+        reset = 0;
+        #1000
+        reset = 1;
+        #1000
+        reset = 0;
+        #1000
         in = 0;
         in.data = {<<8{688'hffffffffffff544553545f3081006000000000203aff2a0eaa0604970a000000000000000002fe80000000000000020000fffe030a0088003ffa600000002a0eaa0604970a0000000000000000020201544553545f30, 16'b0}};
         in.valid = 1;

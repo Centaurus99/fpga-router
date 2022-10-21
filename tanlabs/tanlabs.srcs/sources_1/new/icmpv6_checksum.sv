@@ -44,9 +44,8 @@ module icmpv6_checksum #(
     always_comb begin
         // 溢出处理
         sum_overflow_reg_copy = sum_overflow_reg;
-        sum_overflow_reg_copy[23:0] = sum_overflow_reg_copy[23:0] + sum_overflow_reg_copy[23+96:0+96]; 
-        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[7:0]};
-        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[7:0]};
+        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[23:16]};
+        sum_overflow_reg_copy[23:0] = {8'b0, sum_overflow_reg_copy[15:0]} + {16'b0, sum_overflow_reg_copy[23:16]};
     end 
 
     // always_comb begin
@@ -74,12 +73,14 @@ module icmpv6_checksum #(
                     if (s1_ready) begin
                         s1_reg <= in;
                         if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
-                            sum_reg  <= {in.data.ip6[8*72:8*8], 8'b0, in.data.ip6.next_hdr, in.data.ip6.payload_len[7:0], in.data.ip6.payload_len[15:8]};
+                            // 因为后面会反过来，这个里面也采用网络字节序
+                            sum_reg  <= {in.data.ip6[8*72-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len};
                             s1_state <= ST_CALC1;
                         end
                     end
                 end
                 ST_CALC1: begin
+                    // 除去最后一位是六合一之外，其余的都是四合一计算
                     for(int i = 0; i < 8; i ++) begin
                         if(i !== 7) begin 
                             temp_sum_reg[(24*i)+:24] <= {8'b0, sum_reg[(8*(8*i))+:8], sum_reg[(8*(8*i+1))+:8]} + 
@@ -103,11 +104,13 @@ module icmpv6_checksum #(
                     s1_state <= ST_CALC3;
                 end
                 ST_CALC3: begin
+                    // 溢出处理
                     sum_overflow_reg <= temp_sum_reg[23:0] + temp_sum_reg[23+96:0+96]; 
                     s1_state <= ST_FINISHED;
                 end
                 ST_FINISHED: begin
-                    sum <= sum_overflow_reg_copy[15:0];
+                    // 计算完成
+                    sum <= ~sum_overflow_reg_copy[15:0];
                     s1_state <= ST_INIT;
                 end
                 default: begin

@@ -12,15 +12,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="84347fs"></ZoomStartTime>
-      <ZoomEndTime time="103131fs"></ZoomEndTime>
-      <Cursor1Time time="100000fs"></Cursor1Time>
+      <ZoomStartTime time="2817500fs"></ZoomStartTime>
+      <ZoomEndTime time="3156501fs"></ZoomEndTime>
+      <Cursor1Time time="3100000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="256"></NameColumnWidth>
+      <NameColumnWidth column_width="248"></NameColumnWidth>
       <ValueColumnWidth column_width="116"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="9" />
+   <WVObjectSize size="10" />
    <wvobject fp_name="/tb_checksum/sum" type="array">
       <obj_property name="ElementShortName">sum[15:0]</obj_property>
       <obj_property name="ObjectShortName">sum[15:0]</obj_property>
@@ -28,6 +28,10 @@
    <wvobject fp_name="/tb_checksum/dut/temp_sum_reg" type="array">
       <obj_property name="ElementShortName">temp_sum_reg[191:0]</obj_property>
       <obj_property name="ObjectShortName">temp_sum_reg[191:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_checksum/in" type="array">
+      <obj_property name="ElementShortName">in</obj_property>
+      <obj_property name="ObjectShortName">in</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_checksum/clk_125M" type="logic">
       <obj_property name="ElementShortName">clk_125M</obj_property>
