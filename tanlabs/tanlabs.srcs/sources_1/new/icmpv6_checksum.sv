@@ -73,10 +73,10 @@ module icmpv6_checksum #(
                     if (s1_ready) begin
                         s1_reg <= in;
                         if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
-                            // 因为后面会反过来，这个里面也采用网络字节序
-                            if(in.data.ip6.payload_len === 16'h2000) begin
+                            // 因为后面会反过来，这个里面也采用网络字节�?
+                            if(in.data.ip6.payload_len == 16'h2000) begin
                                 sum_reg  <= {in.data.ip6[8*72-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len};
-                            end else if(in.data.ip6.payload_len === 16'h2000) begin
+                            end else if(in.data.ip6.payload_len == 16'h2000) begin
                                 sum_reg  <= {in.data.ip6[8*64-1:8*8], in.data.ip6.next_hdr, 8'b0, in.data.ip6.payload_len, 64'b0};
                             end 
                             s1_state <= ST_CALC1;
@@ -84,7 +84,7 @@ module icmpv6_checksum #(
                     end
                 end
                 ST_CALC1: begin
-                    // 除去最后一位是六合一之外，其余的都是四合一计算
+                    // 除去�?后一位是六合�?之外，其余的都是四合�?计算
                     for(int i = 0; i < 8; i ++) begin
                         if(i !== 7) begin 
                             temp_sum_reg[(24*i)+:24] <= {8'b0, sum_reg[(8*(8*i))+:8], sum_reg[(8*(8*i+1))+:8]} + 
