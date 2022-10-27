@@ -3,62 +3,110 @@
    <wave_state>
    </wave_state>
    <db_ref_list>
-      <db_ref path="tb_checksum_behav.wdb" id="1">
+      <db_ref path="tb_frame_datapath_behav.wdb" id="1">
          <top_modules>
-            <top_module name="\$unit_icmpv6_checksum_sv " />
+            <top_module name="\$unit_config_address_sv " />
             <top_module name="glbl" />
-            <top_module name="tb_checksum" />
+            <top_module name="tb_frame_datapath" />
          </top_modules>
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="2817500fs"></ZoomStartTime>
-      <ZoomEndTime time="3156501fs"></ZoomEndTime>
-      <Cursor1Time time="3100000fs"></Cursor1Time>
+      <ZoomStartTime time="3886696fs"></ZoomStartTime>
+      <ZoomEndTime time="4277061fs"></ZoomEndTime>
+      <Cursor1Time time="4212000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="248"></NameColumnWidth>
-      <ValueColumnWidth column_width="116"></ValueColumnWidth>
+      <ValueColumnWidth column_width="111"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="10" />
-   <wvobject fp_name="/tb_checksum/sum" type="array">
-      <obj_property name="ElementShortName">sum[15:0]</obj_property>
-      <obj_property name="ObjectShortName">sum[15:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/temp_sum_reg" type="array">
-      <obj_property name="ElementShortName">temp_sum_reg[191:0]</obj_property>
-      <obj_property name="ObjectShortName">temp_sum_reg[191:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/in" type="array">
-      <obj_property name="ElementShortName">in</obj_property>
-      <obj_property name="ObjectShortName">in</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/clk_125M" type="logic">
-      <obj_property name="ElementShortName">clk_125M</obj_property>
-      <obj_property name="ObjectShortName">clk_125M</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/clk" type="logic">
-      <obj_property name="ElementShortName">clk</obj_property>
-      <obj_property name="ObjectShortName">clk</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/reset" type="logic">
+   <WVObjectSize size="22" />
+   <wvobject fp_name="/tb_frame_datapath/reset" type="logic">
       <obj_property name="ElementShortName">reset</obj_property>
       <obj_property name="ObjectShortName">reset</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum" type="array">
-      <obj_property name="ElementShortName">sum[15:0]</obj_property>
-      <obj_property name="ObjectShortName">sum[15:0]</obj_property>
+   <wvobject fp_name="/tb_frame_datapath/clk_125M" type="logic">
+      <obj_property name="ElementShortName">clk_125M</obj_property>
+      <obj_property name="ObjectShortName">clk_125M</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/s1_state" type="array">
-      <obj_property name="ElementShortName">s1_state[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s1_state[31:0]</obj_property>
+   <wvobject fp_name="/tb_frame_datapath/in_data" type="array">
+      <obj_property name="ElementShortName">in_data[63:0]</obj_property>
+      <obj_property name="ObjectShortName">in_data[63:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum_overflow_reg" type="array">
-      <obj_property name="ElementShortName">sum_overflow_reg[23:0]</obj_property>
-      <obj_property name="ObjectShortName">sum_overflow_reg[23:0]</obj_property>
+   <wvobject fp_name="/tb_frame_datapath/in_keep" type="array">
+      <obj_property name="ElementShortName">in_keep[7:0]</obj_property>
+      <obj_property name="ObjectShortName">in_keep[7:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum_overflow_reg_copy" type="array">
-      <obj_property name="ElementShortName">sum_overflow_reg_copy[23:0]</obj_property>
-      <obj_property name="ObjectShortName">sum_overflow_reg_copy[23:0]</obj_property>
+   <wvobject fp_name="/tb_frame_datapath/in_last" type="logic">
+      <obj_property name="ElementShortName">in_last</obj_property>
+      <obj_property name="ObjectShortName">in_last</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/in_user" type="array">
+      <obj_property name="ElementShortName">in_user[7:0]</obj_property>
+      <obj_property name="ObjectShortName">in_user[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/in_id" type="array">
+      <obj_property name="ElementShortName">in_id[2:0]</obj_property>
+      <obj_property name="ObjectShortName">in_id[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/in_valid" type="logic">
+      <obj_property name="ElementShortName">in_valid</obj_property>
+      <obj_property name="ObjectShortName">in_valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/in_ready" type="logic">
+      <obj_property name="ElementShortName">in_ready</obj_property>
+      <obj_property name="ObjectShortName">in_ready</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_data" type="array">
+      <obj_property name="ElementShortName">out_data[63:0]</obj_property>
+      <obj_property name="ObjectShortName">out_data[63:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_keep" type="array">
+      <obj_property name="ElementShortName">out_keep[7:0]</obj_property>
+      <obj_property name="ObjectShortName">out_keep[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_last" type="logic">
+      <obj_property name="ElementShortName">out_last</obj_property>
+      <obj_property name="ObjectShortName">out_last</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_user" type="array">
+      <obj_property name="ElementShortName">out_user[7:0]</obj_property>
+      <obj_property name="ObjectShortName">out_user[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_dest" type="array">
+      <obj_property name="ElementShortName">out_dest[2:0]</obj_property>
+      <obj_property name="ObjectShortName">out_dest[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_valid" type="logic">
+      <obj_property name="ElementShortName">out_valid</obj_property>
+      <obj_property name="ObjectShortName">out_valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/out_ready" type="logic">
+      <obj_property name="ElementShortName">out_ready</obj_property>
+      <obj_property name="ObjectShortName">out_ready</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/mac" type="array">
+      <obj_property name="ElementShortName">mac[3:0][47:0]</obj_property>
+      <obj_property name="ObjectShortName">mac[3:0][47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/ip" type="array">
+      <obj_property name="ElementShortName">ip[3:0][127:0]</obj_property>
+      <obj_property name="ObjectShortName">ip[3:0][127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/preset_mac" type="array">
+      <obj_property name="ElementShortName">preset_mac[3:0][47:0]</obj_property>
+      <obj_property name="ObjectShortName">preset_mac[3:0][47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/ip_eui64_comb" type="array">
+      <obj_property name="ElementShortName">ip_eui64_comb[3:0][127:0]</obj_property>
+      <obj_property name="ObjectShortName">ip_eui64_comb[3:0][127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/DATA_WIDTH" type="array">
+      <obj_property name="ElementShortName">DATA_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">DATA_WIDTH[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_frame_datapath/ID_WIDTH" type="array">
+      <obj_property name="ElementShortName">ID_WIDTH[31:0]</obj_property>
+      <obj_property name="ObjectShortName">ID_WIDTH[31:0]</obj_property>
    </wvobject>
 </wave_config>
