@@ -194,24 +194,30 @@ module forwarding_table #(
                     end
                     // 读取 BRAM, 解析 bitmap
                     for (int j = 1; j <= LAYER_HEIGHT; ++j) begin
+                        // 寄存 BRAM 中信息, 可能可以让解析的组合逻辑电路时序更优
                         if (state[i] == (2 * j - 1)) begin
                             state[i]       <= state[i] + 1;
                             ft_dout_reg[i] <= ft_dout[i];
                         end
+                        // 解析完成
                         if (state[i] == (2 * j)) begin
+                            // 是否需要到下一级流水线
                             if (j == LAYER_HEIGHT) begin
                                 state[i] <= 'b0;
                             end else begin
                                 state[i] <= state[i] + 1;
                             end
-                            s_reg[i].stop <= parser_stop;
+                            // 若匹配到前缀, 则更新
                             if (parser_matched) begin
                                 s_reg[i].matched   <= 1'b1;
                                 s_reg[i].leaf_addr <= parser_leaf_addr;
                             end
-                            s_reg[i].node_addr <= parser_node_addr;
+                            s_reg[i].node_addr <= parser_node_addr;  // 更新当前节点地址
+                            s_reg[i].stop <= parser_stop; // 表示是否结束查询（对应子节点为空或为叶节点）
+                            // 若已结束查询, 则结束状态机, 进入下一级流水线
                             if (parser_stop) begin
                                 state[i] <= 'b0;
+                                // 否则继续查询 BRAM
                             end else begin
                                 ft_addr[i] <= parser_node_addr;
                             end
@@ -222,7 +228,7 @@ module forwarding_table #(
         end
     endgenerate
 
-    // TODO: 查询叶节点中 next_hop 编号, 再查询 next_hop 表
+    // 查询叶节点中 next_hop 编号, 再查询 next_hop 表
     typedef enum {
         ST_INIT,  // 初始阶段
         ST_GET_LEAF,  // 完成查询叶节点
@@ -242,12 +248,44 @@ module forwarding_table #(
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            error       <= 'b0;
-            after_reg   <= '{default: 0};
-            after_state <= ST_INIT;
-        end else if (after_ready) begin
-
+            error         <= 'b0;
+            after_reg     <= '{default: 0};
+            after_state   <= ST_INIT;
+            leaf_addr     <= 'b0;
+            next_hop_addr <= 'b0;
+        end else begin
+            case (after_state)
+                ST_INIT: begin
+                    if (after_ready) begin
+                        after_reg <= s[PIPELINE_LENTGH];
+                        if (`should_handle(s[PIPELINE_LENTGH].beat)) begin
+                            // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
+                            if (s[PIPELINE_LENTGH].matched) begin
+                                leaf_addr   <= s[PIPELINE_LENTGH].leaf_addr;
+                                after_state <= ST_GET_LEAF;
+                            end else begin
+                                error       <= 1'b1;
+                                after_state <= ST_INIT;
+                            end
+                        end
+                    end
+                end
+                // 查完叶节点, 根据叶节点中存储的 next_hop 编号, 查 next_hop 表
+                ST_GET_LEAF: begin
+                    next_hop_addr <= leaf_out.next_hop_addr;
+                    after_state   <= ST_GET_NEXT_HOP;
+                end
+                // 查完 next_hop 表, 更新下一跳地址和出口
+                ST_GET_NEXT_HOP: begin
+                    next_hop_ip              <= next_hop_out.ip;
+                    after_reg.beat.meta.dest <= next_hop_out.port;
+                    after_state              <= ST_INIT;
+                end
+            endcase
         end
     end
+
+    assign out         = after.beat;
+    assign after_ready = out_ready;
 
 endmodule

@@ -33,7 +33,7 @@ typedef struct packed {logic [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;} leaf_no
 
 // next_hop 节点
 typedef struct packed {
-    logic [127:0] next_hop_ip;
+    logic [127:0] ip;
     logic [7:0]   port;
 } next_hop_node;
 
