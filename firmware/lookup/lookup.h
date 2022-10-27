@@ -7,9 +7,13 @@
 #include "common.h"
 
 
-const int NODECOUNT = 1000000;
-const int LEAFCOUNT = 1000000;
-const int ENTRYCOUNT = 1000;
+const int NODE_COUNT_PER_LAYER = 1024;
+const int NODE_COUNT = 1024 * 8;
+const int LEAF_COUNT = 1024;
+const int ENTRY_COUNT = 64;
+
+const int LAYER_HEIGHT = 4;
+const int STRIDE = 4;
 
 // /* IPv6 address */
 // typedef struct {
@@ -35,10 +39,22 @@ typedef struct {
   // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
 
+
 typedef uint64_t u64;
 typedef uint32_t u32;
+typedef uint8_t u8;
 typedef __uint128_t u128;
+typedef uint8_t leaf_t;  // fixme: change to u8
 
+// 真正的存储用的结构体
+typedef struct {
+    u8 vec[2];
+    u8 leaf_vec[2];
+    u8 child_base[3];
+    u8 leaf_base[2];
+} _TrieNode;
+
+// 为了处理时方便会先转成这个结构体 有改动的话再转回去
 typedef struct {
     u32 vec;
     u32 leaf_vec;

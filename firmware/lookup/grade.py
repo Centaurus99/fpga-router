@@ -124,7 +124,7 @@ if __name__ == '__main__':
         in_file = "data/test_input.txt"
         out_file = "data/test_output.txt"
         ans_file = "data/test_answer.txt"
-        gen_input(in_file, 5000)
+        gen_input(in_file, 100)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 

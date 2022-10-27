@@ -3,13 +3,13 @@
 
 #include "lookup.h"
 
-u32 node_malloc(u32 l);
+int node_malloc(int stage, int len);
 
-void node_free(u32 s, u32 l);
+void node_free(int stage, int begin, int len);
 
-u32 leaf_malloc(u32 l);
+int leaf_malloc(int len);
 
-void leaf_free(u32 s, u32 l);
+void leaf_free(int begin, int len);
 
 // TrieNode * _new();
 
