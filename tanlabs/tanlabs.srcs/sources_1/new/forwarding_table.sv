@@ -43,18 +43,37 @@ module forwarding_table #(
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
     assign s[0].beat      = in;
 
-    logic    [                   3:0] state      [PIPELINE_LENTGH:1];
-    logic    [CHILD_ADDR_WIDTH - 1:0] ft_addr    [PIPELINE_LENTGH:1];
-    FTE_node                          ft_dout    [PIPELINE_LENTGH:1];
-    FTE_node                          ft_dout_reg[PIPELINE_LENTGH:1];
+    logic         [                      3:0] state           [PIPELINE_LENTGH:1];
 
-    // 端口 B 接入总线
-    wire                              ft_en_b    [PIPELINE_LENTGH:1];
-    wire                              ft_we_b    [PIPELINE_LENTGH:1];
-    wire     [CHILD_ADDR_WIDTH - 1:0] ft_addr_b  [PIPELINE_LENTGH:1];
-    FTE_node                          ft_din_b   [PIPELINE_LENTGH:1];
-    FTE_node                          ft_dout_b  [PIPELINE_LENTGH:1];
+    // 内部节点读取信号
+    logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [PIPELINE_LENTGH:1];
+    FTE_node                                  ft_dout         [PIPELINE_LENTGH:1];
+    FTE_node                                  ft_dout_reg     [PIPELINE_LENTGH:1];
+    // 叶节点读取信号
+    logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
+    leaf_node                                 leaf_out;
+    // Next_hop 节点读取信号
+    logic         [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;
+    next_hop_node                             next_hop_out;
 
+    // 内部节点存储 BRAM 的端口 A 接入总线
+    wire                                      ft_en_a         [PIPELINE_LENTGH:1];
+    wire                                      ft_we_a         [PIPELINE_LENTGH:1];
+    wire          [   CHILD_ADDR_WIDTH - 1:0] ft_addr_a       [PIPELINE_LENTGH:1];
+    FTE_node                                  ft_din_a        [PIPELINE_LENTGH:1];
+    FTE_node                                  ft_dout_a       [PIPELINE_LENTGH:1];
+    // 叶节点存储 LUTRAM 的端口 A 接入总线
+    logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_a;
+    leaf_node                                 leaf_in_a;
+    leaf_node                                 leaf_out_a;
+    wire                                      leaf_we_a;
+    // Next-Hop 节点存储 LUTRAM 的端口 A 接入总线
+    logic         [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr_a;
+    next_hop_node                             next_hop_in_a;
+    next_hop_node                             next_hop_out_a;
+    wire                                      next_hop_we_a;
+
+    // Wishbone 总线 slave 接口
     forwarding_ram_controller #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
@@ -70,32 +89,64 @@ module forwarding_table #(
         .wb_sel_i(wb_sel_i),
         .wb_we_i (wb_we_i),
 
-        .ft_en  (ft_en_b),
-        .ft_we  (ft_we_b),
-        .ft_addr(ft_addr_b),
-        .ft_din (ft_din_b),
-        .ft_dout(ft_dout_b)
+        .ft_en  (ft_en_a),
+        .ft_we  (ft_we_a),
+        .ft_addr(ft_addr_a),
+        .ft_din (ft_din_a),
+        .ft_dout(ft_dout_a),
+
+        .leaf_addr(leaf_addr_a),
+        .leaf_in  (leaf_in_a),
+        .leaf_out (leaf_out_a),
+        .leaf_we  (leaf_we_a),
+
+        .next_hop_addr(next_hop_addr_a),
+        .next_hop_in  (next_hop_in_a),
+        .next_hop_out (next_hop_out_a),
+        .next_hop_we  (next_hop_we_a)
     );
 
-    // 初始化各级存储
+    // 例化流水线各级存储
     generate
         for (genvar i = 1; i <= PIPELINE_LENTGH; ++i) begin : forwarding_data_gen
             forwarding_data_0 FT_data_0 (
-                .clka (clk),           // input wire clka
-                .ena  (1'b1),          // input wire ena
-                .wea  (1'b0),          // input wire [0 : 0] wea
-                .addra(ft_addr[i]),    // input wire [9 : 0] addra
-                .dina ('b0),           // input wire [71 : 0] dina
-                .douta(ft_dout[i]),    // output wire [71 : 0] douta
-                .clkb (cpu_clk),       // input wire clkb
-                .enb  (ft_en_b[i]),    // input wire enb
-                .web  (ft_we_b[i]),    // input wire [0 : 0] web
-                .addrb(ft_addr_b[i]),  // input wire [9 : 0] addrb
-                .dinb (ft_din_b[i]),   // input wire [71 : 0] dinb
-                .doutb(ft_dout_b[i])   // output wire [71 : 0] doutb
+                .clka (cpu_clk),       // input wire clka
+                .ena  (ft_en_a[i]),    // input wire ena
+                .wea  (ft_we_a[i]),    // input wire [0 : 0] wea
+                .addra(ft_addr_a[i]),  // input wire [9 : 0] addra
+                .dina (ft_din_a[i]),   // input wire [71 : 0] dina
+                .douta(ft_dout_a[i]),  // output wire [71 : 0] douta
+                .clkb (clk),           // input wire clkb
+                .enb  (1'b1),          // input wire enb
+                .web  (1'b0),          // input wire [0 : 0] web
+                .addrb(ft_addr[i]),    // input wire [9 : 0] addrb
+                .dinb ('b0),           // input wire [71 : 0] dinb
+                .doutb(ft_dout[i])     // output wire [71 : 0] doutb
             );
         end
     endgenerate
+
+    // 例化叶节点存储
+    forwarding_leaf_data leaf_data (
+        .a   (leaf_addr_a),  // input wire [9 : 0] a
+        .d   (leaf_in_a),    // input wire [7 : 0] d
+        .dpra(leaf_addr),    // input wire [9 : 0] dpra
+        .clk (cpu_clk),      // input wire clk
+        .we  (leaf_we_a),    // input wire we
+        .spo (leaf_out_a),   // output wire [7 : 0] spo
+        .dpo (leaf_out)      // output wire [7 : 0] dpo
+    );
+
+    // 例化 Next-Hop 节点存储
+    forwarding_next_hop_data next_hop_data (
+        .a   (next_hop_addr_a),  // input wire [5 : 0] a
+        .d   (next_hop_in_a),    // input wire [135 : 0] d
+        .dpra(next_hop_addr),    // input wire [5 : 0] dpra
+        .clk (cpu_clk),          // input wire clk
+        .we  (next_hop_we_a),    // input wire we
+        .spo (next_hop_out_a),   // output wire [135 : 0] spo
+        .dpo (next_hop_out)      // output wire [135 : 0] dpo
+    );
 
     // 流水线
     generate
@@ -135,10 +186,10 @@ module forwarding_table #(
                     if (state[i] == 'b0) begin
                         if (s_ready[i]) begin
                             s_reg[i] <= s[i-1];
-                            // if (`should_search(s[i-1])) begin
-                            //     state[i]   <= 'b1;
-                            //     ft_addr[i] <= s[i-1].node_addr;
-                            // end
+                            if (`should_search(s[i-1])) begin
+                                state[i]   <= 'b1;
+                                ft_addr[i] <= s[i-1].node_addr;
+                            end
                         end
                     end
                     // 读取 BRAM, 解析 bitmap

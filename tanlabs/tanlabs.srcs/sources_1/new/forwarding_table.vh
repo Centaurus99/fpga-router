@@ -10,6 +10,7 @@ localparam CHILD_MAP_SIZE = 1 << STRIDE;  // 子节点 bitmap 大小
 localparam LEAF_MAP_SIZE = 1 << STRIDE;  // 前缀(叶节点) bitmap 大小
 localparam CHILD_ADDR_WIDTH = 24;  // 子节点地址宽度
 localparam LEAF_ADDR_WIDTH = 16;  // 叶节点地址宽度
+localparam NEXT_HOP_ADDR_WIDTH = 8;  // 下一跳地址宽度
 
 // forwarding table entry
 typedef struct packed {
@@ -26,6 +27,15 @@ typedef struct packed {
     logic [CHILD_ADDR_WIDTH - 1:0] node_addr;  // 当前节点地址
     frame_beat beat;
 } forwarding_beat;
+
+// 叶节点, 存放 next_hop 编号
+typedef struct packed {logic [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;} leaf_node;
+
+// next_hop 节点
+typedef struct packed {
+    logic [127:0] next_hop_ip;
+    logic [7:0]   port;
+} next_hop_node;
 
 `define should_search(b) (`should_handle(b.beat) && !b.stop)
 

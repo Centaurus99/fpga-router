@@ -26,7 +26,19 @@ module forwarding_ram_controller #(
     output reg                               ft_we  [PIPELINE_LENTGH:1],
     output reg      [CHILD_ADDR_WIDTH - 1:0] ft_addr[PIPELINE_LENTGH:1],
     output FTE_node                          ft_din [PIPELINE_LENTGH:1],
-    input  FTE_node                          ft_dout[PIPELINE_LENTGH:1]
+    input  FTE_node                          ft_dout[PIPELINE_LENTGH:1],
+
+    // Leaf node LUTRAM interface
+    output logic     [LEAF_ADDR_WIDTH - 1:0] leaf_addr,
+    output leaf_node                         leaf_in,
+    input  leaf_node                         leaf_out,
+    output wire                              leaf_we,
+
+    // Next-Hop node LUTRAM interface
+    output logic         [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr,
+    output next_hop_node                             next_hop_in,
+    input  next_hop_node                             next_hop_out,
+    output wire                                      next_hop_we
 );
     // TODO: controller
 
