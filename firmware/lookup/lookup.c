@@ -15,9 +15,9 @@
 #define POPCNT_LS(v, i) popcnt((v) & (((u64)2 << (i)) - 1))
 #define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u64)2 << (i)) - 1))
 
-
+ 
 const int K = 4;
-
+ 
 
 static inline u64 INDEX (u128 addr, int s, int n) {
     if ( 0 == ((s) + (n)) ) {

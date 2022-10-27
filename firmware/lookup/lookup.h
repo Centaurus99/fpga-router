@@ -7,9 +7,9 @@
 #include "common.h"
 
 
-const int NODECOUNT = 10000;
-const int LEAFCOUNT = 10000;
-const int ENTRYCOUNT = 10000;
+const int NODECOUNT = 1000000;
+const int LEAFCOUNT = 1000000;
+const int ENTRYCOUNT = 1000;
 
 // /* IPv6 address */
 // typedef struct {

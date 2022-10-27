@@ -8,7 +8,7 @@ all: lookup
 clean:
 	rm -f *.o lookup std
 
-grade: lookup
+grade: lookup lookup_bf
 	python3 grade.py
 
 %.o: %.cpp
@@ -18,6 +18,9 @@ grade: lookup
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 lookup: lookup.o main.o common.o memhelper.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+lookup_bf: lookup_bf.o main.o common.o
 	$(CXX) $^ -o $@ $(LDFLAGS) 
 
 std: std.o main.o common.o

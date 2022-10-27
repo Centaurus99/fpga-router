@@ -13,11 +13,15 @@ import string
 import signal
 import glob
 import traceback
+import ipaddress
 
 prefix = 'lookup'
 exe = prefix
+exe2 = prefix + '_bf'
 if len(sys.argv) > 1:
     exe = sys.argv[1]
+
+total = len(glob.glob("data/{}_input*.txt".format(prefix)))
 
 def write_grade(grade, total):
     data = {}
@@ -27,50 +31,104 @@ def write_grade(grade, total):
     else:
         print(json.dumps(data))
 
-    sys.exit(0)
+def compare(out_file_1, out_file_2):
+    try:
+        out = [line.strip() for line in open(out_file_1, 'r').readlines() if line.strip()]
+        out2 = [line.strip() for line in open(out_file_2, 'r').readlines() if line.strip()]
+            
+        if out == out2:
+            return 1
+        elif os.isatty(1):
+            print('Diff: ')
+            os.system('diff -u {} {} | head -n 10'.format(out_file_1, out_file_2))
+    except Exception:
+        if os.isatty(1):
+            print('Unexpected exception caught:')
+            traceback.print_exc()
+    return 0
 
+entrys = []
+def gen_input(in_file, N):
+    table = []
+    with open(in_file, 'w') as f:
+        while N:
+            c = random.randint(0, 3)
+            if c == 0 or not table:
+                eid = random.randint(0, len(entrys) - 1)
+                e = entrys[eid]
+                if e not in table:
+                    table.append(eid)
+                N -= 1
+                f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]}\n')
+            elif c == 1:
+                if random.randint(0, 2) < 2 and table:
+                    tid = random.randint(0, len(table) - 1)
+                    e = entrys[table[tid]]
+                else:
+                    eid = random.randint(0, len(entrys) - 1)
+                    e = entrys[eid]
+                f.write(f'D {e[0]} {e[1]}\n')
+            else:
+                tid = random.randint(0, len(table) - 1)
+                e = entrys[table[tid]]
+                if random.randint(0, 5) <= 4:
+                    if (int(e[1]) <= 120):
+                        subnet = ipaddress.ip_network(f'{e[0]}/{e[1]}')
+                        ip = subnet[random.randint(0, 15 * 15) * (2 ** (120 - int(e[1])))]
+                    else:
+                        ip = e[0]
+                else:
+                    ip = random.choice(entrys)[0]
+                f.write(f'Q {ip}\n')
+
+                    
+
+def run(exe, in_file, out_file):
+    p = subprocess.Popen(['./{}'.format(exe)], stdout=open(out_file, 'w'), stdin=open(in_file, 'r'))
+    start_time = time.time()
+    p.wait()
 
 if __name__ == '__main__':
-
-    if sys.version_info[0] != 3:
-        print("Plz use python3")
-        sys.exit()
 
     if os.isatty(1):
         print('Removing all output files')
     os.system('rm -f data/{}_output*.txt'.format(prefix))
 
-    total = len(glob.glob("data/{}_input*.txt".format(prefix)))
+    # print("Running examples:")
+    # grade = 0
+    # for i in range(1, total+1):
+    #     in_file = "data/{}_input{}.txt".format(prefix, i)
+    #     out_file = "data/{}_output{}.txt".format(prefix, i)
+    #     ans_file = "data/{}_answer{}.txt".format(prefix, i)
 
-    grade = 0
+    #     if os.isatty(1):
+    #         print('Running \'./{} < {} > {}\''.format(exe, in_file, out_file))
+    #     p = subprocess.Popen(['./{}'.format(exe)], stdout=open(out_file, 'w'), stdin=open(in_file, 'r'))
+    #     start_time = time.time()
 
-    for i in range(1, total+1):
-        in_file = "data/{}_input{}.txt".format(prefix, i)
-        out_file = "data/{}_output{}.txt".format(prefix, i)
-        ans_file = "data/{}_answer{}.txt".format(prefix, i)
+    #     while p.poll() is None:
+    #         if time.time() - start_time > 1:
+    #             p.kill()
 
-        if os.isatty(1):
-            print('Running \'./{} < {} > {}\''.format(exe, in_file, out_file))
-        p = subprocess.Popen(['./{}'.format(exe)], stdout=open(out_file, 'w'), stdin=open(in_file, 'r'))
-        start_time = time.time()
+    #     grade += compare(out_file, ans_file)
 
-        while p.poll() is None:
-            if time.time() - start_time > 1:
-                p.kill()
+    # write_grade(grade, total)
 
-        try:
-            out = [line.strip() for line in open(out_file, 'r').readlines() if line.strip()]
-            ans = [line.strip() for line in open(ans_file, 'r').readlines() if line.strip()]
-                
-            if out == ans:
-                grade += 1
-            elif os.isatty(1):
-                print('Diff: ')
-                os.system('diff -u {} {} | head -n 10'.format(out_file, ans_file))
-        except Exception:
-            if os.isatty(1):
-                print('Unexpected exception caught:')
-                traceback.print_exc()
+    # if (grade < total):
+    #     sys.exit(0)
 
-    write_grade(grade, total)
+    entrys = [line.strip().split(' ') for line in open('data/fib_shuffled.txt', 'r').readlines() if line.strip()]
 
+    i = 0
+    while 1:
+        in_file = "data/test_input.txt"
+        out_file = "data/test_output.txt"
+        ans_file = "data/test_answer.txt"
+        gen_input(in_file, 5000)
+        run(exe, in_file, out_file)
+        run(exe2, in_file, ans_file)
+
+        if not compare(out_file, ans_file):
+            sys.exit(0)
+        print(f'{i} correct')
+        i += 1
