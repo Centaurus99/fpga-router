@@ -38,6 +38,7 @@ module forwarding_table #(
     wire            s_ready[PIPELINE_LENTGH:0];
 
     assign in_ready       = s_ready[0];
+    assign s[0].stop      = '0;
     assign s[0].matched   = '0;
     assign s[0].leaf_addr = '0;
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
@@ -165,9 +166,11 @@ module forwarding_table #(
             wire                          parser_matched;
             wire [ LEAF_ADDR_WIDTH - 1:0] parser_leaf_addr;
             wire [CHILD_ADDR_WIDTH - 1:0] parser_node_addr;
+            reg  [                 127:0] ip_for_match;
+
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
-                .node(ft_dout_reg[i]),
-                .pattern (s_reg[i].beat.data.ip6.dst[STRIDE-1:0]), // FIXME: 取出对应的地址段
+                .node   (ft_dout_reg[i]),
+                .pattern(ip_for_match[STRIDE-1:0]),
 
                 .stop     (parser_stop),
                 .matched  (parser_matched),
@@ -182,13 +185,15 @@ module forwarding_table #(
                     state[i]       <= 'b0;
                     ft_addr[i]     <= 'b0;
                     ft_dout_reg[i] <= '{default: 0};
+                    ip_for_match   <= 'b0;
                 end else begin
                     if (state[i] == 'b0) begin
                         if (s_ready[i]) begin
                             s_reg[i] <= s[i-1];
                             if (`should_search(s[i-1])) begin
-                                state[i]   <= 'b1;
-                                ft_addr[i] <= s[i-1].node_addr;
+                                state[i]     <= 'b1;
+                                ft_addr[i]   <= s[i-1].node_addr;
+                                ip_for_match <= {>>STRIDE{{<<8{s[i-1].beat.data.ip6.dst}}}};
                             end
                         end
                     end
@@ -221,6 +226,8 @@ module forwarding_table #(
                             end else begin
                                 ft_addr[i] <= parser_node_addr;
                             end
+                            // 更新 ip_for_match
+                            ip_for_match <= ip_for_match >> STRIDE;
                         end
                     end
                 end
@@ -253,6 +260,7 @@ module forwarding_table #(
             after_state   <= ST_INIT;
             leaf_addr     <= 'b0;
             next_hop_addr <= 'b0;
+            next_hop_ip   <= 'b0;
         end else begin
             case (after_state)
                 ST_INIT: begin
