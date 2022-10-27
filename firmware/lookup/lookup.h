@@ -2,21 +2,24 @@
 #define __LOOKUP_H__
 
 #include <stdint.h>
-#include<stdbool.h>
+#include <stdbool.h>
+#include <arpa/inet.h>
+#include "common.h"
+
 
 const int NODECOUNT = 10000;
 const int LEAFCOUNT = 10000;
 const int ENTRYCOUNT = 10000;
 
-/* IPv6 address */
-typedef struct {
-    union {
-	uint8_t	__u6_addr8[16];
-	uint16_t __u6_addr16[8];
-	uint32_t __u6_addr32[4];
-    } __in6_u;
-#define s6_addr			__in6_u.__u6_addr8
-} in6_addr;
+// /* IPv6 address */
+// typedef struct {
+//     union {
+// 	uint8_t	__u6_addr8[16];
+// 	uint16_t __u6_addr16[8];
+// 	uint32_t __u6_addr32[4];
+//     } __in6_u;
+// #define s6_addr			__in6_u.__u6_addr8
+// } in6_addr;
 
 /*
   表示路由表的一项。

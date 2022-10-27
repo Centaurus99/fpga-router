@@ -1,6 +1,5 @@
 CXX ?= g++
-LAB_ROOT ?= ../..
-CXXFLAGS ?= --std=c++11 -I $(LAB_ROOT)/HAL/include
+CXXFLAGS ?= --std=c++11
 LDFLAGS ?=
 
 .PHONY: all clean grade
@@ -15,8 +14,8 @@ grade: lookup
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-common.o: $(LAB_ROOT)/HAL/src/common.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+%.o: %.c
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 lookup: lookup.o main.o common.o memhelper.o
 	$(CXX) $^ -o $@ $(LDFLAGS) 
