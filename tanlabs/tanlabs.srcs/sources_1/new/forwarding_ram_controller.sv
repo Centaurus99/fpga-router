@@ -59,7 +59,7 @@ module forwarding_ram_controller #(
         ST_WRITE_LEAF1,
         ST_WRITE_LEAF2,
         ST_WRITE_HOP1,
-        ST_WRITE_HOP2,
+        ST_WRITE_HOP2
     } state_slave;
 
     state_slave state = ST_INIT;
@@ -90,11 +90,44 @@ module forwarding_ram_controller #(
                             if(wb_adr_i >= 32'h51000000 && wb_adr_i < 32'h52000000)
                                 state <= ST_WRITE_HOP1
                         end
-                        wb_ack_o = 1'b1;
+                        wb_ack_o <= 1'b1;
                     end else begin
-                        wb_ack_o = 1'b1;
+                        wb_ack_o <= 1'b1;
                     end
                 ST_READ_BRAM1:
+                
+                ST_READ_BRAM2:
+
+                ST_READ_BRAM3:
+
+                ST_READ_BRAM4:
+                    state <= ST_INIT;
+                ST_WRITE_BRAM1:
+                
+                ST_WRITE_BRAM2:
+
+                ST_WRITE_BRAM3:
+
+                ST_WRITE_BRAM4:
+                    state <= ST_INIT;
+                ST_READ_LEAF1:
+                
+                ST_READ_LEAF2:
+                    state <= ST_INIT;
+                ST_WRITE_LEAF1:
+                
+                ST_WRITE_LEAF2:
+                    state <= ST_INIT;
+                ST_READ_HOP1:
+                
+                ST_READ_HOP2:
+                    state <= ST_INIT;
+                ST_WRITE_HOP1:
+                
+                ST_WRITE_HOP2:
+                    state <= ST_INIT;
+                default:
+                    state <= ST_INIT;
             endcase 
         end
     end
