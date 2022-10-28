@@ -52,7 +52,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
     table = []
     with open(in_file, 'w') as f:
         while N + query_after_update_complete:
-            c = random.randint(0, 3)
+            c = random.randint(0, 4)
             if N and (c == 0 or not table):
                 eid = random.randint(0, len(entrys) - 1)
                 e = entrys[eid]
@@ -68,7 +68,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                     eid = random.randint(0, len(entrys) - 1)
                     e = entrys[eid]
                 f.write(f'D {e[0]} {e[1]}\n')
-            elif (not N and query_after_update_complete) or not query_after_update_complete:
+            elif (N == 0 and query_after_update_complete > 0) or (query_after_update_complete <= 0):
                 tid = random.randint(0, len(table) - 1)
                 e = entrys[table[tid]]
                 if random.randint(0, 5) <= 4:
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     entrys = [line.strip().split(' ') for line in open('data/fib_shuffled.txt', 'r').readlines() if line.strip()]
 
-    for i in range(10000):
+    for i in range(100000):
         in_file = "data/test_input.txt"
         out_file = "data/test_output.txt"
         ans_file = "data/test_answer.txt"

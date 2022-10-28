@@ -12,7 +12,7 @@ int node_malloc(int stage, int len) {
 }
 
 void node_free(int stage, int begin, int len) {
- 
+    
 }
 
 int leaf_malloc(int len) {
