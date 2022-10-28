@@ -22,11 +22,11 @@ module forwarding_ram_controller #(
     input  wire                             wb_we_i,
 
     // Forwarding table BRAM interface
-    output reg                               ft_en  [PIPELINE_LENTGH:1],
-    output reg                               ft_we  [PIPELINE_LENTGH:1],
-    output reg      [CHILD_ADDR_WIDTH - 1:0] ft_addr[PIPELINE_LENTGH:1],
-    output FTE_node                          ft_din [PIPELINE_LENTGH:1],
-    input  FTE_node                          ft_dout[PIPELINE_LENTGH:1],
+    output reg                               ft_en  [PIPELINE_LENGTH:1],
+    output reg                               ft_we  [PIPELINE_LENGTH:1],
+    output reg      [CHILD_ADDR_WIDTH - 1:0] ft_addr[PIPELINE_LENGTH:1],
+    output FTE_node                          ft_din [PIPELINE_LENGTH:1],
+    input  FTE_node                          ft_dout[PIPELINE_LENGTH:1],
 
     // Leaf node LUTRAM interface
     output logic     [LEAF_ADDR_WIDTH - 1:0] leaf_addr,

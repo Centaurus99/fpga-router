@@ -177,7 +177,10 @@ module frame_datapath #(
     frame_beat         forwarded;
     wire               forwarded_ready;
     logic      [127:0] forwarded_next_hop_ip;
-    forwarding_table forwarding_table_i (
+    forwarding_table #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) forwarding_table_i (
         .clk     (eth_clk),
         .reset   (reset),
         .in      (s2),
@@ -221,6 +224,7 @@ module frame_datapath #(
             s3_reg     <= '{default: 0};
             s3_state   <= ST_SEND_RECV;
             nc_in_v6_r <= 0;
+            nc_in_id_r <= 0;
         end else begin
             case (s3_state)
                 ST_SEND_RECV: begin

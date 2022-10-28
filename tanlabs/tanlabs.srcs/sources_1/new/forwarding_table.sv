@@ -33,22 +33,23 @@ module forwarding_table #(
     input  wire                             wb_we_i
 );
 
-    forwarding_beat s      [PIPELINE_LENTGH:0];
-    forwarding_beat s_reg  [PIPELINE_LENTGH:1];
-    wire            s_ready[PIPELINE_LENTGH:0];
+    forwarding_beat s      [PIPELINE_LENGTH:0];
+    forwarding_beat s_reg  [PIPELINE_LENGTH:1];
+    wire            s_ready[PIPELINE_LENGTH:0];
 
     assign in_ready       = s_ready[0];
+    assign s[0].stop      = '0;
     assign s[0].matched   = '0;
     assign s[0].leaf_addr = '0;
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
     assign s[0].beat      = in;
 
-    logic         [                      3:0] state           [PIPELINE_LENTGH:1];
+    logic         [                      3:0] state           [PIPELINE_LENGTH:1];
 
     // 内部节点读取信号
-    logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [PIPELINE_LENTGH:1];
-    FTE_node                                  ft_dout         [PIPELINE_LENTGH:1];
-    FTE_node                                  ft_dout_reg     [PIPELINE_LENTGH:1];
+    logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [PIPELINE_LENGTH:1];
+    FTE_node                                  ft_dout         [PIPELINE_LENGTH:1];
+    FTE_node                                  ft_dout_reg     [PIPELINE_LENGTH:1];
     // 叶节点读取信号
     logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
     leaf_node                                 leaf_out;
@@ -57,11 +58,11 @@ module forwarding_table #(
     next_hop_node                             next_hop_out;
 
     // 内部节点存储 BRAM 的端口 A 接入总线
-    wire                                      ft_en_a         [PIPELINE_LENTGH:1];
-    wire                                      ft_we_a         [PIPELINE_LENTGH:1];
-    wire          [   CHILD_ADDR_WIDTH - 1:0] ft_addr_a       [PIPELINE_LENTGH:1];
-    FTE_node                                  ft_din_a        [PIPELINE_LENTGH:1];
-    FTE_node                                  ft_dout_a       [PIPELINE_LENTGH:1];
+    wire                                      ft_en_a         [PIPELINE_LENGTH:1];
+    wire                                      ft_we_a         [PIPELINE_LENGTH:1];
+    wire          [   CHILD_ADDR_WIDTH - 1:0] ft_addr_a       [PIPELINE_LENGTH:1];
+    FTE_node                                  ft_din_a        [PIPELINE_LENGTH:1];
+    FTE_node                                  ft_dout_a       [PIPELINE_LENGTH:1];
     // 叶节点存储 LUTRAM 的端口 A 接入总线
     logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_a;
     leaf_node                                 leaf_in_a;
@@ -108,7 +109,7 @@ module forwarding_table #(
 
     // 例化流水线各级存储
     generate
-        for (genvar i = 1; i <= PIPELINE_LENTGH; ++i) begin : forwarding_data_gen
+        for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : forwarding_data_gen
             forwarding_data_0 FT_data_0 (
                 .clka (cpu_clk),       // input wire clka
                 .ena  (ft_en_a[i]),    // input wire ena
@@ -150,7 +151,7 @@ module forwarding_table #(
 
     // 流水线
     generate
-        for (genvar i = 1; i <= PIPELINE_LENTGH; ++i) begin : pipeline_gen
+        for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : pipeline_gen
             // 连接 ready 信号
             assign s_ready[i-1] = (s_ready[i] && state[i] == 'b0) || !s[i-1].beat.valid;
 
@@ -165,9 +166,14 @@ module forwarding_table #(
             wire                          parser_matched;
             wire [ LEAF_ADDR_WIDTH - 1:0] parser_leaf_addr;
             wire [CHILD_ADDR_WIDTH - 1:0] parser_node_addr;
+            wire [                 127:0] ip_little_endian;
+            reg  [                 127:0] ip_for_match;
+
+            assign ip_little_endian = {<<8{s[i-1].beat.data.ip6.dst}};
+
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
-                .node(ft_dout_reg[i]),
-                .pattern (s_reg[i].beat.data.ip6.dst[STRIDE-1:0]), // FIXME: 取出对应的地址段
+                .node   (ft_dout_reg[i]),
+                .pattern(ip_for_match[STRIDE-1:0]),
 
                 .stop     (parser_stop),
                 .matched  (parser_matched),
@@ -182,18 +188,20 @@ module forwarding_table #(
                     state[i]       <= 'b0;
                     ft_addr[i]     <= 'b0;
                     ft_dout_reg[i] <= '{default: 0};
+                    ip_for_match   <= 'b0;
                 end else begin
                     if (state[i] == 'b0) begin
                         if (s_ready[i]) begin
                             s_reg[i] <= s[i-1];
                             if (`should_search(s[i-1])) begin
-                                state[i]   <= 'b1;
+                                state[i] <= 'b1;
                                 ft_addr[i] <= s[i-1].node_addr;
+                                ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
                             end
                         end
                     end
                     // 读取 BRAM, 解析 bitmap
-                    for (int j = 1; j <= LAYER_HEIGHT; ++j) begin
+                    for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
                         // 寄存 BRAM 中信息, 可能可以让解析的组合逻辑电路时序更优
                         if (state[i] == (2 * j - 1)) begin
                             state[i]       <= state[i] + 1;
@@ -202,7 +210,7 @@ module forwarding_table #(
                         // 解析完成
                         if (state[i] == (2 * j)) begin
                             // 是否需要到下一级流水线
-                            if (j == LAYER_HEIGHT) begin
+                            if (j == STAGE_HEIGHT) begin
                                 state[i] <= 'b0;
                             end else begin
                                 state[i] <= state[i] + 1;
@@ -221,6 +229,8 @@ module forwarding_table #(
                             end else begin
                                 ft_addr[i] <= parser_node_addr;
                             end
+                            // 更新 ip_for_match
+                            ip_for_match <= ip_for_match >> STRIDE;
                         end
                     end
                 end
@@ -239,7 +249,7 @@ module forwarding_table #(
     forwarding_beat after, after_reg;
     after_state_t after_state;
     wire          after_ready;
-    assign s_ready[PIPELINE_LENTGH] = (after_ready && after_state == ST_INIT) || !s[PIPELINE_LENTGH].beat.valid;
+    assign s_ready[PIPELINE_LENGTH] = (after_ready && after_state == ST_INIT) || !s[PIPELINE_LENGTH].beat.valid;
 
     always_comb begin
         after            = after_reg;
@@ -253,15 +263,16 @@ module forwarding_table #(
             after_state   <= ST_INIT;
             leaf_addr     <= 'b0;
             next_hop_addr <= 'b0;
+            next_hop_ip   <= 'b0;
         end else begin
             case (after_state)
                 ST_INIT: begin
                     if (after_ready) begin
-                        after_reg <= s[PIPELINE_LENTGH];
-                        if (`should_handle(s[PIPELINE_LENTGH].beat)) begin
+                        after_reg <= s[PIPELINE_LENGTH];
+                        if (`should_handle(s[PIPELINE_LENGTH].beat)) begin
                             // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
-                            if (s[PIPELINE_LENTGH].matched) begin
-                                leaf_addr   <= s[PIPELINE_LENTGH].leaf_addr;
+                            if (s[PIPELINE_LENGTH].matched) begin
+                                leaf_addr   <= s[PIPELINE_LENGTH].leaf_addr;
                                 after_state <= ST_GET_LEAF;
                             end else begin
                                 error       <= 1'b1;
