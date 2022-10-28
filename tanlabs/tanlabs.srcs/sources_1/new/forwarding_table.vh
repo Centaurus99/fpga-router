@@ -4,7 +4,7 @@
 `include "frame_datapath.vh"
 
 localparam PIPELINE_LENGTH = 8;  // 流水线级数，也是存储层数量
-localparam LAYER_HEIGHT = 4;  // 每级流水线的层数, 即经过的树高
+localparam STAGE_HEIGHT = 4;  // 每级流水线的层数, 即经过的树高
 localparam STRIDE = 4;  // Trie 树每层压位数
 localparam CHILD_MAP_SIZE = 1 << STRIDE;  // 子节点 bitmap 大小
 localparam LEAF_MAP_SIZE = 1 << STRIDE;  // 前缀(叶节点) bitmap 大小

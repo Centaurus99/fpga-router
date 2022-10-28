@@ -196,12 +196,12 @@ module forwarding_table #(
                             if (`should_search(s[i-1])) begin
                                 state[i] <= 'b1;
                                 ft_addr[i] <= s[i-1].node_addr;
-                                ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*LAYER_HEIGHT)}};
+                                ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
                             end
                         end
                     end
                     // 读取 BRAM, 解析 bitmap
-                    for (int j = 1; j <= LAYER_HEIGHT; ++j) begin
+                    for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
                         // 寄存 BRAM 中信息, 可能可以让解析的组合逻辑电路时序更优
                         if (state[i] == (2 * j - 1)) begin
                             state[i]       <= state[i] + 1;
@@ -210,7 +210,7 @@ module forwarding_table #(
                         // 解析完成
                         if (state[i] == (2 * j)) begin
                             // 是否需要到下一级流水线
-                            if (j == LAYER_HEIGHT) begin
+                            if (j == STAGE_HEIGHT) begin
                                 state[i] <= 'b0;
                             end else begin
                                 state[i] <= state[i] + 1;
