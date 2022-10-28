@@ -26,13 +26,8 @@ function logic [2:0] popcount_4bit(input [3:0] num);
 endfunction
 
 function logic [4:0] popcount_16bit(input [15:0] num);
-    automatic logic [4:0] result = 'b0;
-    for (int i = 0; i < 16; i++) begin
-        result = result + num[i];
-    end
-    return result;
-    // return {3'b0, popcount_4bit(num[3:0])} + {3'b0, popcount_4bit(num[7:4])} +
-    //     {3'b0, popcount_4bit(num[11:8])} + {3'b0, popcount_4bit(num[15:12])};
+    return {2'b0, popcount_4bit(num[3:0])} + popcount_4bit(num[7:4]) + popcount_4bit(num[11:8]) +
+        popcount_4bit(num[15:12]);
 endfunction
 
 module forwarding_bitmap_parser (
