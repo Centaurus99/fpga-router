@@ -37,7 +37,18 @@ module forwarding_table #(
     forwarding_beat s_reg  [PIPELINE_LENGTH:1];
     wire            s_ready[PIPELINE_LENGTH:0];
 
-    assign in_ready       = s_ready[0];
+    // assign in_ready       = s_ready[0];
+    // 尝试通过寄存 ready 信号优化时序
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
+            in_ready <= 1'b0;
+        end else begin
+            in_ready <= s_ready[0];
+            if (in_ready && in.valid) begin
+                in_ready <= 1'b0;
+            end
+        end
+    end
     assign s[0].stop      = '0;
     assign s[0].matched   = '0;
     assign s[0].leaf_addr = '0;
@@ -248,7 +259,7 @@ module forwarding_table #(
     reg error;
     forwarding_beat after, after_reg;
     after_state_t after_state;
-    wire          after_ready;
+    reg           after_ready;
     assign s_ready[PIPELINE_LENGTH] = (after_ready && after_state == ST_INIT) || !s[PIPELINE_LENGTH].beat.valid;
 
     always_comb begin
@@ -296,7 +307,18 @@ module forwarding_table #(
         end
     end
 
-    assign out         = after.beat;
-    assign after_ready = out_ready;
+    assign out = after.beat;
+
+    // 尝试通过寄存 ready 信号优化时序
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
+            after_ready <= 1'b0;
+        end else begin
+            after_ready <= out_ready;
+            if (after_ready && out.valid) begin
+                after_ready <= 1'b0;
+            end
+        end
+    end
 
 endmodule
