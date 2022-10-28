@@ -55,7 +55,13 @@ module tanlabs
         .clk_in1(gtref_clk)
     );
 
-    wire reset_not_sync = reset_in || !locked;  // reset components
+    wire reset_not_sync_without_bufg = reset_in || !locked;  // reset components
+    wire reset_not_sync;
+
+    BUFG BUFG_inst (
+        .O(reset_not_sync), // 1-bit output: Clock output
+        .I(reset_not_sync_without_bufg)  // 1-bit input: Clock input
+    );
 
     wire mmcm_locked_out;
     wire rxuserclk_out;
