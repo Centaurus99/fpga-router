@@ -16,7 +16,7 @@
 #define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u64)2 << (i)) - 1))
 
 #define NOW nodes[(dep) / STRIDE / STAGE_HEIGHT][nid]
-#define STAGE(dep) (((dep) / STRIDE) / STAGE_HEIGHT)
+#define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
  
 
 static inline u64 INDEX (u128 addr, int s, int n) {
@@ -35,20 +35,21 @@ inline u128 calc_addr(in6_addr in) {
     return addr;
 }
 
+//小端序
 inline TrieNode u8s_to_u32s(_TrieNode n) {
     return TrieNode {
-        (u32) n.vec[0] << 8 | n.vec[1],
-        (u32) n.leaf_vec[0] << 8 | n.leaf_vec[1],
-        (u32) n.child_base[0] << 16 | n.child_base[1] << 8 | n.child_base[2],
-        (u32) n.leaf_base[0] << 8 | n.leaf_base[1]
+        (u32) n.vec[1] << 8 | n.vec[0],
+        (u32) n.leaf_vec[1] << 8 | n.leaf_vec[0],
+        (u32) n.child_base[2] << 16 | n.child_base[1] << 8 | n.child_base[0],
+        (u32) n.leaf_base[1] << 8 | n.leaf_base[0]
     };
 }
 inline _TrieNode u32s_to_u8s(TrieNode n) {
     return _TrieNode {
-        {(u8)(n.vec >> 8), (u8)n.vec},
-        {(u8)(n.leaf_vec >> 8), (u8)n.leaf_vec},
-        {(u8)(n.child_base >> 16), (u8)(n.child_base >> 8), (u8)n.child_base},
-        {(u8)(n.leaf_base >> 8), (u8)n.leaf_base},
+        {(u8)n.vec, (u8)(n.vec >> 8)},
+        {(u8)n.leaf_vec, (u8)(n.leaf_vec >> 8)},
+        {(u8)n.child_base, (u8)(n.child_base >> 8), (u8)(n.child_base >> 16)},
+        {(u8)n.leaf_base, (u8)(n.leaf_base >> 8)}
     };
 }
 
@@ -71,6 +72,7 @@ leaf_t new_entry(const RoutingTableEntry entry) {
 
 // 在now的idx处增加一个新节点（保证之前不存在），必要时整体移动子节点
 void insert_node(int dep, int nid, TrieNode *now, u32 idx, int child_id) {
+    // printf("NODE %d %d\n",dep, nid);
     if (!now->child_base) { // 如果now是新的点
         now->child_base = child_id;
     } else {
@@ -142,6 +144,7 @@ void remove_leaf(int dep, int nid, TrieNode *now, u32 pfx) {
 }
 
 int insert_entry(int dep, int nid, u128 addr, int len, leaf_t entry_id) {
+    // printf("INSERT %d %d\n", dep,nid);
     if (nid < 0) {
         nid = node_malloc(STAGE(dep), 1);
     }
@@ -246,16 +249,17 @@ in6_addr len_to_mask(int len) {
 void print(u32 nid, int dep) {
     TrieNode now = u8s_to_u32s(NOW);
     if (!dep) printf("PRINTING TREE:\n");
-    for (int i = 0;i<dep;++i) printf("  ");
-    printf("%x: %x %x %x %x\n", nid, now.vec, now.leaf_vec, now.child_base, now.leaf_base);
+    for (int i = 0;i<dep/STRIDE;++i) printf("  ");
+    printf("%x-%x: %x %x %x %x\n", STAGE(dep), nid, now.vec, now.leaf_vec, now.child_base, now.leaf_base);
     for (int i = 0; i < POPCNT(now.vec); ++i)
-        print(now.child_base + i, dep + 1);
+        print(now.child_base + i, dep + STRIDE);
     if (!dep) printf("#################################\n");
 }
 
 inline void _write_u8s(FILE *f, u32 addr, u8 *ptr, int len) {
     for (int i = 0; i < len; ++i) {
-        fprintf(f, "%08X %02X\n", addr+i, *(ptr+i));
+        if (*(ptr + i) != 0)
+            fprintf(f, "%08X %02X\n", addr+i, *(ptr+i));
     }
 }
 
@@ -263,15 +267,19 @@ void export_mem() {
     FILE *f = fopen("mem.txt", "w");
     // nodes
     for (int s = 0; s < STAGE_COUNT; ++s) {
-        _write_u8s(f, NODE_ADDRESS[s], (u8 *)nodes[s], 9 * NODE_COUNT_PER_STAGE);
+        _write_u8s(f, NODE_ADDRESS[s], (u8 *)(nodes[s]), 9 * NODE_COUNT_PER_STAGE);
     }
 
     // leafs
     _write_u8s(f, LEAF_ADDRESS, (u8 *)leafs, 1 * LEAF_COUNT);
 
     // next hops
+    u32 addr = NEXT_HOP_ADDRESS;
     for (int i = 0; i < entry_count; ++i) {
-        _write_u8s(f, NEXT_HOP_ADDRESS)
+        _write_u8s(f, addr, (u8 *)(&entrys[i].nexthop), 16);
+        addr += 16;
+        _write_u8s(f, addr, (u8 *)(&entrys[i].if_index), 1);
+        ++addr;
     }
     
     fclose(f);

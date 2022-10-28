@@ -48,19 +48,19 @@ def compare(out_file_1, out_file_2):
     return 0
 
 entrys = []
-def gen_input(in_file, N):
+def gen_input(in_file, N, query_after_update_complete=0):
     table = []
     with open(in_file, 'w') as f:
-        while N:
+        while N + query_after_update_complete:
             c = random.randint(0, 3)
-            if c == 0 or not table:
+            if N and (c == 0 or not table):
                 eid = random.randint(0, len(entrys) - 1)
                 e = entrys[eid]
                 if e not in table:
                     table.append(eid)
                 N -= 1
                 f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]}\n')
-            elif c == 1:
+            elif N and c == 1:
                 if random.randint(0, 2) < 2 and table:
                     tid = random.randint(0, len(table) - 1)
                     e = entrys[table[tid]]
@@ -68,7 +68,7 @@ def gen_input(in_file, N):
                     eid = random.randint(0, len(entrys) - 1)
                     e = entrys[eid]
                 f.write(f'D {e[0]} {e[1]}\n')
-            else:
+            elif (not N and query_after_update_complete) or not query_after_update_complete:
                 tid = random.randint(0, len(table) - 1)
                 e = entrys[table[tid]]
                 if random.randint(0, 5) <= 4:
@@ -80,6 +80,7 @@ def gen_input(in_file, N):
                 else:
                     ip = random.choice(entrys)[0]
                 f.write(f'Q {ip}\n')
+                query_after_update_complete -= 1
 
                     
 
@@ -119,16 +120,14 @@ if __name__ == '__main__':
 
     entrys = [line.strip().split(' ') for line in open('data/fib_shuffled.txt', 'r').readlines() if line.strip()]
 
-    i = 0
-    while 1:
+    for i in range(10000):
         in_file = "data/test_input.txt"
         out_file = "data/test_output.txt"
         ans_file = "data/test_answer.txt"
-        gen_input(in_file, 100)
+        gen_input(in_file, 150)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 
         if not compare(out_file, ans_file):
             sys.exit(0)
         print(f'{i} correct')
-        i += 1
