@@ -7,13 +7,26 @@
 #include "common.h"
 
 
-const int NODE_COUNT_PER_LAYER = 1024;
-const int NODE_COUNT = 1024 * 8;
+const int NODE_COUNT_PER_STAGE = 1024;
 const int LEAF_COUNT = 1024;
 const int ENTRY_COUNT = 64;
 
-const int LAYER_HEIGHT = 4;
+const int STAGE_HEIGHT = 4;
 const int STRIDE = 4;
+const int STAGE_COUNT = 128 / STRIDE / STAGE_HEIGHT;
+
+const int NODE_ADDRESS[8] = {
+    0x40000000,
+    0x41000000,
+    0x42000000,
+    0x43000000,
+    0x44000000,
+    0x45000000,
+    0x46000000,
+    0x47000000
+};
+const int LEAF_ADDRESS = 0x50000000;
+const int NEXT_HOP_ADDRESS = 0x51000000;
 
 // /* IPv6 address */
 // typedef struct {
@@ -96,5 +109,7 @@ int mask_to_len(const in6_addr mask);
 in6_addr len_to_mask(int len);
 
 void print(u32 id, int dep);
+
+void export_mem();
 
 #endif

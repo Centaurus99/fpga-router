@@ -54,5 +54,6 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+  export_mem();
   return 0;
 }

@@ -86,3 +86,5 @@ in6_addr len_to_mask(int len) {
   }
   return mask;
 }
+
+void export_mem(){}

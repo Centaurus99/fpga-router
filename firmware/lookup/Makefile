@@ -17,7 +17,7 @@ grade: lookup lookup_bf
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-lookup: lookup.o main.o common.o memhelper.o
+lookup: main.o lookup.o common.o memhelper.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 lookup_bf: lookup_bf.o main.o common.o
