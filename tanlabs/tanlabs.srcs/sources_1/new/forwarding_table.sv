@@ -166,7 +166,10 @@ module forwarding_table #(
             wire                          parser_matched;
             wire [ LEAF_ADDR_WIDTH - 1:0] parser_leaf_addr;
             wire [CHILD_ADDR_WIDTH - 1:0] parser_node_addr;
+            wire [                 127:0] ip_little_endian;
             reg  [                 127:0] ip_for_match;
+
+            assign ip_little_endian = {<<8{s[i-1].beat.data.ip6.dst}};
 
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
                 .node   (ft_dout_reg[i]),
@@ -191,9 +194,9 @@ module forwarding_table #(
                         if (s_ready[i]) begin
                             s_reg[i] <= s[i-1];
                             if (`should_search(s[i-1])) begin
-                                state[i]     <= 'b1;
-                                ft_addr[i]   <= s[i-1].node_addr;
-                                ip_for_match <= {>>STRIDE{{<<8{s[i-1].beat.data.ip6.dst}}}};
+                                state[i] <= 'b1;
+                                ft_addr[i] <= s[i-1].node_addr;
+                                ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*LAYER_HEIGHT)}};
                             end
                         end
                     end

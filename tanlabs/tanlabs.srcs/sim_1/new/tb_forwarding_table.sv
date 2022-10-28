@@ -22,8 +22,9 @@ module tb_forwarding_table #(
     frame_beat         forwarded;
     wire               forwarded_ready;
     logic      [127:0] forwarded_next_hop_ip;
+    assign forwarded_ready = 1'b1;
 
-    logic      [127:0] const_ip;
+    logic [127:0] const_ip;
     assign const_ip = {<<8{128'h2a0e_aa06_0497_0a00_0000_0000_1234_5678}};
 
     wire                             cpu_clk;
@@ -37,9 +38,8 @@ module tb_forwarding_table #(
     wire                             wb_we_i;
 
     initial begin
-        #10;
         reset = 1;
-        #10;
+        #20;
         reset = 0;
 
         #1000;

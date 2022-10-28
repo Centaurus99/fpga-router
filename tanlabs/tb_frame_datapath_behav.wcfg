@@ -12,15 +12,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="977000fs"></ZoomStartTime>
-      <ZoomEndTime time="1004601fs"></ZoomEndTime>
+      <ZoomStartTime time="965753fs"></ZoomStartTime>
+      <ZoomEndTime time="1006850fs"></ZoomEndTime>
       <Cursor1Time time="1000000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="248"></NameColumnWidth>
-      <ValueColumnWidth column_width="106"></ValueColumnWidth>
+      <ValueColumnWidth column_width="101"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="19" />
+   <WVObjectSize size="33" />
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -36,53 +36,6 @@
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in" type="array">
       <obj_property name="ElementShortName">in</obj_property>
       <obj_property name="ObjectShortName">in</obj_property>
-      <obj_property name="isExpanded"></obj_property>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.data" type="array">
-         <obj_property name="ElementShortName">.data</obj_property>
-         <obj_property name="ObjectShortName">.data</obj_property>
-         <obj_property name="isExpanded"></obj_property>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.data.ip6" type="array">
-            <obj_property name="ElementShortName">.ip6</obj_property>
-            <obj_property name="ObjectShortName">.ip6</obj_property>
-            <obj_property name="isExpanded"></obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.data.ethertype" type="array">
-            <obj_property name="ElementShortName">.ethertype[15:0]</obj_property>
-            <obj_property name="ObjectShortName">.ethertype[15:0]</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.data.src" type="array">
-            <obj_property name="ElementShortName">.src[47:0]</obj_property>
-            <obj_property name="ObjectShortName">.src[47:0]</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.data.dst" type="array">
-            <obj_property name="ElementShortName">.dst[47:0]</obj_property>
-            <obj_property name="ObjectShortName">.dst[47:0]</obj_property>
-         </wvobject>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.keep" type="array">
-         <obj_property name="ElementShortName">.keep[87:0]</obj_property>
-         <obj_property name="ObjectShortName">.keep[87:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.last" type="logic">
-         <obj_property name="ElementShortName">.last</obj_property>
-         <obj_property name="ObjectShortName">.last</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.user" type="array">
-         <obj_property name="ElementShortName">.user[87:0]</obj_property>
-         <obj_property name="ObjectShortName">.user[87:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.valid" type="logic">
-         <obj_property name="ElementShortName">.valid</obj_property>
-         <obj_property name="ObjectShortName">.valid</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.is_first" type="logic">
-         <obj_property name="ElementShortName">.is_first</obj_property>
-         <obj_property name="ObjectShortName">.is_first</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.meta" type="array">
-         <obj_property name="ElementShortName">.meta</obj_property>
-         <obj_property name="ObjectShortName">.meta</obj_property>
-      </wvobject>
    </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in_ready" type="logic">
       <obj_property name="ElementShortName">in_ready</obj_property>
@@ -117,101 +70,12 @@
       <obj_property name="ElementShortName">[1]</obj_property>
       <obj_property name="ObjectShortName">[1]</obj_property>
       <obj_property name="label">s[1]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].stop" type="logic">
-         <obj_property name="ElementShortName">.stop</obj_property>
-         <obj_property name="ObjectShortName">.stop</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].matched" type="logic">
-         <obj_property name="ElementShortName">.matched</obj_property>
-         <obj_property name="ObjectShortName">.matched</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].leaf_addr" type="array">
-         <obj_property name="ElementShortName">.leaf_addr[15:0]</obj_property>
-         <obj_property name="ObjectShortName">.leaf_addr[15:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].node_addr" type="array">
-         <obj_property name="ElementShortName">.node_addr[23:0]</obj_property>
-         <obj_property name="ObjectShortName">.node_addr[23:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat" type="array">
-         <obj_property name="ElementShortName">.beat</obj_property>
-         <obj_property name="ObjectShortName">.beat</obj_property>
-         <obj_property name="isExpanded"></obj_property>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.data" type="array">
-            <obj_property name="ElementShortName">.data</obj_property>
-            <obj_property name="ObjectShortName">.data</obj_property>
-            <obj_property name="isExpanded"></obj_property>
-            <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.data.ip6" type="array">
-               <obj_property name="ElementShortName">.ip6</obj_property>
-               <obj_property name="ObjectShortName">.ip6</obj_property>
-               <obj_property name="isExpanded"></obj_property>
-            </wvobject>
-            <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.data.ethertype" type="array">
-               <obj_property name="ElementShortName">.ethertype[15:0]</obj_property>
-               <obj_property name="ObjectShortName">.ethertype[15:0]</obj_property>
-            </wvobject>
-            <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.data.src" type="array">
-               <obj_property name="ElementShortName">.src[47:0]</obj_property>
-               <obj_property name="ObjectShortName">.src[47:0]</obj_property>
-            </wvobject>
-            <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.data.dst" type="array">
-               <obj_property name="ElementShortName">.dst[47:0]</obj_property>
-               <obj_property name="ObjectShortName">.dst[47:0]</obj_property>
-            </wvobject>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.keep" type="array">
-            <obj_property name="ElementShortName">.keep[87:0]</obj_property>
-            <obj_property name="ObjectShortName">.keep[87:0]</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.last" type="logic">
-            <obj_property name="ElementShortName">.last</obj_property>
-            <obj_property name="ObjectShortName">.last</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.user" type="array">
-            <obj_property name="ElementShortName">.user[87:0]</obj_property>
-            <obj_property name="ObjectShortName">.user[87:0]</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.valid" type="logic">
-            <obj_property name="ElementShortName">.valid</obj_property>
-            <obj_property name="ObjectShortName">.valid</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.is_first" type="logic">
-            <obj_property name="ElementShortName">.is_first</obj_property>
-            <obj_property name="ObjectShortName">.is_first</obj_property>
-         </wvobject>
-         <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s[1].beat.meta" type="array">
-            <obj_property name="ElementShortName">.meta</obj_property>
-            <obj_property name="ObjectShortName">.meta</obj_property>
-         </wvobject>
-      </wvobject>
    </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1]" type="array">
       <obj_property name="DisplayName">label</obj_property>
       <obj_property name="ElementShortName">[1]</obj_property>
       <obj_property name="ObjectShortName">[1]</obj_property>
       <obj_property name="label">s_reg[1]</obj_property>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1].stop" type="logic">
-         <obj_property name="ElementShortName">.stop</obj_property>
-         <obj_property name="ObjectShortName">.stop</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1].matched" type="logic">
-         <obj_property name="ElementShortName">.matched</obj_property>
-         <obj_property name="ObjectShortName">.matched</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1].leaf_addr" type="array">
-         <obj_property name="ElementShortName">.leaf_addr[15:0]</obj_property>
-         <obj_property name="ObjectShortName">.leaf_addr[15:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1].node_addr" type="array">
-         <obj_property name="ElementShortName">.node_addr[23:0]</obj_property>
-         <obj_property name="ObjectShortName">.node_addr[23:0]</obj_property>
-      </wvobject>
-      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg[1].beat" type="array">
-         <obj_property name="ElementShortName">.beat</obj_property>
-         <obj_property name="ObjectShortName">.beat</obj_property>
-         <obj_property name="isExpanded"></obj_property>
-      </wvobject>
    </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_ready[1]" type="logic">
       <obj_property name="DisplayName">label</obj_property>
@@ -224,6 +88,10 @@
       <obj_property name="ElementShortName">[1][3:0]</obj_property>
       <obj_property name="ObjectShortName">[1][3:0]</obj_property>
       <obj_property name="label">state[1][3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/state" type="array">
+      <obj_property name="ElementShortName">state[8:1][3:0]</obj_property>
+      <obj_property name="ObjectShortName">state[8:1][3:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].parser_stop " type="logic">
       <obj_property name="ElementShortName">\pipeline_gen[1].parser_stop </obj_property>
@@ -241,8 +109,60 @@
       <obj_property name="ElementShortName">\pipeline_gen[1].parser_node_addr [23:0]</obj_property>
       <obj_property name="ObjectShortName">\pipeline_gen[1].parser_node_addr [23:0]</obj_property>
    </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[1].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].ip_little_endian [127:0]</obj_property>
+   </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].ip_for_match " type="array">
       <obj_property name="ElementShortName">\pipeline_gen[1].ip_for_match [127:0]</obj_property>
       <obj_property name="ObjectShortName">\pipeline_gen[1].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].ip_for_match [127:0]</obj_property>
    </wvobject>
 </wave_config>
