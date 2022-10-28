@@ -53,7 +53,7 @@ inline _TrieNode u32s_to_u8s(TrieNode n) {
     };
 }
 
-_TrieNode nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+_TrieNode nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE]; // TODO: 使用__attribute__(at ...) 指定地址
 leaf_t leafs[LEAF_COUNT];
 RoutingTableEntry entrys[ENTRY_COUNT];
 leaf_t entry_count;
@@ -267,7 +267,11 @@ void export_mem() {
     FILE *f = fopen("mem.txt", "w");
     // nodes
     for (int s = 0; s < STAGE_COUNT; ++s) {
-        _write_u8s(f, NODE_ADDRESS[s], (u8 *)(nodes[s]), 9 * NODE_COUNT_PER_STAGE);
+        u32 addr = NODE_ADDRESS[s];
+        for (int i = 0; i < NODE_COUNT_PER_STAGE; ++ i) {
+            _write_u8s(f, addr, (u8 *)(nodes[s]), 9 * NODE_COUNT_PER_STAGE);
+            addr += 16;  // 按照16字节对齐，方便总线计算
+        }
     }
 
     // leafs
@@ -277,9 +281,8 @@ void export_mem() {
     u32 addr = NEXT_HOP_ADDRESS;
     for (int i = 0; i < entry_count; ++i) {
         _write_u8s(f, addr, (u8 *)(&entrys[i].nexthop), 16);
-        addr += 16;
-        _write_u8s(f, addr, (u8 *)(&entrys[i].if_index), 1);
-        ++addr;
+        _write_u8s(f, addr + 16, (u8 *)(&entrys[i].if_index), 1);
+        addr += 32;  // 按照32字节对齐，方便总线计算
     }
     
     fclose(f);
