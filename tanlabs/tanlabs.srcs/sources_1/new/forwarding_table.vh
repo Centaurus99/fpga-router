@@ -31,10 +31,18 @@ typedef struct packed {
 // 叶节点, 存放 next_hop 编号
 typedef struct packed {logic [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;} leaf_node;
 
+typedef enum logic [3:0] {
+    ROUTE_DIRECT  = 4'b0000,
+    ROUTE_STATIC  = 4'b0001,
+    ROUTE_DYNAMIC = 4'b0010
+} route_type_t;
+
 // next_hop 节点
 typedef struct packed {
+    // 路由类型, 直连:0, 静态:1, 动态:2
+    route_type_t  route_type;
+    logic [3:0]   port;
     logic [127:0] ip;
-    logic [7:0]   port;
 } next_hop_node;
 
 `define should_search(b) (`should_handle(b.beat) && !b.stop)

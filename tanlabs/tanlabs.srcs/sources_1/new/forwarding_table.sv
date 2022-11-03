@@ -298,7 +298,13 @@ module forwarding_table #(
                 end
                 // 查完 next_hop 表, 更新下一跳地址和出口
                 ST_GET_NEXT_HOP: begin
-                    next_hop_ip              <= next_hop_out.ip;
+                    // 直连路由
+                    if (next_hop_out.route_type == ROUTE_DIRECT) begin
+                        next_hop_ip <= after_reg.beat.data.ip6.dst;
+                        // 静态路由或动态路由
+                    end else begin
+                        next_hop_ip <= next_hop_out.ip;
+                    end
                     after_reg.beat.meta.dest <= next_hop_out.port;
                     after_state              <= ST_INIT;
                 end
