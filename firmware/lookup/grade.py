@@ -118,7 +118,7 @@ if __name__ == '__main__':
     # if (grade < total):
     #     sys.exit(0)
 
-    entrys = [line.strip().split(' ') for line in open('data/fib_shuffled.txt', 'r').readlines() if line.strip()]
+    entrys = [line.strip().split(' ') for line in open('fib_shuffled.txt', 'r').readlines() if line.strip()]
 
     for i in range(100000):
         in_file = "data/test_input.txt"

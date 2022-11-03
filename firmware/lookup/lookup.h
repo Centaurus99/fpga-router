@@ -57,18 +57,19 @@ typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint8_t u8;
 typedef __uint128_t u128;
-typedef uint8_t leaf_t;  // fixme: change to u8
+typedef uint32_t leaf_t;  // fixme: change to u8
 
-// 真正的存储用的结构体
-typedef struct {
-    u8 vec[2];
-    u8 leaf_vec[2];
-    u8 child_base[3];
-    u8 leaf_base[2];
-    u8 padding[7];  //对齐到16位，实际不会访问到这个 TODO: use __align
-} _TrieNode;
+// // 真正的存储用的结构体
+// typedef struct {
+//     u8 vec[2];
+//     u8 leaf_vec[2];
+//     u8 child_base[3];
+//     u8 leaf_base[2];
+//     u8 padding[7];  //对齐到16位，实际不会访问到这个 TODO: use __align
+// } _TrieNode;
 
 // 为了处理时方便会先转成这个结构体 有改动的话再转回去
+// 现在结构体内也会对齐 所以可以都用uint32
 typedef struct {
     u32 vec;
     u32 leaf_vec;
