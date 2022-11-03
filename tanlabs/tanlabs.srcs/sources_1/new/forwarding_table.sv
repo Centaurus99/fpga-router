@@ -53,12 +53,12 @@ module forwarding_table #(
     assign s[0].leaf_addr = '0;
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
 
-    logic         [                      3:0] state           [PIPELINE_LENGTH:1];
+    logic         [                      3:0] state           [  PIPELINE_LENGTH:1];
 
     // 内部节点读取信号
-    logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [PIPELINE_LENGTH:1];
-    FTE_node                                  ft_dout         [PIPELINE_LENGTH:1];
-    FTE_node                                  ft_dout_reg     [PIPELINE_LENGTH:1];
+    logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [  PIPELINE_LENGTH:1];
+    FTE_node                                  ft_dout         [  PIPELINE_LENGTH:1];
+    FTE_node                                  ft_dout_reg     [  PIPELINE_LENGTH:1];
     // 叶节点读取信号
     logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
     leaf_node                                 leaf_out;
@@ -67,11 +67,12 @@ module forwarding_table #(
     next_hop_node                             next_hop_out;
 
     // 内部节点存储 BRAM 的端口 A 接入总线
-    wire                                      ft_en_a         [PIPELINE_LENGTH:1];
-    wire                                      ft_we_a         [PIPELINE_LENGTH:1];
-    wire          [   CHILD_ADDR_WIDTH - 1:0] ft_addr_a       [PIPELINE_LENGTH:1];
-    FTE_node                                  ft_din_a        [PIPELINE_LENGTH:1];
-    FTE_node                                  ft_dout_a       [PIPELINE_LENGTH:1];
+    // 为了方便 Wishbone 总线地址转换, 将编号改为从 0 开始
+    wire                                      ft_en_a         [PIPELINE_LENGTH-1:0];
+    wire                                      ft_we_a         [PIPELINE_LENGTH-1:0];
+    wire          [   CHILD_ADDR_WIDTH - 1:0] ft_addr_a       [PIPELINE_LENGTH-1:0];
+    FTE_node                                  ft_din_a        [PIPELINE_LENGTH-1:0];
+    FTE_node                                  ft_dout_a       [PIPELINE_LENGTH-1:0];
     // 叶节点存储 LUTRAM 的端口 A 接入总线
     logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_a;
     leaf_node                                 leaf_in_a;
@@ -120,18 +121,18 @@ module forwarding_table #(
     generate
         for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : forwarding_data_gen
             forwarding_data_0 FT_data_0 (
-                .clka (cpu_clk),       // input wire clka
-                .ena  (ft_en_a[i]),    // input wire ena
-                .wea  (ft_we_a[i]),    // input wire [0 : 0] wea
-                .addra(ft_addr_a[i]),  // input wire [9 : 0] addra
-                .dina (ft_din_a[i]),   // input wire [71 : 0] dina
-                .douta(ft_dout_a[i]),  // output wire [71 : 0] douta
-                .clkb (clk),           // input wire clkb
-                .enb  (1'b1),          // input wire enb
-                .web  (1'b0),          // input wire [0 : 0] web
-                .addrb(ft_addr[i]),    // input wire [9 : 0] addrb
-                .dinb ('b0),           // input wire [71 : 0] dinb
-                .doutb(ft_dout[i])     // output wire [71 : 0] doutb
+                .clka (cpu_clk),         // input wire clka
+                .ena  (ft_en_a[i-1]),    // input wire ena
+                .wea  (ft_we_a[i-1]),    // input wire [0 : 0] wea
+                .addra(ft_addr_a[i-1]),  // input wire [9 : 0] addra
+                .dina (ft_din_a[i-1]),   // input wire [71 : 0] dina
+                .douta(ft_dout_a[i-1]),  // output wire [71 : 0] douta
+                .clkb (clk),             // input wire clkb
+                .enb  (1'b1),            // input wire enb
+                .web  (1'b0),            // input wire [0 : 0] web
+                .addrb(ft_addr[i]),      // input wire [9 : 0] addrb
+                .dinb ('b0),             // input wire [71 : 0] dinb
+                .doutb(ft_dout[i])       // output wire [71 : 0] doutb
             );
         end
     endgenerate
