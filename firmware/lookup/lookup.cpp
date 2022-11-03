@@ -55,19 +55,27 @@ inline u128 calc_addr(in6_addr in) {
 
 TrieNode nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE]; // TODO: 使用__attribute__(at ...) 指定地址
 leaf_t leafs[LEAF_COUNT];
-RoutingTableEntry entrys[ENTRY_COUNT];
+NextHopEntry next_hops[ENTRY_COUNT];
 leaf_t entry_count;
 int node_root;
 
 leaf_t new_entry(const RoutingTableEntry entry) {
     for (leaf_t i = 0; i < entry_count; ++ i) {
-        if (entrys[i].if_index == entry.if_index &&
-            calc_addr(entrys[i].nexthop) == calc_addr(entry.nexthop)) {
+        if (next_hops[i].port == entry.if_index &&
+            next_hops[i].ip[0] == entry.nexthop.s6_addr32[0] && 
+            next_hops[i].ip[1] == entry.nexthop.s6_addr32[1] && 
+            next_hops[i].ip[2] == entry.nexthop.s6_addr32[2] && 
+            next_hops[i].ip[3] == entry.nexthop.s6_addr32[3] &&
+            next_hops[i].route_type != 2333) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
     }
-    entrys[entry_count++] = entry;
-    return entry_count - 1;
+    next_hops[entry_count].port = entry.if_index;
+    next_hops[entry_count].ip[0] = entry.nexthop.s6_addr32[0];
+    next_hops[entry_count].ip[1] = entry.nexthop.s6_addr32[1];
+    next_hops[entry_count].ip[2] = entry.nexthop.s6_addr32[2];
+    next_hops[entry_count].ip[3] = entry.nexthop.s6_addr32[3];
+    return entry_count++;
 }
 
 // 在now的idx处增加一个新节点（保证之前不存在），必要时整体移动子节点
@@ -219,7 +227,11 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index) {
         }
     }
     if (leaf == -1)  return 0;
-    *nexthop = entrys[leaf].nexthop, *if_index = entrys[leaf].if_index;
+    nexthop->s6_addr32[0] = next_hops[leaf].ip[0];
+    nexthop->s6_addr32[1] = next_hops[leaf].ip[1];
+    nexthop->s6_addr32[2] = next_hops[leaf].ip[2];
+    nexthop->s6_addr32[3] = next_hops[leaf].ip[3];
+    *if_index = next_hops[leaf].port;
     return 1;
 
 }
@@ -272,7 +284,7 @@ inline void _write_u32s(FILE *f, u32 addr, u32 *ptr, int len) {
 }
 
 void export_mem() {
-    print(node_root, 0);
+    // print(node_root, 0);
     FILE *f = fopen("mem.txt", "w");
     // nodes
     u32 addr;
@@ -298,8 +310,9 @@ void export_mem() {
     // next hops
     addr = NEXT_HOP_ADDRESS;
     for (int i = 0; i < entry_count; ++i) {
-        _write_u32s(f, addr, (u32 *)(&entrys[i].nexthop), 4);
-        _write_u32s(f, addr + 16, (u32 *)(&entrys[i].if_index), 1);
+        _write_u32s(f, addr, (u32 *)(next_hops[i].ip), 4);
+        _write_u32s(f, addr + 16, (u32 *)(&next_hops[i].port), 1);
+        _write_u32s(f, addr + 16, (u32 *)(&next_hops[i].route_type), 1);
         addr += 32;  // 按照32字节对齐，方便总线计算
     }
     
