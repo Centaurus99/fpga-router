@@ -1,0 +1,4 @@
+{
+    "systemverilogFormatter.commandLineArguments": "--indentation_spaces=4 --named_port_alignment=align  --ort_declarations_alignment=align --module_net_variable_alignment=align",
+    "systemverilogFormatter.veribleBuild": "win64"
+}

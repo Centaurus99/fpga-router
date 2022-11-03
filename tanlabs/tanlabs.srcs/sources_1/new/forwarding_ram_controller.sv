@@ -55,6 +55,7 @@ module forwarding_ram_controller #(
     reg ft_we_reg;
     reg leaf_we_reg;
     reg next_hop_we_reg;
+    
     always_comb begin
         if (wb_adr_i[WISHBONE_ADDR_WIDTH-1:WISHBONE_ADDR_WIDTH-4] == 4'h4) begin
             ft_addr[wb_adr_i[WISHBONE_ADDR_WIDTH-5:WISHBONE_ADDR_WIDTH-8] + 1][CHILD_ADDR_WIDTH - 1:0] = {4'b0, wb_adr_i[WISHBONE_ADDR_WIDTH-9:4]};
@@ -88,12 +89,19 @@ module forwarding_ram_controller #(
                     2'b01:
                         ft_din.leaf_map[LEAF_MAP_SIZE-1:0] = wb_dat_i[LEAF_MAP_SIZE-1:0];
                     2'b10:
-                        wb_dat_o[WISHBONE_DATA_WIDTH-1:0] <= {ft_dout.child_base_addr[CHILD_ADDR_WIDTH - 1:0], 8'b0};
+                        ft_din.child_base_addr[CHILD_ADDR_WIDTH - 1:0] = wb_dat_i[CHILD_ADDR_WIDTH - 1:0];
                     2'b11:
-                        wb_dat_o[WISHBONE_DATA_WIDTH-1:0] <= {ft_dout.leaf_base_addr[LEAF_ADDR_WIDTH - 1:0], 16'b0};
+                        ft_din.leaf_base_addr[CHILD_ADDR_WIDTH - 1:0] = wb_dat_i[LEAF_ADDR_WIDTH - 1:0];
                 endcase 
             LEAF:
+                leaf_in[NEXT_HOP_ADDR_WIDTH - 1:0] = wb_dat_i[NEXT_HOP_ADDR_WIDTH - 1:0];
             NEXTHOP:
+                if(inner_place[4] == 1'b1) begin
+                    // 这里应该是port，理论上后面应该全是零，
+                    next_hop_in.port[7:0] = wb_dat_o[7:0]
+                end else begin
+                    next_hop_out.ip[8*(inner_place[3:0])+:32] = wb_dat_i[WISHBONE_DATA_WIDTH-1:0];
+                end
         endcase
     end
 
