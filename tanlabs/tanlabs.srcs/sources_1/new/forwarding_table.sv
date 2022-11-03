@@ -37,23 +37,21 @@ module forwarding_table #(
     forwarding_beat s_reg  [PIPELINE_LENGTH:1];
     wire            s_ready[PIPELINE_LENGTH:0];
 
-    // assign in_ready       = s_ready[0];
-    // 尝试通过寄存 ready 信号优化时序
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
-            in_ready <= 1'b0;
-        end else begin
-            in_ready <= s_ready[0];
-            if (in_ready && in.valid) begin
-                in_ready <= 1'b0;
-            end
-        end
-    end
+    // Skid buffer
+    basic_skid_buffer u_basic_skid_buffer_1 (
+        .clk     (clk),
+        .reset   (reset),
+        .in_data (in),
+        .in_ready(in_ready),
+
+        .out_data (s[0].beat),
+        .out_ready(s_ready[0])
+    );
+
     assign s[0].stop      = '0;
     assign s[0].matched   = '0;
     assign s[0].leaf_addr = '0;
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
-    assign s[0].beat      = in;
 
     logic         [                      3:0] state           [PIPELINE_LENGTH:1];
 
@@ -307,18 +305,15 @@ module forwarding_table #(
         end
     end
 
-    assign out = after.beat;
+    // Skid buffer
+    basic_skid_buffer u_basic_skid_buffer_2 (
+        .clk     (clk),
+        .reset   (reset),
+        .in_data (after.beat),
+        .in_ready(after_ready),
 
-    // 尝试通过寄存 ready 信号优化时序
-    always_ff @(posedge clk or posedge reset) begin
-        if (reset) begin
-            after_ready <= 1'b0;
-        end else begin
-            after_ready <= out_ready;
-            if (after_ready && out.valid) begin
-                after_ready <= 1'b0;
-            end
-        end
-    end
+        .out_data (out),
+        .out_ready(out_ready)
+    );
 
 endmodule
