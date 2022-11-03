@@ -131,7 +131,7 @@ module forwarding_table #(
                 .enb  (1'b1),            // input wire enb
                 .web  (1'b0),            // input wire [0 : 0] web
                 .addrb(ft_addr[i]),      // input wire [9 : 0] addrb
-                .dinb ('b0),             // input wire [71 : 0] dinb
+                .dinb ('0),              // input wire [71 : 0] dinb
                 .doutb(ft_dout[i])       // output wire [71 : 0] doutb
             );
         end
@@ -163,12 +163,12 @@ module forwarding_table #(
     generate
         for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : pipeline_gen
             // 连接 ready 信号
-            assign s_ready[i-1] = (s_ready[i] && state[i] == 'b0) || !s[i-1].beat.valid;
+            assign s_ready[i-1] = (s_ready[i] && state[i] == 0) || !s[i-1].beat.valid;
 
             // 连接状态机寄存器
             always_comb begin
                 s[i]            = s_reg[i];
-                s[i].beat.valid = s_reg[i].beat.valid && state[i] == 'b0;
+                s[i].beat.valid = s_reg[i].beat.valid && state[i] == 0;
             end
 
             // bitmap 解析与匹配
@@ -195,16 +195,16 @@ module forwarding_table #(
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
                     s_reg[i]       <= '{default: 0};
-                    state[i]       <= 'b0;
-                    ft_addr[i]     <= 'b0;
+                    state[i]       <= '0;
+                    ft_addr[i]     <= '0;
                     ft_dout_reg[i] <= '{default: 0};
-                    ip_for_match   <= 'b0;
+                    ip_for_match   <= '0;
                 end else begin
-                    if (state[i] == 'b0) begin
+                    if (state[i] == 0) begin
                         if (s_ready[i]) begin
                             s_reg[i] <= s[i-1];
                             if (`should_search(s[i-1])) begin
-                                state[i] <= 'b1;
+                                state[i] <= 1'b1;
                                 ft_addr[i] <= s[i-1].node_addr;
                                 ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
                             end
@@ -221,7 +221,7 @@ module forwarding_table #(
                         if (state[i] == (2 * j)) begin
                             // 是否需要到下一级流水线
                             if (j == STAGE_HEIGHT) begin
-                                state[i] <= 'b0;
+                                state[i] <= '0;
                             end else begin
                                 state[i] <= state[i] + 1;
                             end
@@ -234,7 +234,7 @@ module forwarding_table #(
                             s_reg[i].stop <= parser_stop; // 表示是否结束查询（对应子节点为空或为叶节点）
                             // 若已结束查询, 则结束状态机, 进入下一级流水线
                             if (parser_stop) begin
-                                state[i] <= 'b0;
+                                state[i] <= '0;
                                 // 否则继续查询 BRAM
                             end else begin
                                 ft_addr[i] <= parser_node_addr;
@@ -268,12 +268,12 @@ module forwarding_table #(
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            error         <= 'b0;
+            error         <= '0;
             after_reg     <= '{default: 0};
             after_state   <= ST_INIT;
-            leaf_addr     <= 'b0;
-            next_hop_addr <= 'b0;
-            next_hop_ip   <= 'b0;
+            leaf_addr     <= '0;
+            next_hop_addr <= '0;
+            next_hop_ip   <= '0;
         end else begin
             case (after_state)
                 ST_INIT: begin

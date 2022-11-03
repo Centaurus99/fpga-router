@@ -84,7 +84,7 @@ module forwarding_bitmap_parser (
             end
             default: begin
                 matched   = 1'b0;
-                leaf_addr = 'b0;
+                leaf_addr = '0;
             end
         endcase
 
@@ -101,7 +101,7 @@ module forwarding_bitmap_parser (
             end
         end else begin
             stop      = 1'b1;
-            node_addr = 'b0;
+            node_addr = '0;
         end
     end
 

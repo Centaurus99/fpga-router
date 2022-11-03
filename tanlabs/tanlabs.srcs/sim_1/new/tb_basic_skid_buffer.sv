@@ -16,7 +16,7 @@ module tb_basic_skid_buffer ();
 
     initial begin
         reset     = 1'b1;
-        in_data   = 'b0;
+        in_data   = '0;
         out_ready = 1'b1;
         #13;
 
