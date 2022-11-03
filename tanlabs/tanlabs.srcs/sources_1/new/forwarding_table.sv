@@ -305,15 +305,7 @@ module forwarding_table #(
         end
     end
 
-    // Skid buffer
-    basic_skid_buffer u_basic_skid_buffer_2 (
-        .clk     (clk),
-        .reset   (reset),
-        .in_data (after.beat),
-        .in_ready(after_ready),
-
-        .out_data (out),
-        .out_ready(out_ready)
-    );
+    assign out         = after.beat;
+    assign after_ready = out_ready;
 
 endmodule

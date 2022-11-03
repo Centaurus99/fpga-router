@@ -268,14 +268,28 @@ module frame_datapath #(
         end
     end
 
-    wire       ndp_ready;
+    frame_beat s4;
+    wire       s4_ready;
+
+    // Skid buffer
+    basic_skid_buffer u_basic_skid_buffer_2 (
+        .clk     (eth_clk),
+        .reset   (reset),
+        .in_data (s3),
+        .in_ready(s3_ready),
+
+        .out_data (s4),
+        .out_ready(s4_ready)
+    );
+
     frame_beat ndp;
+    wire       ndp_ready;
     frame_beat_width_converter #(DATAW_WIDTH_V6, DATA_WIDTH) frame_beat_downsizer (
         .clk(eth_clk),
         .rst(reset),
 
-        .in       (s3),
-        .in_ready (s3_ready),
+        .in       (s4),
+        .in_ready (s4_ready),
         .out      (ndp),
         .out_ready(ndp_ready)
     );
