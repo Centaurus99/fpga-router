@@ -44,10 +44,10 @@ module forwarding_bitmap_parser (
     wire [CHILD_MAP_SIZE - 1:0] child_map_shifted;
     wire [        STRIDE - 1:0] not_pattern;
     assign not_pattern         = ~pattern;
-    assign leaf_map_shifted[3] = node.leaf_map << (4'b0001 + not_pattern[3:1]);
-    assign leaf_map_shifted[2] = node.leaf_map << (4'b1001 + not_pattern[3:2]);
-    assign leaf_map_shifted[1] = node.leaf_map << (4'b1101 + not_pattern[3:3]);
-    assign leaf_map_shifted[0] = node.leaf_map << 4'b1111;
+    assign leaf_map_shifted[3] = node.leaf_map << {1'b0, not_pattern[3:1]};
+    assign leaf_map_shifted[2] = node.leaf_map << {2'b10, not_pattern[3:2]};
+    assign leaf_map_shifted[1] = node.leaf_map << {3'b110, not_pattern[3:3]};
+    assign leaf_map_shifted[0] = node.leaf_map << 4'b1110;
     assign child_map_shifted   = node.child_map << not_pattern;
 
     // 匹配叶节点
