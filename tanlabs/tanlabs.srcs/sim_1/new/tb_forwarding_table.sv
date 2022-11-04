@@ -21,11 +21,13 @@ module tb_forwarding_table #(
     frame_beat         in;
     wire               in_ready;
 
+    // 模块输出
     frame_beat         forwarded;
     wire               forwarded_ready;
     logic      [127:0] forwarded_next_hop_ip;
     assign forwarded_ready = 1'b1;
 
+    // IP for SIMPLE-TEST
     logic [127:0] const_ip[TEST_ROUNDS-1:0];
     assign const_ip[0] = {<<8{128'h2a0e_aa06_0497_0a00_41b7_0000_1234_5678}};
     assign const_ip[1] = {<<8{128'h2a0e_aa06_0497_0a01_41b7_0000_1234_5678}};
@@ -42,6 +44,7 @@ module tb_forwarding_table #(
     reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i;
     reg                              wb_we_i;
 
+    // 读取文件
     int fd, fd_in, fd_ans;
     int ret, ret_in, ret_ans;
     initial begin
@@ -115,6 +118,7 @@ module tb_forwarding_table #(
                 end else begin
                     if (state_write == ST_DONE) begin
                         case (state_send)
+                            // 发送 const_ip 为 dst 的包
                             ST_SEND: begin
                                 in.valid        <= 1;
                                 in.is_first     <= 1;
@@ -122,6 +126,7 @@ module tb_forwarding_table #(
                                 send_count      <= send_count + 1;
                                 state_send      <= ST_SEND_WAIT;
                             end
+                            // 等待收包, 共计发包 TETS_ROUNDS 次
                             ST_SEND_WAIT: begin
                                 if (in_ready) begin
                                     in <= '{default: 0};
@@ -158,11 +163,13 @@ module tb_forwarding_table #(
                     if (state_write == ST_DONE) begin
                         case (state_send)
                             ST_SEND: begin
+                                // 读取开头为 Q 的行, 作为查询地址
                                 ret_in = $fscanf(fd_in, "%s", opcode);
                                 if (ret_in != 1) begin
                                     state_send <= ST_DONE;
                                 end else if (opcode != "Q") begin
                                     $fgets(opcode, fd_in);
+                                    state_send <= ST_SEND;
                                 end else begin
                                     ret_in = $fscanf(
                                         fd_in,
@@ -184,6 +191,7 @@ module tb_forwarding_table #(
                                 end
                             end
                             ST_SEND_WAIT: begin
+                                // 在收到查完的包之后, 读取 answer 中的答案进行比对
                                 if (forwarded.valid) begin
                                     $display("Output: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
                                              forwarded_next_hop_ip, forwarded.meta.dest);
@@ -204,11 +212,9 @@ module tb_forwarding_table #(
                                         if (ip_ans != forwarded_next_hop_ip) begin
                                             $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_ans,
                                                      forwarded_next_hop_ip);
-                                            state_send <= ST_DONE;
                                         end else if (port_ans != forwarded.meta.dest) begin
                                             $display("ERROR! port_ans:%x, port:%x", port_ans,
                                                      forwarded.meta.dest);
-                                            state_send <= ST_DONE;
                                         end else begin
                                             $display("PASS!");
                                         end
