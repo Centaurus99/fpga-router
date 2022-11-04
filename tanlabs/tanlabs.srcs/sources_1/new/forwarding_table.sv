@@ -58,7 +58,6 @@ module forwarding_table #(
     // 内部节点读取信号
     logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [  PIPELINE_LENGTH:1];
     FTE_node                                  ft_dout         [  PIPELINE_LENGTH:1];
-    FTE_node                                  ft_dout_reg     [  PIPELINE_LENGTH:1];
     // 叶节点读取信号
     logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
     leaf_node                                 leaf_out;
@@ -182,7 +181,7 @@ module forwarding_table #(
             assign ip_little_endian = {<<8{s[i-1].beat.data.ip6.dst}};
 
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
-                .node   (ft_dout_reg[i]),
+                .node   (ft_dout[i]),
                 .pattern(ip_for_match[STRIDE-1:0]),
 
                 .stop     (parser_stop),
@@ -194,11 +193,10 @@ module forwarding_table #(
             // 状态机
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
-                    s_reg[i]       <= '{default: 0};
-                    state[i]       <= '0;
-                    ft_addr[i]     <= '0;
-                    ft_dout_reg[i] <= '{default: 0};
-                    ip_for_match   <= '0;
+                    s_reg[i]     <= '{default: 0};
+                    state[i]     <= '0;
+                    ft_addr[i]   <= '0;
+                    ip_for_match <= '0;
                 end else begin
                     if (state[i] == 0) begin
                         if (s_ready[i]) begin
@@ -212,12 +210,11 @@ module forwarding_table #(
                     end
                     // 读取 BRAM, 解析 bitmap
                     for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
-                        // 寄存 BRAM 中信息, 可能可以让解析的组合逻辑电路时序更优
+                        // 等待读取 BRAM
                         if (state[i] == (2 * j - 1)) begin
-                            state[i]       <= state[i] + 1;
-                            ft_dout_reg[i] <= ft_dout[i];
+                            state[i] <= state[i] + 1;
                         end
-                        // 解析完成
+                        // BRAM 读取完成
                         if (state[i] == (2 * j)) begin
                             // 是否需要到下一级流水线
                             if (j == STAGE_HEIGHT) begin

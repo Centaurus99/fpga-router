@@ -43,6 +43,16 @@ module tb_forwarding_bitmap_parser #(
         $display("Expect: leaf_addr = %8h; node_addr = %8h;", node.leaf_base_addr + 14,
                  node.child_base_addr + 15);
 
+        node.leaf_base_addr  = 16'h0001;
+        node.child_base_addr = 24'h000000;
+        node.leaf_map        = 16'h0002;
+        node.child_map       = 16'h0000;
+        pattern              = 4'h4;
+
+        #10;
+        $display("Output: leaf_addr = %8h; node_addr = %8h;", parser_leaf_addr, parser_node_addr);
+        $display("Expect: leaf_addr = %8h; node_addr = %8h;", node.leaf_base_addr + 14,
+                 node.child_base_addr + 15);
 
         $finish;
     end
