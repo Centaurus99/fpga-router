@@ -60,7 +60,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                 if e not in table:
                     N -= 1
                     table.append(eid)
-                f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]} 1\n')
+                f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]} 2\n')
             elif N and c == 1:
                 if random.randint(0, 2) < 2 and table:
                     tid = random.randint(0, len(table) - 1)
@@ -68,7 +68,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                 else:
                     eid = random.randint(0, len(entrys) - 1)
                     e = entrys[eid]
-                f.write(f'D {e[0]} {e[1]} 1\n')
+                f.write(f'D {e[0]} {e[1]} 2\n')
             elif (N == 0 and query_after_update_complete > 0) or (query_after_update_complete <= 0):
                 tid = random.randint(0, len(table) - 1)
                 e = entrys[table[tid]]
