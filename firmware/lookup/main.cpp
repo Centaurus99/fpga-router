@@ -48,9 +48,11 @@ int main(int argc, char *argv[]) {
       if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
         assert(inet_ntop(AF_INET6, &nexthop, nexthop_buffer,
                          sizeof(nexthop_buffer)));
-        printf("%s %d %d\n", nexthop_buffer, if_index, route_type);
+        printf("%s %08x %08x %08x %08x %d %d\n", nexthop_buffer, 
+        nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], 
+        if_index, route_type);
       } else {
-        printf("Not Found\n");
+        printf("NFound\n");
       }
     }
   }
