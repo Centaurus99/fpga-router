@@ -22,7 +22,7 @@ void update(bool insert, const RoutingTableEntry entry) {
   }
 }
 
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index) {
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
   RoutingTableEntry target;
   int max_len = -1;
   for (auto entry : routing_table) {
@@ -38,6 +38,7 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index) {
   if (max_len >= 0) {
     *nexthop = target.nexthop;
     *if_index = target.if_index;
+    *route_type = target.route_type;
     return true;
   }
   return false;

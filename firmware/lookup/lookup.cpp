@@ -17,7 +17,6 @@
 
 #define NOW nodes[(dep) / STRIDE / STAGE_HEIGHT][nid]
 #define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
- 
 
 static inline u64 INDEX (u128 addr, int s, int n) {
     if ( 0 == ((s) + (n)) ) {
@@ -67,7 +66,7 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
             next_hops[i].ip[1] == entry.nexthop.s6_addr32[1] && 
             next_hops[i].ip[2] == entry.nexthop.s6_addr32[2] && 
             next_hops[i].ip[3] == entry.nexthop.s6_addr32[3] &&
-            next_hops[i].route_type != 2333) { // TODO: 在输入中增加对route_type的支持
+            next_hops[i].route_type == entry.route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
     }
@@ -76,6 +75,7 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
     next_hops[entry_count].ip[1] = entry.nexthop.s6_addr32[1];
     next_hops[entry_count].ip[2] = entry.nexthop.s6_addr32[2];
     next_hops[entry_count].ip[3] = entry.nexthop.s6_addr32[3];
+    next_hops[entry_count].route_type = entry.route_type;
     return entry_count++;
 }
 
@@ -83,7 +83,36 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
 void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     // printf("NODE %d %d\n",dep, nid);
     int child_stage = STAGE(dep + STRIDE);
-    if (!now->child_base) { // 如果now还没有子节点
+
+    // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
+    // if (!child->child_base && child->leaf_vec == 1) {
+    //     if (!now->child_base) {
+    //         now->child_base = child->leaf_base;
+    //         VEC_SET(now->child_base, 24);
+    //         VEC_SET(now->vec, idx);
+    //         return;
+    //     } else if (VEC_BT(now->child_base, 24)) {
+    //         int cnt = POPCNT(now->vec);
+    //         int new_base = leaf_malloc(cnt + 1);
+    //         for (u32 i = 0, op = now->child_base & 0x7fffff, np = new_base; i < (1<<STRIDE); ++i) {
+    //             if (i == idx) {
+    //                 leafs[np] = leafs[child->leaf_base];
+    //                 leaf_free(child->leaf_base, 1);
+    //                 ++np;
+    //             } else if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
+    //                 leafs[np] = leafs[op];
+    //                 ++np, ++op;
+    //             }
+    //         }
+    //         now->child_base = new_base;
+    //         VEC_SET(now->child_base, 24);
+    //         VEC_SET(now->vec, idx);
+    //         return;
+    //     }
+    // }
+    if (VEC_BT(now->child_base, 24)) { // TODO: 需要把之前做的leaf-in-node优化都下放
+        
+    } else if (!now->child_base) { // 如果now还没有子节点
         now->child_base = node_malloc(child_stage, 1);
         nodes[child_stage][now->child_base] = *child;
     } else {
@@ -93,7 +122,6 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
         for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == idx) {
                 nodes[child_stage][np] = *child;
-                // node_free(child_stage, child_id, 1); // TODO: 改成用栈存之后这里就不用再free了
                 ++np;
             } else if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
                 nodes[child_stage][np] = nodes[child_stage][op];
@@ -157,10 +185,6 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
 
 void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
     // printf("INSERT %d %d\n", dep,nid);
-    // if (nid < 0) {
-    //     nid = node_malloc(STAGE(dep), 1);  // TODO: 改成用栈存新开的点
-    // }
-    // TrieNode *now = &NOW;
     if (dep + STRIDE > len) {
         int l = len - dep;
         u32 pfx = INDEX(addr, dep, l) | (1 << l);
@@ -171,6 +195,10 @@ void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
         }
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
+        // TODO: 如果now做了leaf-in-node优化，判断是否要把孩子下放
+        if (VEC_BT(now->child_base, 24) && len != dep + STRIDE) {
+            int cnt = popcnt(now->vec);
+        }
         if (VEC_BT(now->vec, idx)) {
             TrieNode *child = &nodes[STAGE(dep + STRIDE)][now->child_base + POPCNT_LS(now->vec, idx) - 1];
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
@@ -209,7 +237,7 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index) {
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
     int leaf = -1;
     TrieNode *now = &nodes[0][node_root];
     // print(node_root, 0);
@@ -237,6 +265,7 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index) {
     nexthop->s6_addr32[2] = next_hops[leaf].ip[2];
     nexthop->s6_addr32[3] = next_hops[leaf].ip[3];
     *if_index = next_hops[leaf].port;
+    *route_type = next_hops[leaf].route_type;
     return 1;
 
 }
@@ -317,7 +346,7 @@ void export_mem() {
     for (int i = 0; i < entry_count; ++i) {
         _write_u32s(f, addr, (u32 *)(next_hops[i].ip), 4);
         _write_u32s(f, addr + 16, (u32 *)(&next_hops[i].port), 1);
-        _write_u32s(f, addr + 16, (u32 *)(&next_hops[i].route_type), 1);
+        _write_u32s(f, addr + 20, (u32 *)(&next_hops[i].route_type), 1);
         addr += 32;  // 按照32字节对齐，方便总线计算
     }
     
