@@ -6,7 +6,8 @@ module tb_forwarding_table #(
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
     parameter WISHBONE_ADDR_WIDTH = 32,
-    parameter TEST_ROUNDS = 4
+    parameter TEST_ROUNDS = 4,
+    parameter SIMPLE_TEST = 0
 ) ();
 
     wire clk_125M, clk_100M;
@@ -41,9 +42,16 @@ module tb_forwarding_table #(
     reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i;
     reg                              wb_we_i;
 
-    int                              fd;
+    int fd, fd_in, fd_ans;
+    int ret, ret_in, ret_ans;
     initial begin
-        fd    = $fopen("mem.txt", "r");
+        if (SIMPLE_TEST) begin
+            fd = $fopen("mem.txt", "r");
+        end else begin
+            fd     = $fopen("forsim_mem.txt", "r");
+            fd_in  = $fopen("forsim_input.txt", "r");
+            fd_ans = $fopen("forsim_answer.txt", "r");
+        end
         reset = 1;
         #20;
         reset = 0;
@@ -59,11 +67,10 @@ module tb_forwarding_table #(
     state_t state_write, state_send;
 
     int                           write_count;
-    int                           send_count;
-    int                           ret;
     reg [WISHBONE_DATA_WIDTH-1:0] ram_addr;
     reg [WISHBONE_DATA_WIDTH-1:0] ram_data;
 
+    // 写入内存
     always_ff @(posedge clk_100M or posedge reset) begin
         if (reset) begin
             state_write <= ST_WRITE_RAM;
@@ -96,40 +103,131 @@ module tb_forwarding_table #(
         end
     end
 
-    always_ff @(posedge clk_125M or posedge reset) begin
-        if (reset) begin
-            state_send <= ST_SEND;
-            in         <= '{default: 0};
-            send_count <= 0;
-        end else begin
-            if (state_write == ST_DONE) begin
-                case (state_send)
-                    ST_SEND: begin
-                        in.valid        <= 1;
-                        in.is_first     <= 1;
-                        in.data.ip6.dst <= const_ip[send_count];
-                        send_count      <= send_count + 1;
-                        state_send      <= ST_SEND_WAIT;
-                    end
-                    ST_SEND_WAIT: begin
-                        if (in_ready) begin
-                            in <= '{default: 0};
-                            if (send_count == TEST_ROUNDS) begin
-                                state_send <= ST_DONE;
-                            end else begin
-                                state_send <= ST_SEND;
+    generate
+        if (SIMPLE_TEST) begin
+            // 使用 mem.txt 和固定几个 IP 地址的简单测试
+            int send_count;
+            always_ff @(posedge clk_125M or posedge reset) begin
+                if (reset) begin
+                    state_send <= ST_SEND;
+                    in         <= '{default: 0};
+                    send_count <= 0;
+                end else begin
+                    if (state_write == ST_DONE) begin
+                        case (state_send)
+                            ST_SEND: begin
+                                in.valid        <= 1;
+                                in.is_first     <= 1;
+                                in.data.ip6.dst <= const_ip[send_count];
+                                send_count      <= send_count + 1;
+                                state_send      <= ST_SEND_WAIT;
                             end
-                        end
+                            ST_SEND_WAIT: begin
+                                if (in_ready) begin
+                                    in <= '{default: 0};
+                                    if (send_count == TEST_ROUNDS) begin
+                                        state_send <= ST_DONE;
+                                    end else begin
+                                        state_send <= ST_SEND;
+                                    end
+                                end
+                            end
+                            ST_DONE: begin
+                                state_send <= ST_DONE;
+                                #1000;
+                                $finish;
+                            end
+                        endcase
                     end
-                    ST_DONE: begin
-                        state_send <= ST_DONE;
-                        #1000;
-                        $finish;
+                end
+            end
+        end else begin
+            // 软件根据随机数据生成的测试
+            string         opcode;
+            logic  [127:0] ip_in;
+            logic [127:0] ip_ans, port_ans, route_type_ans;
+            always_ff @(posedge clk_125M or posedge reset) begin
+                if (reset) begin
+                    state_send     <= ST_SEND;
+                    in             <= '{default: 0};
+                    ip_in          <= '0;
+                    ip_ans         <= '0;
+                    port_ans       <= '0;
+                    route_type_ans <= '0;
+                end else begin
+                    if (state_write == ST_DONE) begin
+                        case (state_send)
+                            ST_SEND: begin
+                                ret_in = $fscanf(fd_in, "%s", opcode);
+                                if (ret_in != 1) begin
+                                    state_send <= ST_DONE;
+                                end else if (opcode != "Q") begin
+                                    $fgets(opcode, fd_in);
+                                end else begin
+                                    ret_in = $fscanf(
+                                        fd_in,
+                                        "%x%x%x%x",
+                                        ip_in[31:0],
+                                        ip_in[63:32],
+                                        ip_in[95:64],
+                                        ip_in[127:96]
+                                    );
+                                    if (ret_in != 4) begin
+                                        $display("INPUT FILE ERROR! data is not enough!");
+                                        state_send <= ST_DONE;
+                                    end else begin
+                                        in.valid        <= 1;
+                                        in.is_first     <= 1;
+                                        in.data.ip6.dst <= ip_in;
+                                        state_send      <= ST_SEND_WAIT;
+                                    end
+                                end
+                            end
+                            ST_SEND_WAIT: begin
+                                if (in_ready) begin
+                                    $display("Output: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
+                                             forwarded_next_hop_ip, forwarded.meta.dest);
+                                    ret_ans = $fscanf(
+                                        fd_ans,
+                                        "%x%x%x%x%x%x",
+                                        ip_ans[31:0],
+                                        ip_ans[63:32],
+                                        ip_ans[95:64],
+                                        ip_ans[127:96],
+                                        port_ans,
+                                        route_type_ans
+                                    );
+                                    if (ret_ans != 6) begin
+                                        $display("ANSWER FILE ERROR! data is not enough!");
+                                        state_send <= ST_DONE;
+                                    end else begin
+                                        if (ip_ans != forwarded_next_hop_ip) begin
+                                            $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_ans,
+                                                     forwarded_next_hop_ip);
+                                            state_send <= ST_DONE;
+                                        end else if (port_ans != forwarded.meta.dest) begin
+                                            $display("ERROR! port_ans:%x, port:%x", port_ans,
+                                                     forwarded.meta.dest);
+                                            state_send <= ST_DONE;
+                                        end else begin
+                                            $display("PASS!");
+                                        end
+                                        in         <= '{default: 0};
+                                        state_send <= ST_SEND;
+                                    end
+                                end
+                            end
+                            ST_DONE: begin
+                                state_send <= ST_DONE;
+                                #1000;
+                                $finish;
+                            end
+                        endcase
                     end
-                endcase
+                end
             end
         end
-    end
+    endgenerate
 
     forwarding_table #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
