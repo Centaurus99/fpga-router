@@ -62,6 +62,7 @@ typedef struct {
   uint32_t len;      // 前缀长度
   uint32_t if_index; // 出端口编号
   in6_addr nexthop;  // 下一跳的 IPv6 地址
+  uint32_t route_type;
   // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
 
@@ -102,7 +103,7 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index);
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type);
 
 /**
  * @brief 转换 mask 为前缀长度
