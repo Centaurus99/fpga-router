@@ -3,62 +3,291 @@
    <wave_state>
    </wave_state>
    <db_ref_list>
-      <db_ref path="tb_checksum_behav.wdb" id="1">
+      <db_ref path="tb_forwarding_table_behav.wdb" id="1">
          <top_modules>
-            <top_module name="\$unit_icmpv6_checksum_sv " />
+            <top_module name="\$unit_basic_skid_buffer_sv " />
             <top_module name="glbl" />
-            <top_module name="tb_checksum" />
+            <top_module name="tb_forwarding_table" />
          </top_modules>
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="2817500fs"></ZoomStartTime>
-      <ZoomEndTime time="3156501fs"></ZoomEndTime>
-      <Cursor1Time time="3100000fs"></Cursor1Time>
+      <ZoomStartTime time="5146618fs"></ZoomStartTime>
+      <ZoomEndTime time="5529516fs"></ZoomEndTime>
+      <Cursor1Time time="7108000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="248"></NameColumnWidth>
-      <ValueColumnWidth column_width="116"></ValueColumnWidth>
+      <NameColumnWidth column_width="300"></NameColumnWidth>
+      <ValueColumnWidth column_width="86"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="10" />
-   <wvobject fp_name="/tb_checksum/sum" type="array">
-      <obj_property name="ElementShortName">sum[15:0]</obj_property>
-      <obj_property name="ObjectShortName">sum[15:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/temp_sum_reg" type="array">
-      <obj_property name="ElementShortName">temp_sum_reg[191:0]</obj_property>
-      <obj_property name="ObjectShortName">temp_sum_reg[191:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/in" type="array">
-      <obj_property name="ElementShortName">in</obj_property>
-      <obj_property name="ObjectShortName">in</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/clk_125M" type="logic">
-      <obj_property name="ElementShortName">clk_125M</obj_property>
-      <obj_property name="ObjectShortName">clk_125M</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/clk" type="logic">
+   <WVObjectSize size="51" />
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/reset" type="logic">
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/error" type="logic">
+      <obj_property name="ElementShortName">error</obj_property>
+      <obj_property name="ObjectShortName">error</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/reset" type="logic">
       <obj_property name="ElementShortName">reset</obj_property>
       <obj_property name="ObjectShortName">reset</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum" type="array">
-      <obj_property name="ElementShortName">sum[15:0]</obj_property>
-      <obj_property name="ObjectShortName">sum[15:0]</obj_property>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in" type="array">
+      <obj_property name="ElementShortName">in</obj_property>
+      <obj_property name="ObjectShortName">in</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/s1_state" type="array">
-      <obj_property name="ElementShortName">s1_state[31:0]</obj_property>
-      <obj_property name="ObjectShortName">s1_state[31:0]</obj_property>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in.valid" type="logic">
+      <obj_property name="ElementShortName">.valid</obj_property>
+      <obj_property name="ObjectShortName">.valid</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum_overflow_reg" type="array">
-      <obj_property name="ElementShortName">sum_overflow_reg[23:0]</obj_property>
-      <obj_property name="ObjectShortName">sum_overflow_reg[23:0]</obj_property>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/in_ready" type="logic">
+      <obj_property name="ElementShortName">in_ready</obj_property>
+      <obj_property name="ObjectShortName">in_ready</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_checksum/dut/sum_overflow_reg_copy" type="array">
-      <obj_property name="ElementShortName">sum_overflow_reg_copy[23:0]</obj_property>
-      <obj_property name="ObjectShortName">sum_overflow_reg_copy[23:0]</obj_property>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/next_hop_ip" type="array">
+      <obj_property name="ElementShortName">next_hop_ip[127:0]</obj_property>
+      <obj_property name="ObjectShortName">next_hop_ip[127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/out.meta.dest" type="array">
+      <obj_property name="ElementShortName">.dest[2:0]</obj_property>
+      <obj_property name="ObjectShortName">.dest[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/out" type="array">
+      <obj_property name="ElementShortName">out</obj_property>
+      <obj_property name="ObjectShortName">out</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/out.valid" type="logic">
+      <obj_property name="ElementShortName">.valid</obj_property>
+      <obj_property name="ObjectShortName">.valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/out_ready" type="logic">
+      <obj_property name="ElementShortName">out_ready</obj_property>
+      <obj_property name="ObjectShortName">out_ready</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s" type="array">
+      <obj_property name="ElementShortName">s[8:0]</obj_property>
+      <obj_property name="ObjectShortName">s[8:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_reg" type="array">
+      <obj_property name="ElementShortName">s_reg[8:1]</obj_property>
+      <obj_property name="ObjectShortName">s_reg[8:1]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/s_ready" type="array">
+      <obj_property name="ElementShortName">s_ready[8:0]</obj_property>
+      <obj_property name="ObjectShortName">s_ready[8:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/state" type="array">
+      <obj_property name="ElementShortName">state[8:1][3:0]</obj_property>
+      <obj_property name="ObjectShortName">state[8:1][3:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_addr" type="array">
+      <obj_property name="ElementShortName">ft_addr[8:1][23:0]</obj_property>
+      <obj_property name="ObjectShortName">ft_addr[8:1][23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout" type="array">
+      <obj_property name="ElementShortName">ft_dout[8:1]</obj_property>
+      <obj_property name="ObjectShortName">ft_dout[8:1]</obj_property>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[8]" type="array">
+         <obj_property name="ElementShortName">[8]</obj_property>
+         <obj_property name="ObjectShortName">[8]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[7]" type="array">
+         <obj_property name="ElementShortName">[7]</obj_property>
+         <obj_property name="ObjectShortName">[7]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[6]" type="array">
+         <obj_property name="ElementShortName">[6]</obj_property>
+         <obj_property name="ObjectShortName">[6]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[5]" type="array">
+         <obj_property name="ElementShortName">[5]</obj_property>
+         <obj_property name="ObjectShortName">[5]</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[4]" type="array">
+         <obj_property name="ElementShortName">[4]</obj_property>
+         <obj_property name="ObjectShortName">[4]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[3]" type="array">
+         <obj_property name="ElementShortName">[3]</obj_property>
+         <obj_property name="ObjectShortName">[3]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[2]" type="array">
+         <obj_property name="ElementShortName">[2]</obj_property>
+         <obj_property name="ObjectShortName">[2]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[1]" type="array">
+         <obj_property name="ElementShortName">[1]</obj_property>
+         <obj_property name="ObjectShortName">[1]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[8]" type="array">
+         <obj_property name="ElementShortName">[8]</obj_property>
+         <obj_property name="ObjectShortName">[8]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[7]" type="array">
+         <obj_property name="ElementShortName">[7]</obj_property>
+         <obj_property name="ObjectShortName">[7]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[6]" type="array">
+         <obj_property name="ElementShortName">[6]</obj_property>
+         <obj_property name="ObjectShortName">[6]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[5]" type="array">
+         <obj_property name="ElementShortName">[5]</obj_property>
+         <obj_property name="ObjectShortName">[5]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[4]" type="array">
+         <obj_property name="ElementShortName">[4]</obj_property>
+         <obj_property name="ObjectShortName">[4]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[3]" type="array">
+         <obj_property name="ElementShortName">[3]</obj_property>
+         <obj_property name="ObjectShortName">[3]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[2]" type="array">
+         <obj_property name="ElementShortName">[2]</obj_property>
+         <obj_property name="ObjectShortName">[2]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[1]" type="array">
+         <obj_property name="ElementShortName">[1]</obj_property>
+         <obj_property name="ObjectShortName">[1]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/leaf_addr" type="array">
+      <obj_property name="ElementShortName">leaf_addr[15:0]</obj_property>
+      <obj_property name="ObjectShortName">leaf_addr[15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/leaf_out" type="array">
+      <obj_property name="ElementShortName">leaf_out</obj_property>
+      <obj_property name="ObjectShortName">leaf_out</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/next_hop_addr" type="array">
+      <obj_property name="ElementShortName">next_hop_addr[7:0]</obj_property>
+      <obj_property name="ObjectShortName">next_hop_addr[7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/next_hop_out" type="array">
+      <obj_property name="ElementShortName">next_hop_out</obj_property>
+      <obj_property name="ObjectShortName">next_hop_out</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[1].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[1].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[1].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[1].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[1].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[1].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[1].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[1].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[2].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[2].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[2].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[3].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[3].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[3].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[4].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[4].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[4].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[4].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[4].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[4].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[4].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[4].ip_for_match [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].parser_stop " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[5].parser_stop </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].parser_stop </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].parser_matched " type="logic">
+      <obj_property name="ElementShortName">\pipeline_gen[5].parser_matched </obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].parser_matched </obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].parser_leaf_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[5].parser_leaf_addr [15:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].parser_leaf_addr [15:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].parser_node_addr " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[5].parser_node_addr [23:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].parser_node_addr [23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].ip_little_endian " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[5].ip_little_endian [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].ip_little_endian [127:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/\pipeline_gen[5].ip_for_match " type="array">
+      <obj_property name="ElementShortName">\pipeline_gen[5].ip_for_match [127:0]</obj_property>
+      <obj_property name="ObjectShortName">\pipeline_gen[5].ip_for_match [127:0]</obj_property>
    </wvobject>
 </wave_config>

@@ -4,7 +4,10 @@
 
 module tanlabs
 #(
-    parameter SIM = 0
+    parameter SIM = 0,
+    // Wishbone 总线参数
+    parameter WISHBONE_DATA_WIDTH = 32,
+    parameter WISHBONE_ADDR_WIDTH = 32
 )
 (
     input wire RST,
@@ -55,7 +58,13 @@ module tanlabs
         .clk_in1(gtref_clk)
     );
 
-    wire reset_not_sync = reset_in || !locked;  // reset components
+    wire reset_not_sync_without_bufg = reset_in || !locked;  // reset components
+    wire reset_not_sync;
+
+    BUFG BUFG_inst (
+        .O(reset_not_sync), // 1-bit output: Clock output
+        .I(reset_not_sync_without_bufg)  // 1-bit input: Clock input
+    );
 
     wire mmcm_locked_out;
     wire rxuserclk_out;
@@ -685,11 +694,22 @@ module tanlabs
         end
     endgenerate
 
+    wire                              wb_cyc_i;
+    wire                              wb_stb_i;
+    wire                              wb_ack_o;
+    wire  [  WISHBONE_ADDR_WIDTH-1:0] wb_adr_i;
+    wire  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_i;
+    wire  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o;
+    wire  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i;
+    wire                              wb_we_i;
+
     // README: Instantiate your datapath.
     frame_datapath
     #(
         .DATA_WIDTH(DATA_WIDTH),
-        .ID_WIDTH(ID_WIDTH)
+        .ID_WIDTH(ID_WIDTH),
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
     )
     frame_datapath_i(
         .eth_clk(eth_clk),
@@ -712,10 +732,19 @@ module tanlabs
         .m_user(dp_tx_user),
         .m_dest(dp_tx_dest),
         .m_valid(dp_tx_valid),
-        .m_ready(1'b1)
+        .m_ready(1'b1),
 
         // README: You will need to add some signals for your CPU to control the datapath,
         // or access the forwarding table or the address resolution cache.
+        .cpu_clk (core_clk),
+        .wb_cyc_i(wb_cyc_i),
+        .wb_stb_i(wb_stb_i),
+        .wb_ack_o(wb_ack_o),
+        .wb_adr_i(wb_adr_i),
+        .wb_dat_i(wb_dat_i),
+        .wb_dat_o(wb_dat_o),
+        .wb_sel_i(wb_sel_i),
+        .wb_we_i (wb_we_i)
     );
 
     wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
@@ -839,4 +868,19 @@ module tanlabs
     );
 
     // README: Your code here.
+    tester #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) u_tester (
+        .clk(core_clk),
+        .reset  (reset_core),
+        .wb_cyc_o(wb_cyc_i),
+        .wb_stb_o(wb_stb_i),
+        .wb_ack_i(wb_ack_o),
+        .wb_adr_o(wb_adr_i),
+        .wb_dat_o(wb_dat_i),
+        .wb_dat_i(wb_dat_o),
+        .wb_sel_o(wb_sel_i),
+        .wb_we_o (wb_we_i)
+    );
 endmodule

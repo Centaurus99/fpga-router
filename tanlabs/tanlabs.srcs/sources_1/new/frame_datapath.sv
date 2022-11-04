@@ -4,7 +4,10 @@
 
 module frame_datapath #(
     parameter DATA_WIDTH = 64,
-    parameter ID_WIDTH   = 3
+    parameter ID_WIDTH = 3,
+    // Wishbone 总线参数
+    parameter WISHBONE_DATA_WIDTH = 32,
+    parameter WISHBONE_ADDR_WIDTH = 32
 ) (
     input wire eth_clk,
     input wire reset,
@@ -26,7 +29,18 @@ module frame_datapath #(
     output wire [DATA_WIDTH / 8 - 1:0] m_user,
     output wire [      ID_WIDTH - 1:0] m_dest,
     output wire                        m_valid,
-    input  wire                        m_ready
+    input  wire                        m_ready,
+
+    // wishbone slave interface
+    input  wire                             cpu_clk,
+    input  wire                             wb_cyc_i,
+    input  wire                             wb_stb_i,
+    output reg                              wb_ack_o,
+    input  wire [  WISHBONE_ADDR_WIDTH-1:0] wb_adr_i,
+    input  wire [  WISHBONE_DATA_WIDTH-1:0] wb_dat_i,
+    output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o,
+    input  wire [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i,
+    input  wire                             wb_we_i
 );
 
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
@@ -163,7 +177,10 @@ module frame_datapath #(
     frame_beat         forwarded;
     wire               forwarded_ready;
     logic      [127:0] forwarded_next_hop_ip;
-    forwarding_table forwarding_table_i (
+    forwarding_table #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) forwarding_table_i (
         .clk     (eth_clk),
         .reset   (reset),
         .in      (s2),
@@ -171,7 +188,17 @@ module frame_datapath #(
 
         .out        (forwarded),
         .next_hop_ip(forwarded_next_hop_ip),
-        .out_ready  (forwarded_ready)
+        .out_ready  (forwarded_ready),
+
+        .cpu_clk (cpu_clk),
+        .wb_cyc_i(wb_cyc_i),
+        .wb_stb_i(wb_stb_i),
+        .wb_ack_o(wb_ack_o),
+        .wb_adr_i(wb_adr_i),
+        .wb_dat_i(wb_dat_i),
+        .wb_dat_o(wb_dat_o),
+        .wb_sel_i(wb_sel_i),
+        .wb_we_i (wb_we_i)
     );
 
     typedef enum {
@@ -197,6 +224,7 @@ module frame_datapath #(
             s3_reg     <= '{default: 0};
             s3_state   <= ST_SEND_RECV;
             nc_in_v6_r <= 0;
+            nc_in_id_r <= 0;
         end else begin
             case (s3_state)
                 ST_SEND_RECV: begin
@@ -240,14 +268,28 @@ module frame_datapath #(
         end
     end
 
-    wire       ndp_ready;
+    frame_beat s4;
+    wire       s4_ready;
+
+    // Skid buffer
+    basic_skid_buffer u_basic_skid_buffer_2 (
+        .clk     (eth_clk),
+        .reset   (reset),
+        .in_data (s3),
+        .in_ready(s3_ready),
+
+        .out_data (s4),
+        .out_ready(s4_ready)
+    );
+
     frame_beat ndp;
+    wire       ndp_ready;
     frame_beat_width_converter #(DATAW_WIDTH_V6, DATA_WIDTH) frame_beat_downsizer (
         .clk(eth_clk),
         .rst(reset),
 
-        .in       (s3),
-        .in_ready (s3_ready),
+        .in       (s4),
+        .in_ready (s4_ready),
         .out      (ndp),
         .out_ready(ndp_ready)
     );

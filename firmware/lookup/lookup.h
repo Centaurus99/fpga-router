@@ -28,6 +28,12 @@ const int NODE_ADDRESS[8] = {
 const int LEAF_ADDRESS = 0x50000000;
 const int NEXT_HOP_ADDRESS = 0x51000000;
 
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint8_t u8;
+typedef __uint128_t u128;
+typedef uint32_t leaf_t;  // fixme: change to u8
+
 // /* IPv6 address */
 // typedef struct {
 //     union {
@@ -44,30 +50,35 @@ const int NEXT_HOP_ADDRESS = 0x51000000;
   当 nexthop 为零时这是一条直连路由。
   你可以在全局变量中把路由表以一定的数据结构格式保存下来。
 */
+
+typedef struct {
+    u32 ip[4];
+    u32 port;
+    u32 route_type;
+} NextHopEntry;
+
 typedef struct {
   in6_addr addr;     // 匹配的 IPv6 地址前缀
   uint32_t len;      // 前缀长度
   uint32_t if_index; // 出端口编号
   in6_addr nexthop;  // 下一跳的 IPv6 地址
+  uint32_t route_type;
   // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
 
 
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint8_t u8;
-typedef __uint128_t u128;
-typedef uint8_t leaf_t;  // fixme: change to u8
 
-// 真正的存储用的结构体
-typedef struct {
-    u8 vec[2];
-    u8 leaf_vec[2];
-    u8 child_base[3];
-    u8 leaf_base[2];
-} _TrieNode;
+// // 真正的存储用的结构体
+// typedef struct {
+//     u8 vec[2];
+//     u8 leaf_vec[2];
+//     u8 child_base[3];
+//     u8 leaf_base[2];
+//     u8 padding[7];  //对齐到16位，实际不会访问到这个 TODO: use __align
+// } _TrieNode;
 
 // 为了处理时方便会先转成这个结构体 有改动的话再转回去
+// 现在结构体内也会对齐 所以可以都用uint32
 typedef struct {
     u32 vec;
     u32 leaf_vec;
@@ -92,7 +103,7 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index);
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type);
 
 /**
  * @brief 转换 mask 为前缀长度
