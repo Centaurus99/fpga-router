@@ -2,12 +2,12 @@
 #include <assert.h>
 
 int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1};
-bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {1};
 int leaf_top = 1;
 bool leaf_used[LEAF_COUNT];
 
 int node_malloc(int stage, int len) {
-    printf("NODE MALLOC %d %d: %d\n", stage, len, node_tops[stage]);
+    // printf("NODE MALLOC %d %d: %d\n", stage, len, node_tops[stage]);
     node_tops[stage] += len;
     assert(node_tops[stage] <= NODE_COUNT_PER_STAGE);
     for (int i=node_tops[stage]-len; i<node_tops[stage]; ++i) {
@@ -18,7 +18,7 @@ int node_malloc(int stage, int len) {
 }
 
 void node_free(int stage, int begin, int len) {
-    printf("NODE FREE %d %d %d\n", stage, begin, len);
+    // printf("NODE FREE %d %d %d\n", stage, begin, len);
     for (int i=begin; i<begin+len; ++i) {
         node_used[stage][i] = false;
     }

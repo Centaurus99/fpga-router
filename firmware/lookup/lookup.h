@@ -28,6 +28,12 @@ const int NODE_ADDRESS[8] = {
 const int LEAF_ADDRESS = 0x50000000;
 const int NEXT_HOP_ADDRESS = 0x51000000;
 
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint8_t u8;
+typedef __uint128_t u128;
+typedef uint32_t leaf_t;  // fixme: change to u8
+
 // /* IPv6 address */
 // typedef struct {
 //     union {
@@ -44,6 +50,13 @@ const int NEXT_HOP_ADDRESS = 0x51000000;
   当 nexthop 为零时这是一条直连路由。
   你可以在全局变量中把路由表以一定的数据结构格式保存下来。
 */
+
+typedef struct {
+    u32 ip[4];
+    u32 port;
+    u32 route_type;
+} NextHopEntry;
+
 typedef struct {
   in6_addr addr;     // 匹配的 IPv6 地址前缀
   uint32_t len;      // 前缀长度
@@ -53,11 +66,6 @@ typedef struct {
 } RoutingTableEntry;
 
 
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint8_t u8;
-typedef __uint128_t u128;
-typedef uint32_t leaf_t;  // fixme: change to u8
 
 // // 真正的存储用的结构体
 // typedef struct {

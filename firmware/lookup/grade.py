@@ -51,14 +51,14 @@ entrys = []
 def gen_input(in_file, N, query_after_update_complete=0):
     table = []
     with open(in_file, 'w') as f:
-        while N + query_after_update_complete:
+        while N>0 or query_after_update_complete>0:
             c = random.randint(0, 4)
             if N and (c == 0 or not table):
                 eid = random.randint(0, len(entrys) - 1)
                 e = entrys[eid]
                 if e not in table:
+                    N -= 1
                     table.append(eid)
-                N -= 1
                 f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]}\n')
             elif N and c == 1:
                 if random.randint(0, 2) < 2 and table:
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         in_file = "data/test_input.txt"
         out_file = "data/test_output.txt"
         ans_file = "data/test_answer.txt"
-        gen_input(in_file, 150)
+        gen_input(in_file, 200)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 
