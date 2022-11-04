@@ -9,6 +9,8 @@ clean:
 	rm -f *.o lookup std
 
 grade: lookup lookup_bf
+	./lookup < data/direct_route.txt
+	cp mem.txt ../../tanlabs/tanlabs.srcs/sim_1/new/mem.txt
 	python3 grade.py
 
 %.o: %.cpp

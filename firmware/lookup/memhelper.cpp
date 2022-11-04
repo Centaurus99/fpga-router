@@ -2,7 +2,7 @@
 #include <assert.h>
 
 int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1};
-bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {1};
 int leaf_top = 1;
 bool leaf_used[LEAF_COUNT];
 
