@@ -184,7 +184,7 @@ module tb_forwarding_table #(
                                 end
                             end
                             ST_SEND_WAIT: begin
-                                if (in_ready) begin
+                                if (forwarded.valid) begin
                                     $display("Output: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
                                              forwarded_next_hop_ip, forwarded.meta.dest);
                                     ret_ans = $fscanf(

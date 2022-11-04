@@ -12,13 +12,13 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="1495416fs"></ZoomStartTime>
-      <ZoomEndTime time="1584267fs"></ZoomEndTime>
-      <Cursor1Time time="1560000fs"></Cursor1Time>
+      <ZoomStartTime time="5146618fs"></ZoomStartTime>
+      <ZoomEndTime time="5529516fs"></ZoomEndTime>
+      <Cursor1Time time="7108000fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="300"></NameColumnWidth>
-      <ValueColumnWidth column_width="91"></ValueColumnWidth>
+      <ValueColumnWidth column_width="86"></ValueColumnWidth>
    </column_width_setting>
    <WVObjectSize size="51" />
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/clk" type="logic">
@@ -84,12 +84,10 @@
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_addr" type="array">
       <obj_property name="ElementShortName">ft_addr[8:1][23:0]</obj_property>
       <obj_property name="ObjectShortName">ft_addr[8:1][23:0]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout" type="array">
       <obj_property name="ElementShortName">ft_dout[8:1]</obj_property>
       <obj_property name="ObjectShortName">ft_dout[8:1]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
       <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[8]" type="array">
          <obj_property name="ElementShortName">[8]</obj_property>
          <obj_property name="ObjectShortName">[8]</obj_property>
@@ -106,6 +104,38 @@
          <obj_property name="ElementShortName">[5]</obj_property>
          <obj_property name="ObjectShortName">[5]</obj_property>
          <obj_property name="isExpanded"></obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[4]" type="array">
+         <obj_property name="ElementShortName">[4]</obj_property>
+         <obj_property name="ObjectShortName">[4]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[3]" type="array">
+         <obj_property name="ElementShortName">[3]</obj_property>
+         <obj_property name="ObjectShortName">[3]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[2]" type="array">
+         <obj_property name="ElementShortName">[2]</obj_property>
+         <obj_property name="ObjectShortName">[2]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[1]" type="array">
+         <obj_property name="ElementShortName">[1]</obj_property>
+         <obj_property name="ObjectShortName">[1]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[8]" type="array">
+         <obj_property name="ElementShortName">[8]</obj_property>
+         <obj_property name="ObjectShortName">[8]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[7]" type="array">
+         <obj_property name="ElementShortName">[7]</obj_property>
+         <obj_property name="ObjectShortName">[7]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[6]" type="array">
+         <obj_property name="ElementShortName">[6]</obj_property>
+         <obj_property name="ObjectShortName">[6]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[5]" type="array">
+         <obj_property name="ElementShortName">[5]</obj_property>
+         <obj_property name="ObjectShortName">[5]</obj_property>
       </wvobject>
       <wvobject fp_name="/tb_forwarding_table/forwarding_table_i/ft_dout[4]" type="array">
          <obj_property name="ElementShortName">[4]</obj_property>
