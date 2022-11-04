@@ -45,6 +45,21 @@ def compare(out_file_1, out_file_2):
             traceback.print_exc()
     return 0
 
+
+def hex_(b):
+    return ('00'+hex(b)[2:])[-2:]
+
+def to_u32s(ip_s):
+    b = ipaddress.ip_address(ip_s).packed
+    # print(ip_s, (hex_(b[3])+hex_(b[2])+hex_(b[1])+hex_(b[0])) + ' ' + \
+    #     (hex_(b[7])+hex_(b[6])+hex_(b[5])+hex_(b[4])) + ' ' + \
+    #         (hex_(b[11])+hex_(b[10])+hex_(b[9])+hex_(b[8])) + ' ' + \
+    #             (hex_(b[15])+hex_(b[14])+hex_(b[13])+hex_(b[2])))
+    return (hex_(b[3])+hex_(b[2])+hex_(b[1])+hex_(b[0])) + ' ' + \
+        (hex_(b[7])+hex_(b[6])+hex_(b[5])+hex_(b[4])) + ' ' + \
+            (hex_(b[11])+hex_(b[10])+hex_(b[9])+hex_(b[8])) + ' ' + \
+                (hex_(b[15])+hex_(b[14])+hex_(b[13])+hex_(b[12]))
+
 entrys = []
 def gen_input(in_file, N, query_after_update_complete=0):
     table = []
@@ -60,7 +75,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                 if e not in table:
                     N -= 1
                     table.append(eid)
-                f.write(f'I {e[0]} {e[1]} {e[3]} {e[2]} 2\n')
+                f.write(f'I {to_u32s(e[0])} {e[1]} {e[3]} {to_u32s(e[2])} 2\n')
             elif N and c == 1:
                 if random.randint(0, 2) < 2 and table:
                     tid = random.randint(0, len(table) - 1)
@@ -68,7 +83,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                 else:
                     eid = random.randint(0, len(entrys) - 1)
                     e = entrys[eid]
-                f.write(f'D {e[0]} {e[1]} 2\n')
+                f.write(f'D {to_u32s(e[0])} {e[1]} 2\n')
             elif (N == 0 and query_after_update_complete > 0) or (query_after_update_complete <= 0):
                 tid = random.randint(0, len(table) - 1)
                 e = entrys[table[tid]]
@@ -80,7 +95,7 @@ def gen_input(in_file, N, query_after_update_complete=0):
                         ip = e[0]
                 else:
                     ip = random.choice(entrys)[0]
-                f.write(f'Q {ip}\n')
+                f.write(f'Q {to_u32s(ip)}\n')
                 query_after_update_complete -= 1
 
                     
