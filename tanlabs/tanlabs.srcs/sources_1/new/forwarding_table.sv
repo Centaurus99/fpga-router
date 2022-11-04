@@ -138,24 +138,26 @@ module forwarding_table #(
 
     // 例化叶节点存储
     forwarding_leaf_data leaf_data (
-        .a   (leaf_addr_a),  // input wire [9 : 0] a
-        .d   (leaf_in_a),    // input wire [7 : 0] d
-        .dpra(leaf_addr),    // input wire [9 : 0] dpra
-        .clk (cpu_clk),      // input wire clk
-        .we  (leaf_we_a),    // input wire we
-        .spo (leaf_out_a),   // output wire [7 : 0] spo
-        .dpo (leaf_out)      // output wire [7 : 0] dpo
+        .a       (leaf_addr_a),  // input wire [9 : 0] a
+        .d       (leaf_in_a),    // input wire [7 : 0] d
+        .dpra    (leaf_addr),    // input wire [9 : 0] dpra
+        .clk     (cpu_clk),      // input wire clk
+        .we      (leaf_we_a),    // input wire we
+        .qdpo_clk(clk),          // input wire qdpo_clk
+        .qspo    (leaf_out_a),   // output wire [7 : 0] qspo
+        .qdpo    (leaf_out)      // output wire [7 : 0] qdpo
     );
 
     // 例化 Next-Hop 节点存储
     forwarding_next_hop_data next_hop_data (
-        .a   (next_hop_addr_a),  // input wire [5 : 0] a
-        .d   (next_hop_in_a),    // input wire [135 : 0] d
-        .dpra(next_hop_addr),    // input wire [5 : 0] dpra
-        .clk (cpu_clk),          // input wire clk
-        .we  (next_hop_we_a),    // input wire we
-        .spo (next_hop_out_a),   // output wire [135 : 0] spo
-        .dpo (next_hop_out)      // output wire [135 : 0] dpo
+        .a       (next_hop_addr_a),  // input wire [5 : 0] a
+        .d       (next_hop_in_a),    // input wire [135 : 0] d
+        .dpra    (next_hop_addr),    // input wire [5 : 0] dpra
+        .clk     (cpu_clk),          // input wire clk
+        .we      (next_hop_we_a),    // input wire we
+        .qdpo_clk(clk),              // input wire qdpo_clk
+        .qspo    (next_hop_out_a),   // output wire [135 : 0] qspo
+        .qdpo    (next_hop_out)      // output wire [135 : 0] qdpo
     );
 
     // 流水线
@@ -248,8 +250,10 @@ module forwarding_table #(
     // 查询叶节点中 next_hop 编号, 再查询 next_hop 表
     typedef enum {
         ST_INIT,  // 初始阶段
-        ST_GET_LEAF,  // 完成查询叶节点
-        ST_GET_NEXT_HOP  // 完成查询 next_hop 表
+        ST_GET_LEAF,  // 查询叶节点
+        ST_GET_LEAF_FIN,  // 完成查询叶节点
+        ST_GET_NEXT_HOP,  // 查询 next_hop 表
+        ST_GET_NEXT_HOP_FIN  // 完成查询 next_hop 表
     } after_state_t;
 
     reg error;
@@ -288,13 +292,19 @@ module forwarding_table #(
                         end
                     end
                 end
-                // 查完叶节点, 根据叶节点中存储的 next_hop 编号, 查 next_hop 表
                 ST_GET_LEAF: begin
+                    after_state <= ST_GET_LEAF_FIN;
+                end
+                // 查完叶节点, 根据叶节点中存储的 next_hop 编号, 查 next_hop 表
+                ST_GET_LEAF_FIN: begin
                     next_hop_addr <= leaf_out.next_hop_addr;
                     after_state   <= ST_GET_NEXT_HOP;
                 end
-                // 查完 next_hop 表, 更新下一跳地址和出口
                 ST_GET_NEXT_HOP: begin
+                    after_state <= ST_GET_NEXT_HOP_FIN;
+                end
+                // 查完 next_hop 表, 更新下一跳地址和出口
+                ST_GET_NEXT_HOP_FIN: begin
                     // 直连路由
                     if (next_hop_out.route_type == ROUTE_DIRECT) begin
                         next_hop_ip <= after_reg.beat.data.ip6.dst;
