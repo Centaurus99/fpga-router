@@ -43,9 +43,6 @@ module tb_forwarding_table #(
         reset = 1;
         #20;
         reset = 0;
-
-        #1000;
-        $finish;
     end
 
     typedef enum {

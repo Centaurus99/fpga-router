@@ -90,8 +90,8 @@ module forwarding_ram_controller #(
 
         unique casez (addr_type)
             8'h4?: begin
-                storetype       = BRAM;
-                ft_en[bram_num] = is_request;
+                storetype            = BRAM;
+                ft_en[bram_pipeline] = is_request;
             end
             8'h50: begin
                 storetype = LEAF;
@@ -134,34 +134,30 @@ module forwarding_ram_controller #(
         endcase
     end
 
-    // 连接总线数据输入至 RAM 数据输入
-    always_comb begin
-        for (int i = 0; i < PIPELINE_LENGTH; i++) begin
-            ft_din[i] = ft_dout[i] & (~data_mask) | (wb_dat_i & data_mask);
-        end
-        leaf_in     = leaf_out & (~data_mask) | (wb_dat_i & data_mask);
-        next_hop_in = next_hop_out & (~data_mask) | (wb_dat_i & data_mask);
-    end
 
     typedef enum {
         ST_IDLE,
-        ST_WRITE
+        ST_WRITE,
+        ST_WRITE2
     } state_slave;
 
     state_slave state;
 
     // 连接 ack 信号
     always_comb begin
-        wb_ack_o = is_request && (!wb_we_i || (wb_we_i && (state == ST_WRITE)));
+        wb_ack_o = is_request && (!wb_we_i || (wb_we_i && (state == ST_WRITE2)));
     end
 
     always_ff @(posedge clk_i or posedge rst_i) begin
         if (rst_i) begin
             for (int i = 0; i < PIPELINE_LENGTH; i++) begin
-                ft_we[i] <= 1'b0;
+                ft_we[i]  <= 1'b0;
+                ft_din[i] <= '0;
             end
             leaf_we     <= 1'b0;
+            leaf_in     <= '0;
             next_hop_we <= 1'b0;
+            next_hop_in <= '0;
             state       <= ST_IDLE;
         end else begin
             case (state)
@@ -170,16 +166,63 @@ module forwarding_ram_controller #(
                         if (wb_we_i == 1'b0) begin
                             state <= ST_IDLE;
                         end else begin
-                            case (storetype)
-                                BRAM: ft_we[bram_pipeline] <= 1'b1;
-                                LEAF: leaf_we <= 1'b1;
-                                NEXTHOP: next_hop_we <= 1'b1;
-                            endcase
                             state <= ST_WRITE;
                         end
                     end
                 end
                 ST_WRITE: begin
+                    // 连接总线数据输入至 RAM 数据输入
+                    case (storetype)
+                        BRAM: begin
+                            ft_we[bram_pipeline]  <= 1'b1;
+                            ft_din[bram_pipeline] <= ft_dout[bram_pipeline];
+                            unique case (inner_place[3:2])
+                                2'b00: begin
+                                    ft_din[bram_pipeline].child_map <= (ft_dout[bram_pipeline].child_map & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                2'b01: begin
+                                    ft_din[bram_pipeline].leaf_map <= (ft_dout[bram_pipeline].leaf_map & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                2'b10: begin
+                                    ft_din[bram_pipeline].child_base_addr <= (ft_dout[bram_pipeline].child_base_addr & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                2'b11: begin
+                                    ft_din[bram_pipeline].leaf_base_addr <= (ft_dout[bram_pipeline].leaf_base_addr & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                            endcase
+                        end
+                        LEAF: begin
+                            leaf_we <= 1'b1;
+                            leaf_in = leaf_out & (~data_mask) | (wb_dat_i & data_mask);
+                        end
+                        NEXTHOP: begin
+                            next_hop_we <= 1'b1;
+                            next_hop_in <= next_hop_out;
+                            case (inner_place[4:2])
+                                3'b000: begin
+                                    next_hop_in.ip[31:0] <= (next_hop_out.ip[31:0] & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                3'b001: begin
+                                    next_hop_in.ip[63:32] <= (next_hop_out.ip[63:32] & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                3'b010: begin
+                                    next_hop_in.ip[95:64] <= (next_hop_out.ip[95:64] & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                3'b011: begin
+                                    next_hop_in.ip[127:96] <= (next_hop_out.ip[127:96] & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                3'b100: begin
+                                    next_hop_in.port <= (next_hop_out.port & (~data_mask)) | (wb_dat_i & data_mask);
+                                end
+                                3'b101: begin
+                                    next_hop_in.route_type <= route_type_t'(({next_hop_out.route_type} & (~data_mask)) | (wb_dat_i & data_mask));
+                                end
+                            endcase
+                        end
+                    endcase
+                    state <= ST_WRITE2;
+                end
+                ST_WRITE2: begin
                     case (storetype)
                         BRAM: ft_we[bram_pipeline] <= 1'b0;
                         LEAF: leaf_we <= 1'b0;
