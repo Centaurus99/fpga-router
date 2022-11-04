@@ -32,133 +32,158 @@ module forwarding_ram_controller #(
     output logic     [LEAF_ADDR_WIDTH - 1:0] leaf_addr,
     output leaf_node                         leaf_in,
     input  leaf_node                         leaf_out,
-    output wire                              leaf_we,
+    output reg                               leaf_we,
 
     // Next-Hop node LUTRAM interface
     output logic         [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr,
     output next_hop_node                             next_hop_in,
     input  next_hop_node                             next_hop_out,
-    output wire                                      next_hop_we
+    output reg                                       next_hop_we
 );
-    // TODO: controller
+    // 解析 Wishbone 总线地址
+    logic [                      7:0] addr_type;
+    logic [                      3:0] bram_pipeline;
+    logic [                      4:0] inner_place;
+
+    logic [   CHILD_ADDR_WIDTH - 1:0] bram_num;
+    logic [    LEAF_ADDR_WIDTH - 1:0] leaf_num;
+    logic [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_num;
+
+    always_comb begin
+        addr_type     = wb_adr_i[WISHBONE_ADDR_WIDTH-1:WISHBONE_ADDR_WIDTH-8];
+        bram_pipeline = wb_adr_i[WISHBONE_ADDR_WIDTH-5:WISHBONE_ADDR_WIDTH-8];
+        inner_place   = wb_adr_i[4:0];
+        bram_num      = wb_adr_i[WISHBONE_ADDR_WIDTH-9:4];
+        leaf_num      = wb_adr_i[WISHBONE_ADDR_WIDTH-9:2];
+        next_hop_num  = wb_adr_i[WISHBONE_ADDR_WIDTH-9:5];
+    end
+
+    // 根据 sel 获取 mask
+    reg [WISHBONE_DATA_WIDTH-1:0] data_mask;
+
+    always_comb begin
+        for (int i = 0; i < WISHBONE_DATA_WIDTH / 8; i = i + 1) begin
+            data_mask[i*8+:8] = wb_sel_i[i] ? 8'hff : 8'h00;
+        end
+    end
+
+    // 聚合请求信号
+    wire is_request = wb_cyc_i & wb_stb_i;
 
     typedef enum {
         BRAM,
         LEAF,
-        NEXTHOP
+        NEXTHOP,
+        NONE
     } storetype_t;
 
-    storetype_t                           storetype;
+    storetype_t storetype;
 
-    reg [3:0] bram_pipeline;
-    reg [4:0] inner_place;
-    reg [CHILD_ADDR_WIDTH - 1:0] bram_num;
-    reg [LEAF_ADDR_WIDTH - 1:0] leaf_num;
-    reg [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_num;
-    
-    reg leaf_we_reg;
-    reg next_hop_we_reg;
-
-    assign leaf_we = leaf_we_reg;
-    assign next_hop_we = next_hop_we_reg;
-
+    // 判断地址类型, 连接地址信号和使能信号
     always_comb begin
-        if (wb_adr_i[WISHBONE_ADDR_WIDTH-1:WISHBONE_ADDR_WIDTH-4] == 4'h4) begin
-            storetype = BRAM;
-            bram_pipeline = wb_adr_i[WISHBONE_ADDR_WIDTH-5:WISHBONE_ADDR_WIDTH-8];
-            inner_place[4:0] = {1'b0, wb_adr_i[3:0]};
-            bram_num = {4'b0, wb_adr_i[WISHBONE_ADDR_WIDTH-9:4]};
-            ft_addr[bram_pipeline] = bram_num;
-            ft_en[bram_pipeline] = 1'b1;
-            ft_we[bram_pipeline] = 1'b0;
-        end else if (wb_adr_i[WISHBONE_ADDR_WIDTH-1:WISHBONE_ADDR_WIDTH-8] == 8'h50) begin
-            storetype = LEAF;
-            inner_place[4:0] = 5'b0;
-            leaf_num = wb_adr_i[17:2];
-            leaf_addr = leaf_num;
-            leaf_we_reg = 1'b0;
-        end else if (wb_adr_i[WISHBONE_ADDR_WIDTH-1:WISHBONE_ADDR_WIDTH-8] == 8'h51) begin
-            storetype = NEXTHOP;
-            inner_place[4:0] = wb_adr_i[4:0];
-            next_hop_num = wb_adr_i[12:5];
-            next_hop_addr = next_hop_num;
-            next_hop_we_reg = 1'b0;
+        for (int i = 0; i < PIPELINE_LENGTH; i++) begin
+            ft_addr[i] = bram_num;
+            ft_en[i]   = 1'b0;
         end
-    end
-    always_comb begin
-        case (storetype)
-            BRAM: begin
-                case (inner_place[3:2])
-                    2'b00: begin
-                        ft_din[bram_pipeline].child_map = wb_dat_i[15:0];
-                    end
-                    2'b01: begin
-                        ft_din[bram_pipeline].leaf_map = wb_dat_i[15:0];
-                    end
-                    2'b10: begin
-                        ft_din[bram_pipeline].child_base_addr = wb_dat_i[23:0];
-                    end
-                    2'b11: begin
-                        ft_din[bram_pipeline].leaf_base_addr = wb_dat_i[15:0];
-                    end
-                endcase
-                ft_en[bram_pipeline] = 1'b1;
-                ft_we[bram_pipeline] = 1'b1;
+        leaf_addr     = leaf_num;
+        next_hop_addr = next_hop_num;
+
+        unique casez (addr_type)
+            8'h4?: begin
+                storetype       = BRAM;
+                ft_en[bram_num] = is_request;
             end
-            LEAF: begin
-                leaf_in = wb_dat_i[7:0];
-                leaf_we_reg = 1'b1;
+            8'h50: begin
+                storetype = LEAF;
             end
-            NEXTHOP: begin
-                if(inner_place[4] == 1'b0) begin
-                    next_hop_in.port = wb_dat_i[7:0];
-                end else begin
-                    next_hop_in.ip[8*(inner_place[3:0])+:32] = wb_dat_i;
-                end
-                next_hop_we_reg = 1'b1;
+            8'h51: begin
+                storetype = NEXTHOP;
+            end
+            default: begin
+                storetype = NONE;
             end
         endcase
     end
 
+    // 连接 RAM 数据输出至总线数据输出
+    always_comb begin
+        wb_dat_o = '0;
+        case (storetype)
+            BRAM: begin
+                unique case (inner_place[3:2])
+                    2'b00: wb_dat_o = ft_dout[bram_pipeline].child_map;
+                    2'b01: wb_dat_o = ft_dout[bram_pipeline].leaf_map;
+                    2'b10: wb_dat_o = ft_dout[bram_pipeline].child_base_addr;
+                    2'b11: wb_dat_o = ft_dout[bram_pipeline].leaf_base_addr;
+                endcase
+            end
+            LEAF: begin
+                wb_dat_o = leaf_out;
+            end
+            NEXTHOP: begin
+                case (inner_place[4:2])
+                    3'b000: wb_dat_o = next_hop_out.ip[31:0];
+                    3'b001: wb_dat_o = next_hop_out.ip[63:32];
+                    3'b010: wb_dat_o = next_hop_out.ip[95:64];
+                    3'b011: wb_dat_o = next_hop_out.ip[127:96];
+                    3'b100: wb_dat_o = next_hop_out.port;
+                    3'b101: wb_dat_o = next_hop_out.route_type;
+                    // default 为 0
+                endcase
+            end
+        endcase
+    end
+
+    // 连接总线数据输入至 RAM 数据输入
+    always_comb begin
+        for (int i = 0; i < PIPELINE_LENGTH; i++) begin
+            ft_din[i] = ft_dout[i] & (~data_mask) | (wb_dat_i & data_mask);
+        end
+        leaf_in     = leaf_out & (~data_mask) | (wb_dat_i & data_mask);
+        next_hop_in = next_hop_out & (~data_mask) | (wb_dat_i & data_mask);
+    end
+
     typedef enum {
         ST_IDLE,
-        ST_WRITE,
-        ST_DONE
+        ST_WRITE
     } state_slave;
 
-    state_slave state = ST_IDLE;
+    state_slave state;
 
-    always_ff @(posedge clk_i) begin
+    // 连接 ack 信号
+    always_comb begin
+        wb_ack_o = is_request && (!wb_we_i || (wb_we_i && (state == ST_WRITE)));
+    end
+
+    always_ff @(posedge clk_i or posedge rst_i) begin
         if (rst_i) begin
-            wb_ack_o <= 1'b0;
-            wb_dat_o <= 1'b0;
+            for (int i = 0; i < PIPELINE_LENGTH; i++) begin
+                ft_we[i] <= 1'b0;
+            end
+            leaf_we     <= 1'b0;
+            next_hop_we <= 1'b0;
+            state       <= ST_IDLE;
         end else begin
             case (state)
                 ST_IDLE: begin
-                    if (wb_stb_i == 1'b1 && wb_cyc_i == 1'b1) begin
-                        // 在组合逻辑里已经开始读东西了
+                    if (is_request) begin
                         if (wb_we_i == 1'b0) begin
-                            // TODO: 如何在一个周期内升起wb_ack_o，同时输出
-                            wb_ack_o <= 1'b1;
+                            state <= ST_IDLE;
                         end else begin
+                            case (storetype)
+                                BRAM: ft_we[bram_pipeline] <= 1'b1;
+                                LEAF: leaf_we <= 1'b1;
+                                NEXTHOP: next_hop_we <= 1'b1;
+                            endcase
                             state <= ST_WRITE;
-                            wb_ack_o <= 1'b0;
                         end
-                    end else begin
-                        wb_ack_o = 1'b0;
                     end
                 end
                 ST_WRITE: begin
                     case (storetype)
-                        BRAM: begin
-                            ft_din[bram_pipeline] <= ft_dout[bram_pipeline];
-                        end
-                        LEAF: begin
-                            leaf_in <= leaf_out;
-                        end
-                        NEXTHOP: begin
-                            next_hop_in <= next_hop_out;
-                        end
+                        BRAM: ft_we[bram_pipeline] <= 1'b0;
+                        LEAF: leaf_we <= 1'b0;
+                        NEXTHOP: next_hop_we <= 1'b0;
                     endcase
                     state <= ST_IDLE;
                 end
@@ -169,6 +194,5 @@ module forwarding_ram_controller #(
             endcase
         end
     end
-
 
 endmodule
