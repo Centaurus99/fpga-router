@@ -23,6 +23,7 @@ module forwarding_table #(
 
     // wishbone slave interface
     input  wire                             cpu_clk,
+    input  wire                             cpu_reset,
     input  wire                             wb_cyc_i,
     input  wire                             wb_stb_i,
     output reg                              wb_ack_o,
@@ -89,7 +90,7 @@ module forwarding_table #(
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
     ) u_forwarding_ram_controller (
         .clk_i   (cpu_clk),
-        .rst_i   (reset),
+        .rst_i   (cpu_reset),
         .wb_cyc_i(wb_cyc_i),
         .wb_stb_i(wb_stb_i),
         .wb_ack_o(wb_ack_o),

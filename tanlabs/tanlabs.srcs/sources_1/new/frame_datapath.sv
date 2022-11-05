@@ -33,6 +33,7 @@ module frame_datapath #(
 
     // wishbone slave interface
     input  wire                             cpu_clk,
+    input  wire                             cpu_reset,
     input  wire                             wb_cyc_i,
     input  wire                             wb_stb_i,
     output reg                              wb_ack_o,
@@ -191,6 +192,7 @@ module frame_datapath #(
         .out_ready  (forwarded_ready),
 
         .cpu_clk (cpu_clk),
+        .cpu_reset(cpu_reset),
         .wb_cyc_i(wb_cyc_i),
         .wb_stb_i(wb_stb_i),
         .wb_ack_o(wb_ack_o),

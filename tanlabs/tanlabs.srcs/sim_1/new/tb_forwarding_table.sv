@@ -262,15 +262,16 @@ module tb_forwarding_table #(
         .next_hop_ip(forwarded_next_hop_ip),
         .out_ready  (forwarded_ready),
 
-        .cpu_clk (clk_100M),
-        .wb_cyc_i(wb_cyc_i),
-        .wb_stb_i(wb_stb_i),
-        .wb_ack_o(wb_ack_o),
-        .wb_adr_i(wb_adr_i),
-        .wb_dat_i(wb_dat_i),
-        .wb_dat_o(wb_dat_o),
-        .wb_sel_i(wb_sel_i),
-        .wb_we_i (wb_we_i)
+        .cpu_clk  (clk_100M),
+        .cpu_reset(reset),
+        .wb_cyc_i (wb_cyc_i),
+        .wb_stb_i (wb_stb_i),
+        .wb_ack_o (wb_ack_o),
+        .wb_adr_i (wb_adr_i),
+        .wb_dat_i (wb_dat_i),
+        .wb_dat_o (wb_dat_o),
+        .wb_sel_i (wb_sel_i),
+        .wb_we_i  (wb_we_i)
     );
 
 endmodule
