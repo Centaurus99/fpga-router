@@ -151,6 +151,7 @@ module tb_forwarding_table #(
             string         opcode;
             logic  [127:0] ip_in;
             logic [127:0] ip_ans, port_ans, route_type_ans;
+            int pass_count, total_count;
             always_ff @(posedge clk_125M or posedge reset) begin
                 if (reset) begin
                     state_send     <= ST_SEND;
@@ -159,6 +160,8 @@ module tb_forwarding_table #(
                     ip_ans         <= '0;
                     port_ans       <= '0;
                     route_type_ans <= '0;
+                    pass_count     <= 0;
+                    total_count    <= 0;
                 end else begin
                     if (state_write == ST_DONE) begin
                         case (state_send)
@@ -213,6 +216,7 @@ module tb_forwarding_table #(
                                         $display("ANSWER FILE ERROR! data is not enough!");
                                         state_send <= ST_DONE;
                                     end else begin
+                                        total_count <= total_count + 1;
                                         // 直连路由, next_hop_ip 为目标地址
                                         if (route_type_ans == 0) begin
                                             if (ip_in != forwarded_next_hop_ip) begin
@@ -220,6 +224,7 @@ module tb_forwarding_table #(
                                                          forwarded_next_hop_ip);
                                             end else begin
                                                 $display("PASS!");
+                                                pass_count <= pass_count + 1;
                                             end
                                             // 静态或动态路由, next_hop_ip 由答案给出
                                         end else begin
@@ -231,6 +236,7 @@ module tb_forwarding_table #(
                                                          forwarded.meta.dest);
                                             end else begin
                                                 $display("PASS!");
+                                                pass_count <= pass_count + 1;
                                             end
                                         end
                                         state_send <= ST_SEND;
@@ -238,6 +244,7 @@ module tb_forwarding_table #(
                                 end
                             end
                             ST_DONE: begin
+                                $display("Summary: %d / %d", pass_count, total_count);
                                 state_send <= ST_DONE;
                                 #1000;
                                 $finish;
