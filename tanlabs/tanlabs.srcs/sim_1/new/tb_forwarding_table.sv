@@ -191,9 +191,13 @@ module tb_forwarding_table #(
                                 end
                             end
                             ST_SEND_WAIT: begin
+                                // 成功发出后输入置零
+                                if (in_ready) begin
+                                    in <= '{default: 0};
+                                end
                                 // 在收到查完的包之后, 读取 answer 中的答案进行比对
                                 if (forwarded.valid) begin
-                                    $display("Output: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
+                                    $display("Tested: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
                                              forwarded_next_hop_ip, forwarded.meta.dest);
                                     ret_ans = $fscanf(
                                         fd_ans,
@@ -209,16 +213,26 @@ module tb_forwarding_table #(
                                         $display("ANSWER FILE ERROR! data is not enough!");
                                         state_send <= ST_DONE;
                                     end else begin
-                                        if (ip_ans != forwarded_next_hop_ip) begin
-                                            $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_ans,
-                                                     forwarded_next_hop_ip);
-                                        end else if (port_ans != forwarded.meta.dest) begin
-                                            $display("ERROR! port_ans:%x, port:%x", port_ans,
-                                                     forwarded.meta.dest);
+                                        // 直连路由, next_hop_ip 为目标地址
+                                        if (route_type_ans == 0) begin
+                                            if (ip_in != forwarded_next_hop_ip) begin
+                                                $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_in,
+                                                         forwarded_next_hop_ip);
+                                            end else begin
+                                                $display("PASS!");
+                                            end
+                                            // 静态或动态路由, next_hop_ip 由答案给出
                                         end else begin
-                                            $display("PASS!");
+                                            if (ip_ans != forwarded_next_hop_ip) begin
+                                                $display("ERROR! ip_ans:%x, next_hop_ip:%x",
+                                                         ip_ans, forwarded_next_hop_ip);
+                                            end else if (port_ans != forwarded.meta.dest) begin
+                                                $display("ERROR! port_ans:%x, port:%x", port_ans,
+                                                         forwarded.meta.dest);
+                                            end else begin
+                                                $display("PASS!");
+                                            end
                                         end
-                                        in         <= '{default: 0};
                                         state_send <= ST_SEND;
                                     end
                                 end
