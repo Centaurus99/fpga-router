@@ -182,8 +182,11 @@ module forwarding_table #(
 
             assign ip_little_endian = {<<8{s[i-1].beat.data.ip6.dst}};
 
+            // 寄存 BRAM 查询结果, 可能可以优化时序
+            FTE_node ft_dout_for_parser;
+
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
-                .node   (ft_dout[i]),
+                .node   (ft_dout_for_parser),
                 .pattern(ip_for_match[STRIDE-1:0]),
 
                 .stop     (parser_stop),
@@ -195,10 +198,11 @@ module forwarding_table #(
             // 状态机
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
-                    s_reg[i]     <= '{default: 0};
-                    state[i]     <= '0;
-                    ft_addr[i]   <= '0;
-                    ip_for_match <= '0;
+                    s_reg[i]           <= '{default: 0};
+                    state[i]           <= '0;
+                    ft_addr[i]         <= '0;
+                    ip_for_match       <= '0;
+                    ft_dout_for_parser <= '{default: 0};
                 end else begin
                     if (state[i] == 0) begin
                         if (s_ready[i]) begin
@@ -213,11 +217,16 @@ module forwarding_table #(
                     // 读取 BRAM, 解析 bitmap
                     for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
                         // 等待读取 BRAM
-                        if (state[i] == (2 * j - 1)) begin
+                        if (state[i] == (3 * j - 2)) begin
                             state[i] <= state[i] + 1;
                         end
+                        // 寄存读取结果
+                        if (state[i] == (3 * j - 1)) begin
+                            ft_dout_for_parser <= ft_dout[i];
+                            state[i]           <= state[i] + 1;
+                        end
                         // BRAM 读取完成
-                        if (state[i] == (2 * j)) begin
+                        if (state[i] == (3 * j)) begin
                             // 是否需要到下一级流水线
                             if (j == STAGE_HEIGHT) begin
                                 state[i] <= '0;
