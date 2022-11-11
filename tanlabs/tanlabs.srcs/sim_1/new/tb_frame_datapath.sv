@@ -56,10 +56,10 @@ module tb_frame_datapath
 
     // FIXME: 硬编码 MAC 地址, 用于硬件调试
     wire [47:0] preset_mac[3:0];
-    assign preset_mac[0] = {<<8{48'h00_00_00_03_0A_00}};
-    assign preset_mac[1] = {<<8{48'h00_00_00_03_0A_01}};
-    assign preset_mac[2] = {<<8{48'h00_00_00_03_0A_02}};
-    assign preset_mac[3] = {<<8{48'h00_00_00_03_0A_03}};
+    assign preset_mac[0] = {<<8{48'h8C_1F_64_69_10_30}};
+    assign preset_mac[1] = {<<8{48'h8C_1F_64_69_10_31}};
+    assign preset_mac[2] = {<<8{48'h8C_1F_64_69_10_32}};
+    assign preset_mac[3] = {<<8{48'h8C_1F_64_69_10_33}};
 
     wire [127:0] ip_eui64_comb[3:0];
     generate
