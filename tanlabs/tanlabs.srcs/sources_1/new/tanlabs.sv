@@ -464,15 +464,26 @@ module tanlabs
                 .S03_AXIS_TID(3'd3),
                 .S03_AXIS_TUSER(eth_tx8_user[3]),
 
+                // FIXME: 暂时将 CPU 收到的包发给 axis_receiver
+                // .S04_AXIS_ACLK(eth_clk),
+                // .S04_AXIS_ARESETN(~reset_eth),
+                // .S04_AXIS_TVALID(1'b0),
+                // .S04_AXIS_TREADY(),
+                // .S04_AXIS_TDATA(0),
+                // .S04_AXIS_TKEEP(1'b1),
+                // .S04_AXIS_TLAST(1'b0),
+                // .S04_AXIS_TID(3'd4),
+                // .S04_AXIS_TUSER(1'b0),
+
                 .S04_AXIS_ACLK(eth_clk),
                 .S04_AXIS_ARESETN(~reset_eth),
-                .S04_AXIS_TVALID(1'b0),
-                .S04_AXIS_TREADY(),
-                .S04_AXIS_TDATA(0),
+                .S04_AXIS_TVALID(eth_tx8_valid[4]),
+                .S04_AXIS_TREADY(eth_tx8_ready[4]),
+                .S04_AXIS_TDATA(eth_tx8_data[4]),
                 .S04_AXIS_TKEEP(1'b1),
-                .S04_AXIS_TLAST(1'b0),
+                .S04_AXIS_TLAST(eth_tx8_last[4]),
                 .S04_AXIS_TID(3'd4),
-                .S04_AXIS_TUSER(1'b0),
+                .S04_AXIS_TUSER(eth_tx8_user[4]),
 
                 .M00_AXIS_ACLK(eth_clk),
                 .M00_AXIS_ARESETN(~reset_eth),
@@ -526,7 +537,8 @@ module tanlabs
     wire internal_rx_user = eth_tx8_user[4];
     wire internal_rx_valid = eth_tx8_valid[4];
     wire internal_rx_ready;
-    assign eth_tx8_ready[4] = internal_rx_ready;
+    // FIXME: 暂时将 CPU 发来的包发给 axis_receiver
+    // assign eth_tx8_ready[4] = internal_rx_ready;
 
     // README: internal_tx_* and internal_rx_* are left for internal use.
     // You can connect them with your CPU to transfer frames between the router part and the CPU part,
