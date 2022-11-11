@@ -151,6 +151,7 @@ module tb_forwarding_table #(
             string         opcode;
             logic  [127:0] ip_in;
             logic [127:0] ip_ans, port_ans, route_type_ans;
+            int pass_count, total_count;
             always_ff @(posedge clk_125M or posedge reset) begin
                 if (reset) begin
                     state_send     <= ST_SEND;
@@ -159,6 +160,8 @@ module tb_forwarding_table #(
                     ip_ans         <= '0;
                     port_ans       <= '0;
                     route_type_ans <= '0;
+                    pass_count     <= 0;
+                    total_count    <= 0;
                 end else begin
                     if (state_write == ST_DONE) begin
                         case (state_send)
@@ -191,9 +194,13 @@ module tb_forwarding_table #(
                                 end
                             end
                             ST_SEND_WAIT: begin
+                                // 成功发出后输入置零
+                                if (in_ready) begin
+                                    in <= '{default: 0};
+                                end
                                 // 在收到查完的包之后, 读取 answer 中的答案进行比对
                                 if (forwarded.valid) begin
-                                    $display("Output: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
+                                    $display("Tested: ip_in:%x, next_hop_ip:%x, port:%x", ip_in,
                                              forwarded_next_hop_ip, forwarded.meta.dest);
                                     ret_ans = $fscanf(
                                         fd_ans,
@@ -209,21 +216,35 @@ module tb_forwarding_table #(
                                         $display("ANSWER FILE ERROR! data is not enough!");
                                         state_send <= ST_DONE;
                                     end else begin
-                                        if (ip_ans != forwarded_next_hop_ip) begin
-                                            $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_ans,
-                                                     forwarded_next_hop_ip);
-                                        end else if (port_ans != forwarded.meta.dest) begin
-                                            $display("ERROR! port_ans:%x, port:%x", port_ans,
-                                                     forwarded.meta.dest);
+                                        total_count <= total_count + 1;
+                                        // 直连路由, next_hop_ip 为目标地址
+                                        if (route_type_ans == 0) begin
+                                            if (ip_in != forwarded_next_hop_ip) begin
+                                                $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_in,
+                                                         forwarded_next_hop_ip);
+                                            end else begin
+                                                $display("PASS!");
+                                                pass_count <= pass_count + 1;
+                                            end
+                                            // 静态或动态路由, next_hop_ip 由答案给出
                                         end else begin
-                                            $display("PASS!");
+                                            if (ip_ans != forwarded_next_hop_ip) begin
+                                                $display("ERROR! ip_ans:%x, next_hop_ip:%x",
+                                                         ip_ans, forwarded_next_hop_ip);
+                                            end else if (port_ans != forwarded.meta.dest) begin
+                                                $display("ERROR! port_ans:%x, port:%x", port_ans,
+                                                         forwarded.meta.dest);
+                                            end else begin
+                                                $display("PASS!");
+                                                pass_count <= pass_count + 1;
+                                            end
                                         end
-                                        in         <= '{default: 0};
                                         state_send <= ST_SEND;
                                     end
                                 end
                             end
                             ST_DONE: begin
+                                $display("Summary: %d / %d", pass_count, total_count);
                                 state_send <= ST_DONE;
                                 #1000;
                                 $finish;
@@ -248,15 +269,16 @@ module tb_forwarding_table #(
         .next_hop_ip(forwarded_next_hop_ip),
         .out_ready  (forwarded_ready),
 
-        .cpu_clk (clk_100M),
-        .wb_cyc_i(wb_cyc_i),
-        .wb_stb_i(wb_stb_i),
-        .wb_ack_o(wb_ack_o),
-        .wb_adr_i(wb_adr_i),
-        .wb_dat_i(wb_dat_i),
-        .wb_dat_o(wb_dat_o),
-        .wb_sel_i(wb_sel_i),
-        .wb_we_i (wb_we_i)
+        .cpu_clk  (clk_100M),
+        .cpu_reset(reset),
+        .wb_cyc_i (wb_cyc_i),
+        .wb_stb_i (wb_stb_i),
+        .wb_ack_o (wb_ack_o),
+        .wb_adr_i (wb_adr_i),
+        .wb_dat_i (wb_dat_i),
+        .wb_dat_o (wb_dat_o),
+        .wb_sel_i (wb_sel_i),
+        .wb_we_i  (wb_we_i)
     );
 
 endmodule

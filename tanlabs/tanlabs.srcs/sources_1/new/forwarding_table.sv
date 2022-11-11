@@ -23,6 +23,7 @@ module forwarding_table #(
 
     // wishbone slave interface
     input  wire                             cpu_clk,
+    input  wire                             cpu_reset,
     input  wire                             wb_cyc_i,
     input  wire                             wb_stb_i,
     output reg                              wb_ack_o,
@@ -59,11 +60,15 @@ module forwarding_table #(
     logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [  PIPELINE_LENGTH:1];
     FTE_node                                  ft_dout         [  PIPELINE_LENGTH:1];
     // 叶节点读取信号
-    logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
+    reg           [                 10 - 1:0] leaf_addr;
     leaf_node                                 leaf_out;
+    reg                                       leaf_send;
+    wire                                      leaf_ack;
     // Next_hop 节点读取信号
-    logic         [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;
+    reg           [NEXT_HOP_ADDR_WIDTH - 1:0] next_hop_addr;
     next_hop_node                             next_hop_out;
+    reg                                       next_hop_send;
+    wire                                      next_hop_ack;
 
     // 内部节点存储 BRAM 的端口 A 接入总线
     // 为了方便 Wishbone 总线地址转换, 将编号改为从 0 开始
@@ -73,7 +78,7 @@ module forwarding_table #(
     FTE_node                                  ft_din_a        [PIPELINE_LENGTH-1:0];
     FTE_node                                  ft_dout_a       [PIPELINE_LENGTH-1:0];
     // 叶节点存储 LUTRAM 的端口 A 接入总线
-    logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_a;
+    logic         [                 10 - 1:0] leaf_addr_a;
     leaf_node                                 leaf_in_a;
     leaf_node                                 leaf_out_a;
     wire                                      leaf_we_a;
@@ -89,7 +94,7 @@ module forwarding_table #(
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
     ) u_forwarding_ram_controller (
         .clk_i   (cpu_clk),
-        .rst_i   (reset),
+        .rst_i   (cpu_reset),
         .wb_cyc_i(wb_cyc_i),
         .wb_stb_i(wb_stb_i),
         .wb_ack_o(wb_ack_o),
@@ -136,28 +141,68 @@ module forwarding_table #(
         end
     endgenerate
 
-    // 例化叶节点存储
-    forwarding_leaf_data leaf_data (
-        .a       (leaf_addr_a),  // input wire [9 : 0] a
-        .d       (leaf_in_a),    // input wire [7 : 0] d
-        .dpra    (leaf_addr),    // input wire [9 : 0] dpra
-        .clk     (cpu_clk),      // input wire clk
-        .we      (leaf_we_a),    // input wire we
-        .qdpo_clk(clk),          // input wire qdpo_clk
-        .qspo    (leaf_out_a),   // output wire [7 : 0] qspo
-        .qdpo    (leaf_out)      // output wire [7 : 0] qdpo
+    // 例化叶节点存储和控制器
+    wire [9 : 0] lut_leaf_dpra;
+    wire [7 : 0] lut_leaf_qdpo;
+
+    lut_ram_dp_controller #(
+        .ADDR_WIDTH(10),
+        .DATA_WIDTH(8)
+    ) leaf_lut_ram_dp_controller (
+        .clk      (cpu_clk),
+        .rst      (cpu_reset),
+        .dpra     (leaf_addr),
+        .qdpo_clk (clk),
+        .qdpo_rst (reset),
+        .qdpo     (leaf_out),
+        .qdpo_send(leaf_send),
+        .qdpo_ack (leaf_ack),
+
+        .lut_dpra(lut_leaf_dpra),
+        .lut_qdpo(lut_leaf_qdpo)
     );
 
-    // 例化 Next-Hop 节点存储
+    forwarding_leaf_data leaf_data (
+        .a       (leaf_addr_a),    // input wire [9 : 0] a
+        .d       (leaf_in_a),      // input wire [7 : 0] d
+        .dpra    (lut_leaf_dpra),  // input wire [9 : 0] dpra
+        .clk     (cpu_clk),        // input wire clk
+        .we      (leaf_we_a),      // input wire we
+        .qdpo_clk(cpu_clk),        // input wire qdpo_clk
+        .qspo    (leaf_out_a),     // output wire [7 : 0] qspo
+        .qdpo    (lut_leaf_qdpo)   // output wire [7 : 0] qdpo
+    );
+
+    // 例化 Next-Hop 节点存储和控制器
+    wire [  5 : 0] lut_next_hop_dpra;
+    wire [135 : 0] lut_next_hop_qdpo;
+
+    lut_ram_dp_controller #(
+        .ADDR_WIDTH(6),
+        .DATA_WIDTH(136)
+    ) next_hop_lut_ram_dp_controller (
+        .clk      (cpu_clk),
+        .rst      (cpu_reset),
+        .dpra     (next_hop_addr),
+        .qdpo_clk (clk),
+        .qdpo_rst (reset),
+        .qdpo     (next_hop_out),
+        .qdpo_send(next_hop_send),
+        .qdpo_ack (next_hop_ack),
+
+        .lut_dpra(lut_next_hop_dpra),
+        .lut_qdpo(lut_next_hop_qdpo)
+    );
+
     forwarding_next_hop_data next_hop_data (
-        .a       (next_hop_addr_a),  // input wire [5 : 0] a
-        .d       (next_hop_in_a),    // input wire [135 : 0] d
-        .dpra    (next_hop_addr),    // input wire [5 : 0] dpra
-        .clk     (cpu_clk),          // input wire clk
-        .we      (next_hop_we_a),    // input wire we
-        .qdpo_clk(clk),              // input wire qdpo_clk
-        .qspo    (next_hop_out_a),   // output wire [135 : 0] qspo
-        .qdpo    (next_hop_out)      // output wire [135 : 0] qdpo
+        .a       (next_hop_addr_a),    // input wire [5 : 0] a
+        .d       (next_hop_in_a),      // input wire [135 : 0] d
+        .dpra    (lut_next_hop_dpra),  // input wire [5 : 0] dpra
+        .clk     (cpu_clk),            // input wire clk
+        .we      (next_hop_we_a),      // input wire we
+        .qdpo_clk(cpu_clk),            // input wire qdpo_clk
+        .qspo    (next_hop_out_a),     // output wire [135 : 0] qspo
+        .qdpo    (lut_next_hop_qdpo)   // output wire [135 : 0] qdpo
     );
 
     // 流水线
@@ -175,15 +220,18 @@ module forwarding_table #(
             // bitmap 解析与匹配
             wire                          parser_stop;
             wire                          parser_matched;
-            wire [ LEAF_ADDR_WIDTH - 1:0] parser_leaf_addr;
+            wire [              10 - 1:0] parser_leaf_addr;
             wire [CHILD_ADDR_WIDTH - 1:0] parser_node_addr;
             wire [                 127:0] ip_little_endian;
             reg  [                 127:0] ip_for_match;
 
             assign ip_little_endian = {<<8{s[i-1].beat.data.ip6.dst}};
 
+            // 寄存 BRAM 查询结果, 可能可以优化时序
+            FTE_node ft_dout_for_parser;
+
             forwarding_bitmap_parser u_forwarding_bitmap_parser (
-                .node   (ft_dout[i]),
+                .node   (ft_dout_for_parser),
                 .pattern(ip_for_match[STRIDE-1:0]),
 
                 .stop     (parser_stop),
@@ -195,10 +243,11 @@ module forwarding_table #(
             // 状态机
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
-                    s_reg[i]     <= '{default: 0};
-                    state[i]     <= '0;
-                    ft_addr[i]   <= '0;
-                    ip_for_match <= '0;
+                    s_reg[i]           <= '{default: 0};
+                    state[i]           <= '0;
+                    ft_addr[i]         <= '0;
+                    ip_for_match       <= '0;
+                    ft_dout_for_parser <= '{default: 0};
                 end else begin
                     if (state[i] == 0) begin
                         if (s_ready[i]) begin
@@ -213,11 +262,16 @@ module forwarding_table #(
                     // 读取 BRAM, 解析 bitmap
                     for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
                         // 等待读取 BRAM
-                        if (state[i] == (2 * j - 1)) begin
+                        if (state[i] == (3 * j - 2)) begin
                             state[i] <= state[i] + 1;
                         end
+                        // 寄存读取结果
+                        if (state[i] == (3 * j - 1)) begin
+                            ft_dout_for_parser <= ft_dout[i];
+                            state[i]           <= state[i] + 1;
+                        end
                         // BRAM 读取完成
-                        if (state[i] == (2 * j)) begin
+                        if (state[i] == (3 * j)) begin
                             // 是否需要到下一级流水线
                             if (j == STAGE_HEIGHT) begin
                                 state[i] <= '0;
@@ -247,79 +301,110 @@ module forwarding_table #(
         end
     endgenerate
 
-    // 查询叶节点中 next_hop 编号, 再查询 next_hop 表
+    // 查询叶节点中 next_hop 编号
     typedef enum {
         ST_INIT,  // 初始阶段
-        ST_GET_LEAF,  // 查询叶节点
-        ST_GET_LEAF_FIN,  // 完成查询叶节点
-        ST_GET_NEXT_HOP,  // 查询 next_hop 表
-        ST_GET_NEXT_HOP_FIN  // 完成查询 next_hop 表
-    } after_state_t;
+        ST_READ   // 查询中, 等待结果
+    } read_state_t;
 
     reg error;
-    forwarding_beat after, after_reg;
-    after_state_t after_state;
-    reg           after_ready;
-    assign s_ready[PIPELINE_LENGTH] = (after_ready && after_state == ST_INIT) || !s[PIPELINE_LENGTH].beat.valid;
+    forwarding_beat s_leaf, s_leaf_reg;
+    read_state_t s_leaf_state;
+    reg          s_leaf_ready;
+    assign s_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s[PIPELINE_LENGTH].beat.valid;
+
+    reg [NEXT_HOP_ADDR_WIDTH - 1:0] s_leaf_next_hop_addr;
 
     always_comb begin
-        after            = after_reg;
-        after.beat.valid = after_reg.beat.valid && after_state == ST_INIT;
+        s_leaf            = s_leaf_reg;
+        s_leaf.beat.valid = s_leaf_reg.beat.valid && s_leaf_state == ST_INIT;
     end
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            error         <= '0;
-            after_reg     <= '{default: 0};
-            after_state   <= ST_INIT;
-            leaf_addr     <= '0;
-            next_hop_addr <= '0;
-            next_hop_ip   <= '0;
+            error                <= '0;
+            s_leaf_reg           <= '{default: 0};
+            s_leaf_state         <= ST_INIT;
+            leaf_addr            <= '0;
+            leaf_send            <= '0;
+            s_leaf_next_hop_addr <= '0;
         end else begin
-            case (after_state)
+            unique case (s_leaf_state)
                 ST_INIT: begin
-                    if (after_ready) begin
-                        after_reg <= s[PIPELINE_LENGTH];
+                    if (s_leaf_ready) begin
+                        s_leaf_reg <= s[PIPELINE_LENGTH];
                         if (`should_handle(s[PIPELINE_LENGTH].beat)) begin
                             // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
                             if (s[PIPELINE_LENGTH].matched) begin
-                                leaf_addr   <= s[PIPELINE_LENGTH].leaf_addr;
-                                after_state <= ST_GET_LEAF;
+                                leaf_addr    <= s[PIPELINE_LENGTH].leaf_addr;
+                                leaf_send    <= 1'b1;
+                                s_leaf_state <= ST_READ;
                             end else begin
-                                error       <= 1'b1;
-                                after_state <= ST_INIT;
+                                error        <= 1'b1;
+                                s_leaf_state <= ST_INIT;
                             end
                         end
                     end
                 end
-                ST_GET_LEAF: begin
-                    after_state <= ST_GET_LEAF_FIN;
-                end
-                // 查完叶节点, 根据叶节点中存储的 next_hop 编号, 查 next_hop 表
-                ST_GET_LEAF_FIN: begin
-                    next_hop_addr <= leaf_out.next_hop_addr;
-                    after_state   <= ST_GET_NEXT_HOP;
-                end
-                ST_GET_NEXT_HOP: begin
-                    after_state <= ST_GET_NEXT_HOP_FIN;
-                end
-                // 查完 next_hop 表, 更新下一跳地址和出口
-                ST_GET_NEXT_HOP_FIN: begin
-                    // 直连路由
-                    if (next_hop_out.route_type == ROUTE_DIRECT) begin
-                        next_hop_ip <= after_reg.beat.data.ip6.dst;
-                        // 静态路由或动态路由
-                    end else begin
-                        next_hop_ip <= next_hop_out.ip;
+                ST_READ: begin
+                    leaf_send <= 1'b0;
+                    if (leaf_ack) begin
+                        s_leaf_next_hop_addr <= leaf_out.next_hop_addr;
+                        s_leaf_state         <= ST_INIT;
                     end
-                    after_reg.beat.meta.dest <= next_hop_out.port;
-                    after_state              <= ST_INIT;
                 end
             endcase
         end
     end
 
-    assign out         = after.beat;
-    assign after_ready = out_ready;
+    // 根据 next_hop 编号查询 next_hop 表
+    forwarding_beat s_next_hop, s_next_hop_reg;
+    read_state_t s_next_hop_state;
+    reg          s_next_hop_ready;
+    assign s_leaf_ready = (s_next_hop_ready && s_next_hop_state == ST_INIT) || !s_leaf.beat.valid;
+
+    always_comb begin
+        s_next_hop            = s_next_hop_reg;
+        s_next_hop.beat.valid = s_next_hop_reg.beat.valid && s_next_hop_state == ST_INIT;
+    end
+
+    always_ff @(posedge clk or posedge reset) begin
+        if (reset) begin
+            s_next_hop_reg   <= '{default: 0};
+            s_next_hop_state <= ST_INIT;
+            next_hop_addr    <= '0;
+            next_hop_ip      <= '0;
+        end else begin
+            unique case (s_next_hop_state)
+                ST_INIT: begin
+                    if (s_next_hop_ready) begin
+                        s_next_hop_reg <= s_leaf;
+                        if (`should_handle(s_leaf.beat)) begin
+                            next_hop_addr    <= s_leaf_next_hop_addr;
+                            next_hop_send    <= 1'b1;
+                            s_next_hop_state <= ST_READ;
+                        end
+                    end
+                end
+                ST_READ: begin
+                    next_hop_send <= 1'b0;
+                    if (next_hop_ack) begin
+                        if (next_hop_out.route_type == ROUTE_DIRECT) begin
+                            // 直连路由
+                            next_hop_ip <= s_next_hop_reg.beat.data.ip6.dst;
+                        end else begin
+                            // 静态路由或动态路由
+                            next_hop_ip <= next_hop_out.ip;
+                        end 
+                        s_next_hop_reg.beat.meta.dest <= next_hop_out.port;
+                        s_next_hop_state              <= ST_INIT;
+                    end
+                end
+            endcase
+        end
+    end
+
+    assign out              = s_next_hop.beat;
+    assign s_next_hop_ready = out_ready;
 
 endmodule

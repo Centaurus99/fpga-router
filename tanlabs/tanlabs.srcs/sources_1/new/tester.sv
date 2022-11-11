@@ -22,12 +22,14 @@ module tester #(
     output reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_o,
     output reg                              wb_we_o
 );
-    logic [WISHBONE_ADDR_WIDTH-1:0] addr[0:57];
-    logic [WISHBONE_DATA_WIDTH-1:0] data[0:57];
+    logic [WISHBONE_ADDR_WIDTH-1:0] addr[0:60];
+    logic [WISHBONE_DATA_WIDTH-1:0] data[0:60];
 
     assign addr = {
         32'h40000000,
+        32'h40000004,
         32'h40000008,
+        32'h4000000C,
         32'h40000010,
         32'h40000018,
         32'h40000020,
@@ -69,6 +71,7 @@ module tester #(
         32'h50000008,
         32'h5000000C,
         32'h50000010,
+        32'h50000014,
         32'h51000000,
         32'h51000004,
         32'h5100000C,
@@ -88,7 +91,9 @@ module tester #(
 
     assign data = {
         32'h00000004,
+        32'h00000002,
         32'h00000003,
+        32'h00000005,
         32'h00004000,
         32'h00000004,
         32'h00000001,
@@ -130,19 +135,20 @@ module tester #(
         32'h00000001,
         32'h00000002,
         32'h00000003,
+        32'h00000003,
         32'h06AA0E2A,
         32'h000A9704,
         32'h33230000,
         32'h06AA0E2A,
-        32'h010A9704,
+        32'h000A9704,
         32'h44340000,
         32'h00000001,
         32'h06AA0E2A,
-        32'h020A9704,
+        32'h000A9704,
         32'h55450000,
         32'h00000002,
         32'h06AA0E2A,
-        32'h030A9704,
+        32'h000A9704,
         32'h66560000,
         32'h00000003
     };
@@ -169,7 +175,7 @@ module tester #(
             case (state_write)
                 ST_WRITE_RAM: begin
                     if (write_count == 0 || wb_ack_i) begin
-                        if (write_count == 58) begin
+                        if (write_count == 61) begin
                             wb_cyc_o    <= 1'b0;
                             wb_stb_o    <= 1'b0;
                             state_write <= ST_DONE;
@@ -180,7 +186,7 @@ module tester #(
                             wb_we_o     <= 1'b1;
                             wb_sel_o    <= 4'b1111;
                             wb_adr_o    <= addr[write_count];
-                            wb_dat_o    <= addr[write_count];
+                            wb_dat_o    <= data[write_count];
                             state_write <= ST_WRITE_RAM;
                         end
                     end
