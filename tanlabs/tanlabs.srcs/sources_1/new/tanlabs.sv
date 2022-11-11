@@ -875,19 +875,19 @@ module tanlabs
     assign led[15:8] = 0;
 
     // README: Your code here.
-    // tester #(
-    //     .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
-    //     .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
-    // ) u_tester (
-    //     .clk(core_clk),
-    //     .reset  (reset_core),
-    //     .wb_cyc_o(wb_cyc_i),
-    //     .wb_stb_o(wb_stb_i),
-    //     .wb_ack_i(wb_ack_o),
-    //     .wb_adr_o(wb_adr_i),
-    //     .wb_dat_o(wb_dat_i),
-    //     .wb_dat_i(wb_dat_o),
-    //     .wb_sel_o(wb_sel_i),
-    //     .wb_we_o (wb_we_i)
-    // );
+    tester #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) u_tester (
+        .clk(core_clk),
+        .reset  (reset_core),
+        .wb_cyc_o(wb_cyc_i),
+        .wb_stb_o(wb_stb_i),
+        .wb_ack_i(wb_ack_o),
+        .wb_adr_o(wb_adr_i),
+        .wb_dat_o(wb_dat_i),
+        .wb_dat_i(wb_dat_o),
+        .wb_sel_o(wb_sel_i),
+        .wb_we_o (wb_we_i)
+    );
 endmodule
