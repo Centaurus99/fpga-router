@@ -13,9 +13,9 @@ for ((i = 0; i < 4; i++)) do
     ip link add veth${i} type veth peer name ${OUT_PREFIX}veth${i}
     ip link set veth${i} netns ${NS}
     ip netns exec ${NS} ip link set veth${i} up
-    ip netns exec ${NS} ip link set veth${i} addr 54:57:44:32:5f:3${i}
+    ip netns exec ${NS} ip link set veth${i} addr 8C:1F:64:69:10:3${i}
     ip netns exec ${NS} ip addr flush dev veth${i}
-    ip netns exec ${NS} ip addr add fe80::5657:44ff:fe32:5f3${i}/64 dev veth${i}
+    ip netns exec ${NS} ip addr add fe80::8e1f:64ff:fe69:103${i}/64 dev veth${i}
     ip netns exec ${NS} ip addr add ${IP_PREFIX}${i}::1/64 dev veth${i}
     ip link set ${OUT_PREFIX}veth${i} up
     ip link set ${OUT_PREFIX}veth${i} addr 54:45:53:54:5f:3${i}

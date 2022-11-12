@@ -54,13 +54,11 @@ module forwarding_table #(
     assign s[0].leaf_addr = '0;
     assign s[0].node_addr = '0;  // 默认根节点地址为 0
 
-    logic         [                      3:0] state           [  PIPELINE_LENGTH:1];
-
     // 内部节点读取信号
     logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [  PIPELINE_LENGTH:1];
     FTE_node                                  ft_dout         [  PIPELINE_LENGTH:1];
     // 叶节点读取信号
-    reg           [                 10 - 1:0] leaf_addr;
+    reg           [    LEAF_ADDR_WIDTH - 1:0] leaf_addr;
     leaf_node                                 leaf_out;
     reg                                       leaf_send;
     wire                                      leaf_ack;
@@ -78,7 +76,7 @@ module forwarding_table #(
     FTE_node                                  ft_din_a        [PIPELINE_LENGTH-1:0];
     FTE_node                                  ft_dout_a       [PIPELINE_LENGTH-1:0];
     // 叶节点存储 LUTRAM 的端口 A 接入总线
-    logic         [                 10 - 1:0] leaf_addr_a;
+    logic         [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_a;
     leaf_node                                 leaf_in_a;
     leaf_node                                 leaf_out_a;
     wire                                      leaf_we_a;
@@ -121,9 +119,51 @@ module forwarding_table #(
         .next_hop_we  (next_hop_we_a)
     );
 
-    // 例化流水线各级存储
+    // 例化流水线各级存储, 单独例化前三级
+    forwarding_data_1 FT_data_1 (
+        .clka (cpu_clk),       // input wire clka
+        .ena  (ft_en_a[0]),    // input wire ena
+        .wea  (ft_we_a[0]),    // input wire [0 : 0] wea
+        .addra(ft_addr_a[0]),  // input wire [14 : 0] addra
+        .dina (ft_din_a[0]),   // input wire [71 : 0] dina
+        .douta(ft_dout_a[0]),  // output wire [71 : 0] douta
+        .clkb (clk),           // input wire clkb
+        .enb  (1'b1),          // input wire enb
+        .web  (1'b0),          // input wire [0 : 0] web
+        .addrb(ft_addr[1]),    // input wire [14 : 0] addrb
+        .dinb ('0),            // input wire [71 : 0] dinb
+        .doutb(ft_dout[1])     // output wire [71 : 0] doutb
+    );
+    forwarding_data_2 FT_data_2 (
+        .clka (cpu_clk),       // input wire clka
+        .ena  (ft_en_a[1]),    // input wire ena
+        .wea  (ft_we_a[1]),    // input wire [0 : 0] wea
+        .addra(ft_addr_a[1]),  // input wire [15 : 0] addra
+        .dina (ft_din_a[1]),   // input wire [71 : 0] dina
+        .douta(ft_dout_a[1]),  // output wire [71 : 0] douta
+        .clkb (clk),           // input wire clkb
+        .enb  (1'b1),          // input wire enb
+        .web  (1'b0),          // input wire [0 : 0] web
+        .addrb(ft_addr[2]),    // input wire [15 : 0] addrb
+        .dinb ('0),            // input wire [71 : 0] dinb
+        .doutb(ft_dout[2])     // output wire [71 : 0] doutb
+    );
+    forwarding_data_3 FT_data_3 (
+        .clka (cpu_clk),       // input wire clka
+        .ena  (ft_en_a[2]),    // input wire ena
+        .wea  (ft_we_a[2]),    // input wire [0 : 0] wea
+        .addra(ft_addr_a[2]),  // input wire [15 : 0] addra
+        .dina (ft_din_a[2]),   // input wire [71 : 0] dina
+        .douta(ft_dout_a[2]),  // output wire [71 : 0] douta
+        .clkb (clk),           // input wire clkb
+        .enb  (1'b1),          // input wire enb
+        .web  (1'b0),          // input wire [0 : 0] web
+        .addrb(ft_addr[3]),    // input wire [15 : 0] addrb
+        .dinb ('0),            // input wire [71 : 0] dinb
+        .doutb(ft_dout[3])     // output wire [71 : 0] doutb
+    );
     generate
-        for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : forwarding_data_gen
+        for (genvar i = 4; i <= PIPELINE_LENGTH; ++i) begin : forwarding_data_gen
             forwarding_data_0 FT_data_0 (
                 .clka (cpu_clk),         // input wire clka
                 .ena  (ft_en_a[i-1]),    // input wire ena
@@ -142,11 +182,11 @@ module forwarding_table #(
     endgenerate
 
     // 例化叶节点存储和控制器
-    wire [9 : 0] lut_leaf_dpra;
-    wire [7 : 0] lut_leaf_qdpo;
+    wire [14 : 0] lut_leaf_dpra;
+    wire [ 7 : 0] lut_leaf_qdpo;
 
     lut_ram_dp_controller #(
-        .ADDR_WIDTH(10),
+        .ADDR_WIDTH(15),
         .DATA_WIDTH(8)
     ) leaf_lut_ram_dp_controller (
         .clk      (cpu_clk),
@@ -163,9 +203,9 @@ module forwarding_table #(
     );
 
     forwarding_leaf_data leaf_data (
-        .a       (leaf_addr_a),    // input wire [9 : 0] a
+        .a       (leaf_addr_a),    // input wire [14 : 0] a
         .d       (leaf_in_a),      // input wire [7 : 0] d
-        .dpra    (lut_leaf_dpra),  // input wire [9 : 0] dpra
+        .dpra    (lut_leaf_dpra),  // input wire [14 : 0] dpra
         .clk     (cpu_clk),        // input wire clk
         .we      (leaf_we_a),      // input wire we
         .qdpo_clk(cpu_clk),        // input wire qdpo_clk
@@ -174,11 +214,11 @@ module forwarding_table #(
     );
 
     // 例化 Next-Hop 节点存储和控制器
-    wire [  5 : 0] lut_next_hop_dpra;
+    wire [  6 : 0] lut_next_hop_dpra;
     wire [135 : 0] lut_next_hop_qdpo;
 
     lut_ram_dp_controller #(
-        .ADDR_WIDTH(6),
+        .ADDR_WIDTH(7),
         .DATA_WIDTH(136)
     ) next_hop_lut_ram_dp_controller (
         .clk      (cpu_clk),
@@ -195,9 +235,9 @@ module forwarding_table #(
     );
 
     forwarding_next_hop_data next_hop_data (
-        .a       (next_hop_addr_a),    // input wire [5 : 0] a
+        .a       (next_hop_addr_a),    // input wire [6 : 0] a
         .d       (next_hop_in_a),      // input wire [135 : 0] d
-        .dpra    (lut_next_hop_dpra),  // input wire [5 : 0] dpra
+        .dpra    (lut_next_hop_dpra),  // input wire [6 : 0] dpra
         .clk     (cpu_clk),            // input wire clk
         .we      (next_hop_we_a),      // input wire we
         .qdpo_clk(cpu_clk),            // input wire qdpo_clk
@@ -205,22 +245,34 @@ module forwarding_table #(
         .qdpo    (lut_next_hop_qdpo)   // output wire [135 : 0] qdpo
     );
 
+    // 流水线中 BRAM 读取状态
+    typedef enum logic [1:0] {
+        BRAM_IDLE,
+        BRAM_ADDR_SENT,
+        BRAM_DATA_GET,
+        BRAM_CALC
+    } bram_state_t;
+
     // 流水线
     generate
         for (genvar i = 1; i <= PIPELINE_LENGTH; ++i) begin : pipeline_gen
+
+            logic        [2:0] now_height;  // 当前处理高度 (0~STAGE_HEIGHT)
+            bram_state_t       bram_state;  // BRAM 读取状态
+
             // 连接 ready 信号
-            assign s_ready[i-1] = (s_ready[i] && state[i] == 0) || !s[i-1].beat.valid;
+            assign s_ready[i-1] = (s_ready[i] && bram_state == BRAM_IDLE) || !s[i-1].beat.valid;
 
             // 连接状态机寄存器
             always_comb begin
                 s[i]            = s_reg[i];
-                s[i].beat.valid = s_reg[i].beat.valid && state[i] == 0;
+                s[i].beat.valid = s_reg[i].beat.valid && bram_state == BRAM_IDLE;
             end
 
             // bitmap 解析与匹配
             wire                          parser_stop;
             wire                          parser_matched;
-            wire [              10 - 1:0] parser_leaf_addr;
+            wire [ LEAF_ADDR_WIDTH - 1:0] parser_leaf_addr;
             wire [CHILD_ADDR_WIDTH - 1:0] parser_node_addr;
             wire [                 127:0] ip_little_endian;
             reg  [                 127:0] ip_for_match;
@@ -244,39 +296,39 @@ module forwarding_table #(
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
                     s_reg[i]           <= '{default: 0};
-                    state[i]           <= '0;
+                    now_height         <= 0;
+                    bram_state         <= BRAM_IDLE;
                     ft_addr[i]         <= '0;
                     ip_for_match       <= '0;
                     ft_dout_for_parser <= '{default: 0};
                 end else begin
-                    if (state[i] == 0) begin
-                        if (s_ready[i]) begin
-                            s_reg[i] <= s[i-1];
-                            if (`should_search(s[i-1])) begin
-                                state[i] <= 1'b1;
-                                ft_addr[i] <= s[i-1].node_addr;
-                                ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
+                    unique case (bram_state)
+                        BRAM_IDLE: begin
+                            if (s_ready[i]) begin
+                                s_reg[i] <= s[i-1];
+                                if (`should_search(s[i-1])) begin
+                                    now_height <= 1;
+                                    bram_state <= BRAM_ADDR_SENT;
+                                    ft_addr[i] <= s[i-1].node_addr;
+                                    ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
+                                end
                             end
                         end
-                    end
-                    // 读取 BRAM, 解析 bitmap
-                    for (int j = 1; j <= STAGE_HEIGHT; ++j) begin
-                        // 等待读取 BRAM
-                        if (state[i] == (3 * j - 2)) begin
-                            state[i] <= state[i] + 1;
+                        BRAM_ADDR_SENT: begin  // 等待读取 BRAM
+                            bram_state <= BRAM_DATA_GET;
                         end
-                        // 寄存读取结果
-                        if (state[i] == (3 * j - 1)) begin
+                        BRAM_DATA_GET: begin  // 寄存读取结果
+                            bram_state         <= BRAM_CALC;
                             ft_dout_for_parser <= ft_dout[i];
-                            state[i]           <= state[i] + 1;
                         end
-                        // BRAM 读取完成
-                        if (state[i] == (3 * j)) begin
-                            // 是否需要到下一级流水线
-                            if (j == STAGE_HEIGHT) begin
-                                state[i] <= '0;
+                        BRAM_CALC: begin  // BRAM 读取完成
+                            // 是否需要到下一级流水线(查完这一级或已结束查询)
+                            if (now_height == STAGE_HEIGHT || parser_stop) begin
+                                now_height <= 0;
+                                bram_state <= BRAM_IDLE;
                             end else begin
-                                state[i] <= state[i] + 1;
+                                now_height <= now_height + 1;
+                                bram_state <= BRAM_ADDR_SENT;
                             end
                             // 若匹配到前缀, 则更新
                             if (parser_matched) begin
@@ -284,18 +336,14 @@ module forwarding_table #(
                                 s_reg[i].leaf_addr <= parser_leaf_addr;
                             end
                             s_reg[i].node_addr <= parser_node_addr;  // 更新当前节点地址
+                            ft_addr[i] <= parser_node_addr;  // 更新查询节点地址, 若已结束查询也无影响
                             s_reg[i].stop <= parser_stop; // 表示是否结束查询（对应子节点为空或为叶节点）
-                            // 若已结束查询, 则结束状态机, 进入下一级流水线
-                            if (parser_stop) begin
-                                state[i] <= '0;
-                                // 否则继续查询 BRAM
-                            end else begin
-                                ft_addr[i] <= parser_node_addr;
-                            end
-                            // 更新 ip_for_match
-                            ip_for_match <= ip_for_match >> STRIDE;
+                            ip_for_match <= ip_for_match >> STRIDE;  // 更新 ip_for_match
                         end
-                    end
+                        default: begin
+                            bram_state <= BRAM_IDLE;
+                        end
+                    endcase
                 end
             end
         end
@@ -373,6 +421,7 @@ module forwarding_table #(
             s_next_hop_reg   <= '{default: 0};
             s_next_hop_state <= ST_INIT;
             next_hop_addr    <= '0;
+            next_hop_send    <= '0;
             next_hop_ip      <= '0;
         end else begin
             unique case (s_next_hop_state)
@@ -395,7 +444,7 @@ module forwarding_table #(
                         end else begin
                             // 静态路由或动态路由
                             next_hop_ip <= next_hop_out.ip;
-                        end 
+                        end
                         s_next_hop_reg.beat.meta.dest <= next_hop_out.port;
                         s_next_hop_state              <= ST_INIT;
                     end

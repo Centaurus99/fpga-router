@@ -8,14 +8,16 @@ localparam STAGE_HEIGHT = 4;  // 每级流水线的层数, 即经过的树高
 localparam STRIDE = 4;  // Trie 树每层压位数
 localparam CHILD_MAP_SIZE = 1 << STRIDE;  // 子节点 bitmap 大小
 localparam LEAF_MAP_SIZE = 1 << STRIDE;  // 前缀(叶节点) bitmap 大小
-localparam CHILD_ADDR_WIDTH = 24;  // 子节点地址宽度
+localparam CHILD_ADDR_WIDTH = 16;  // 子节点地址宽度
 localparam LEAF_ADDR_WIDTH = 16;  // 叶节点地址宽度
 localparam NEXT_HOP_ADDR_WIDTH = 8;  // 下一跳地址宽度
+localparam TAG_WIDTH = 8;  // 子节点地址宽度
 
 // forwarding table entry
 typedef struct packed {
     logic [LEAF_ADDR_WIDTH - 1:0] leaf_base_addr;
-    logic [CHILD_ADDR_WIDTH - 1:0] child_base_addr; // 若子节点基址首位为 1, 则表示叶节点
+    logic [TAG_WIDTH - 1:0] tag;  // 若 Tag 首位为 1, 则表示叶节点
+    logic [CHILD_ADDR_WIDTH - 1:0] child_base_addr;
     logic [LEAF_MAP_SIZE - 1:0] leaf_map;
     logic [CHILD_MAP_SIZE - 1:0] child_map;
 } FTE_node;
