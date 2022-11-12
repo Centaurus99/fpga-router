@@ -25,9 +25,11 @@ function logic [2:0] popcount_4bit(input [3:0] num);
     endcase
 endfunction
 
-function logic [4:0] popcount_16bit(input [15:0] num);
-    return {2'b0, popcount_4bit(num[3:0])} + popcount_4bit(num[7:4]) + popcount_4bit(num[11:8]) +
-        popcount_4bit(num[15:12]);
+function logic [3:0] popcount_15bit(input [14:0] num);
+    automatic logic [3:0] ans;
+    ans = {1'b0, popcount_4bit({1'b0, num[14:12]})} + popcount_4bit(num[11:8]) +
+        popcount_4bit(num[7:4]) + popcount_4bit(num[3:0]);
+    return ans;
 endfunction
 
 module forwarding_bitmap_parser (
@@ -65,22 +67,22 @@ module forwarding_bitmap_parser (
             4'b1???: begin
                 matched = 1'b1;
                 leaf_addr = node.leaf_base_addr +
-                    popcount_16bit({1'b0, leaf_map_shifted[3][LEAF_MAP_SIZE-2:0]});
+                    popcount_15bit(leaf_map_shifted[3][LEAF_MAP_SIZE-2:0]);
             end
             4'b01??: begin
                 matched = 1'b1;
                 leaf_addr = node.leaf_base_addr +
-                    popcount_16bit({1'b0, leaf_map_shifted[2][LEAF_MAP_SIZE-2:0]});
+                    popcount_15bit(leaf_map_shifted[2][LEAF_MAP_SIZE-2:0]);
             end
             4'b001?: begin
                 matched = 1'b1;
                 leaf_addr = node.leaf_base_addr +
-                    popcount_16bit({1'b0, leaf_map_shifted[1][LEAF_MAP_SIZE-2:0]});
+                    popcount_15bit(leaf_map_shifted[1][LEAF_MAP_SIZE-2:0]);
             end
             4'b0001: begin
                 matched = 1'b1;
                 leaf_addr = node.leaf_base_addr +
-                    popcount_16bit({1'b0, leaf_map_shifted[0][LEAF_MAP_SIZE-2:0]});
+                    popcount_15bit(leaf_map_shifted[0][LEAF_MAP_SIZE-2:0]);
             end
             default: begin
                 matched   = 1'b0;
@@ -88,20 +90,20 @@ module forwarding_bitmap_parser (
             end
         endcase
 
-        stop = 1'b0;
+        // 由 stop 信号标识是否有下一子节点, 故可以直接生成 node_addr (减少组合逻辑)
+        node_addr = node.child_base_addr + popcount_15bit(child_map_shifted[CHILD_MAP_SIZE-2:0]);
+
+        stop      = 1'b0;
         // 匹配到子节点
         if (child_map_shifted[CHILD_MAP_SIZE-1]) begin
-            node_addr = node.child_base_addr +
-                popcount_16bit({1'b0, child_map_shifted[CHILD_MAP_SIZE-2:0]});
-            // 子节点地址最高位为 1, 说明为叶节点
-            if (node.child_base_addr[CHILD_ADDR_WIDTH-1]) begin
+            // Tag 最高位为 1, 说明为叶节点
+            if (node.tag[TAG_WIDTH-1]) begin
                 stop      = 1'b1;
                 matched   = 1'b1;
                 leaf_addr = node_addr[LEAF_ADDR_WIDTH-1:0];
             end
         end else begin
-            stop      = 1'b1;
-            node_addr = '0;
+            stop = 1'b1;
         end
     end
 
