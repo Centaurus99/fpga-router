@@ -138,12 +138,12 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
 void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id) {
     // printf("~INSERT LEAF: %x, %x %x\n", now - nodes, pfx, entry_id);
-    if (!now->leaf_base) { // 如果now是新的点
+    int cnt = POPCNT(now->leaf_vec);
+    if (!cnt) { // 如果now没有叶子
         now->leaf_base = leaf_malloc(1);
         leafs[now->leaf_base] = entry_id;
     } else {
         // TODO: 改成每次空间乘以2
-        int cnt = POPCNT(now->leaf_vec);
         int new_base = leaf_malloc(cnt + 1);
         for (u32 i = 1, op = now->leaf_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == pfx) {
@@ -163,7 +163,7 @@ void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id) {
 
 // 移除now的pfx位置的叶子（保证存在）然后把后面的往前挪
 void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
-    // printf("~REMOVE LEAF: %x, %x\n", now - nodes, pfx);
+    printf("~REMOVE LEAF: %x, %x\n", now, pfx);
     int p = POPCNT_LS(now->leaf_vec, pfx);
     if (p <= 1) {
         leaf_free(now->leaf_base, 1);
@@ -184,10 +184,10 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
 
 
 void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
-    // printf("INSERT %d %d\n", dep,nid);
     if (dep + STRIDE > len) {
         int l = len - dep;
         u32 pfx = INDEX(addr, dep, l) | (1 << l);
+        printf("INSERT %d %x\n", dep,pfx);
         if (VEC_BT(now->leaf_vec, pfx)) { // change
             leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1] = entry_id;
         } else { // add
@@ -195,6 +195,7 @@ void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
         }
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
+        printf("INSERT %d %x\n", dep,idx);
         // TODO: 如果now做了leaf-in-node优化，判断是否要把孩子下放
         if (VEC_BT(now->child_base, 24) && len != dep + STRIDE) {
             int cnt = popcnt(now->vec);
@@ -318,7 +319,7 @@ inline void _write_u32s(FILE *f, u32 addr, u32 *ptr, int len) {
 }
 
 void export_mem() {
-    // print(node_root, 0);
+    print(node_root, 0);
     FILE *f = fopen("mem.txt", "w");
     // nodes
     u32 addr;

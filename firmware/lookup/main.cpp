@@ -21,25 +21,20 @@ int main(int argc, char *argv[]) {
     //   assert(inet_pton(AF_INET6, addr_buffer, &addr) == 1);
     //   assert(inet_pton(AF_INET6, nexthop_buffer, &nexthop) == 1);
       assert(0 <= len && len <= 128);
-    //   if ((len_to_mask(len) & addr) != addr ||
-    //       mask_to_len(len_to_mask(len)) != len) {
-    //     // printf("Invalid\n");
-    //   } else {
-        // printf("Valid\n");
+      if ((len_to_mask(len) & addr) != addr ||
+          mask_to_len(len_to_mask(len)) != len) {
+        printf("Invalid\n");
+      } else {
+        printf("Valid\n");
         RoutingTableEntry entry = {
             .addr = addr, .len = len, .if_index = if_index, .nexthop = nexthop, .route_type = route_type};
         update(true, entry);
-    //   }
+      }
     } else if (buffer[0] == 'D') {
       sscanf(buffer, "%c%x%x%x%x%d%d", &tmp, &addr.s6_addr32[0], &addr.s6_addr32[1]
         , &addr.s6_addr32[2], &addr.s6_addr32[3], &len, &route_type);
     //   assert(inet_pton(AF_INET6, addr_buffer, &addr) == 1);
       assert(0 <= len && len <= 128);
-    //   if ((len_to_mask(len) & addr) != addr ||
-    //       mask_to_len(len_to_mask(len)) != len) {
-    //     // printf("Invalid\n");
-    //   } else {
-        // printf("Valid\n");
         RoutingTableEntry entry = {
             .addr = addr, .len = len, .if_index = 0, .nexthop = in6_addr{}, .route_type=route_type};
         update(false, entry);
