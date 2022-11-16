@@ -10,8 +10,6 @@ create_clock -period 90.422 -name clk_11M0592 -waveform {0.000 45.211} [get_port
 set_property PACKAGE_PIN AA13 [get_ports gtrefclk_p]
 set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]
 
-create_clock -period 8.000 -name gtref_clk -waveform {0.000 4.000} [get_nets gtref_clk]
-
 # Reset Button (BTN6)
 set_property PACKAGE_PIN F22 [get_ports RST]
 set_property IOSTANDARD LVCMOS33 [get_ports RST]

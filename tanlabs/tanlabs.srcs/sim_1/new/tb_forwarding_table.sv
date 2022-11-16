@@ -63,6 +63,7 @@ module tb_forwarding_table #(
 
     typedef enum {
         ST_WRITE_RAM,
+        ST_READ_RAM,
         ST_SEND,
         ST_SEND_WAIT,
         ST_DONE
@@ -96,8 +97,14 @@ module tb_forwarding_table #(
                             wb_sel_i    <= 4'b1111;
                             wb_adr_i    <= ram_addr;
                             wb_dat_i    <= ram_data;
-                            state_write <= ST_WRITE_RAM;
+                            state_write <= ST_READ_RAM;
                         end
+                    end
+                end
+                ST_READ_RAM: begin
+                    if (wb_ack_o) begin
+                        wb_we_i     <= 1'b0;
+                        state_write <= ST_WRITE_RAM;
                     end
                 end
                 ST_DONE: begin
