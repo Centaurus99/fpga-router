@@ -31,7 +31,10 @@ module forwarding_table #(
     input  wire [  WISHBONE_DATA_WIDTH-1:0] wb_dat_i,
     output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o,
     input  wire [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i,
-    input  wire                             wb_we_i
+    input  wire                             wb_we_i,
+
+    // debug
+    output reg [7:0] debug_led
 );
 
     forwarding_beat s          [PIPELINE_LENGTH:1];
@@ -307,7 +310,9 @@ module forwarding_table #(
         .dest_wb_dat_o(dest_wbs1_dat_o),
         .dest_wb_dat_i(dest_wbs1_dat_i),
         .dest_wb_sel_o(dest_wbs1_sel_o),
-        .dest_wb_we_o (dest_wbs1_we_o)
+        .dest_wb_we_o (dest_wbs1_we_o),
+
+        .debug_led(debug_led)
     );
 
     wishbone_cdc_handshake #(
@@ -334,7 +339,9 @@ module forwarding_table #(
         .dest_wb_dat_o(dest_wbs2_dat_o),
         .dest_wb_dat_i(dest_wbs2_dat_i),
         .dest_wb_sel_o(dest_wbs2_sel_o),
-        .dest_wb_we_o (dest_wbs2_we_o)
+        .dest_wb_we_o (dest_wbs2_we_o),
+
+        .debug_led()
     );
 
     forwarding_bram_controller #(

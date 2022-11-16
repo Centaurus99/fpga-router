@@ -41,7 +41,10 @@ module frame_datapath #(
     input  wire [  WISHBONE_DATA_WIDTH-1:0] wb_dat_i,
     output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o,
     input  wire [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i,
-    input  wire                             wb_we_i
+    input  wire                             wb_we_i,
+
+    // debug
+    output reg [7:0] debug_led
 );
 
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
@@ -191,16 +194,18 @@ module frame_datapath #(
         .next_hop_ip(forwarded_next_hop_ip),
         .out_ready  (forwarded_ready),
 
-        .cpu_clk (cpu_clk),
+        .cpu_clk  (cpu_clk),
         .cpu_reset(cpu_reset),
-        .wb_cyc_i(wb_cyc_i),
-        .wb_stb_i(wb_stb_i),
-        .wb_ack_o(wb_ack_o),
-        .wb_adr_i(wb_adr_i),
-        .wb_dat_i(wb_dat_i),
-        .wb_dat_o(wb_dat_o),
-        .wb_sel_i(wb_sel_i),
-        .wb_we_i (wb_we_i)
+        .wb_cyc_i (wb_cyc_i),
+        .wb_stb_i (wb_stb_i),
+        .wb_ack_o (wb_ack_o),
+        .wb_adr_i (wb_adr_i),
+        .wb_dat_i (wb_dat_i),
+        .wb_dat_o (wb_dat_o),
+        .wb_sel_i (wb_sel_i),
+        .wb_we_i  (wb_we_i),
+
+        .debug_led(debug_led)
     );
 
     typedef enum {

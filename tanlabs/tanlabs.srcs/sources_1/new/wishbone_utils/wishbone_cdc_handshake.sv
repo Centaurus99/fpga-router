@@ -33,21 +33,26 @@ module wishbone_cdc_handshake #(
     output reg  [  WISHBONE_DATA_WIDTH-1:0] dest_wb_dat_o,
     input  wire [  WISHBONE_DATA_WIDTH-1:0] dest_wb_dat_i,
     output reg  [WISHBONE_DATA_WIDTH/8-1:0] dest_wb_sel_o,
-    output reg                              dest_wb_we_o
+    output reg                              dest_wb_we_o,
+
+    // debug
+    output reg [7:0] debug_led
 );
-    wire [ CDC_SRC_DATA_WIDTH-1:0] SRC_dest_out;
-    wire                           SRC_dest_req;
+    wire  [ CDC_SRC_DATA_WIDTH-1:0] SRC_dest_out;
+    wire                            SRC_dest_req;
 
-    wire                           SRC_src_rcv;
-    reg  [ CDC_SRC_DATA_WIDTH-1:0] SRC_src_in;
-    reg                            SRC_src_send;
+    wire                            SRC_src_rcv;
+    reg   [ CDC_SRC_DATA_WIDTH-1:0] SRC_src_in;
+    reg                             SRC_src_send;
 
-    wire [CDC_DEST_DATA_WIDTH-1:0] DEST_dest_out;
-    wire                           DEST_dest_req;
+    wire  [CDC_DEST_DATA_WIDTH-1:0] DEST_dest_out;
+    wire                            DEST_dest_req;
 
-    wire                           DEST_src_rcv;
-    reg  [CDC_DEST_DATA_WIDTH-1:0] DEST_src_in;
-    reg                            DEST_src_send;
+    wire                            DEST_src_rcv;
+    reg   [CDC_DEST_DATA_WIDTH-1:0] DEST_src_in;
+    reg                             DEST_src_send;
+
+    logic [                    3:0] debug_count;
 
     /* =========== SRC to DEST begin =========== */
     xpm_cdc_handshake #(
@@ -82,9 +87,13 @@ module wishbone_cdc_handshake #(
             wb_dat_o     <= '0;
             SRC_src_in   <= '0;
             SRC_src_send <= 1'b0;
+            debug_count  <= '0;
+            debug_led    <= '0;
         end else begin
+            debug_led <= '0;
             case (src_state)
                 SRC_IDLE: begin
+                    debug_count <= 0;
                     if (wb_ack_o) begin
                         wb_ack_o <= 1'b0;
                     end else if (wb_cyc_i && wb_stb_i && !SRC_src_rcv) begin
@@ -94,16 +103,19 @@ module wishbone_cdc_handshake #(
                     end
                 end
                 SRC_WAIT_RCV: begin
+                    debug_count <= debug_count + 1;
                     if (SRC_src_rcv) begin
                         SRC_src_send <= 1'b0;
                         src_state    <= SRC_WAIT_DATA;
                     end
                 end
                 SRC_WAIT_DATA: begin
+                    debug_count <= debug_count + 1;
                     if (DEST_dest_req) begin
-                        wb_dat_o  <= DEST_dest_out;
-                        wb_ack_o  <= 1'b1;
-                        src_state <= SRC_IDLE;
+                        debug_led[debug_count-5] <= 1;
+                        wb_dat_o                 <= DEST_dest_out;
+                        wb_ack_o                 <= 1'b1;
+                        src_state                <= SRC_IDLE;
                     end
                 end
                 default: begin

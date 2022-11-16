@@ -42,6 +42,7 @@ module tanlabs
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
+    wire [7:0] debug_frame_datapath;
 
     wire reset_in = RST;
     wire locked;
@@ -771,7 +772,9 @@ module tanlabs
         .wb_dat_i(wb_dat_i),
         .wb_dat_o(wb_dat_o),
         .wb_sel_i(wb_sel_i),
-        .wb_we_i (wb_we_i)
+        .wb_we_i (wb_we_i),
+
+        .debug_led(debug_frame_datapath)
     );
 
     wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
@@ -884,7 +887,12 @@ module tanlabs
                  ~debug_ingress_interconnect_ready}),
         .out_led(led[7:0])
     );
-    assign led[15:8] = 0;
+    led_delayer led_delayer_debug_i2(
+        .clk(core_clk),
+        .reset(reset_core),
+        .in_led(debug_frame_datapath),
+        .out_led(led[15:8])
+    );
 
     // README: Your code here.
     tester #(
