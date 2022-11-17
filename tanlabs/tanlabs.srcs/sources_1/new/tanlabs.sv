@@ -16,6 +16,8 @@ module tanlabs
     input wire gtrefclk_n,
 
     output wire [15:0] led,
+    output wire [ 7:0] dpy0,       // 数码管低位信号，包括小数点，输出 1 点亮
+    output wire [ 7:0] dpy1,       // 数码管高位信号，包括小数点，输出 1 点亮
 
     // SFP:
     // +-+-+
@@ -895,6 +897,15 @@ module tanlabs
     );
 
     // README: Your code here.
+    logic [7:0] dpy_number;
+    SEG7_LUT segL (
+        .oSEG1(dpy0),
+        .iDIG (dpy_number[3:0])
+    );  // dpy0 是低位数码管
+    SEG7_LUT segH (
+        .oSEG1(dpy1),
+        .iDIG (dpy_number[7:4])
+    );  // dpy1 是高位数码管
     tester #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
@@ -908,6 +919,8 @@ module tanlabs
         .wb_dat_o(wb_dat_i),
         .wb_dat_i(wb_dat_o),
         .wb_sel_o(wb_sel_i),
-        .wb_we_o (wb_we_i)
+        .wb_we_o (wb_we_i),
+        
+        .dpy_number(dpy_number)
     );
 endmodule

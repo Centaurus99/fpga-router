@@ -34,8 +34,11 @@ module forwarding_table #(
     input  wire                             wb_we_i,
 
     // debug
-    output reg [7:0] debug_led
+    output wire [7:0] debug_led
 );
+    reg [7:0] debug_cdc;
+    reg       debug_no_match_error;
+    assign debug_led = {debug_cdc[7:1], debug_no_match_error};
 
     forwarding_beat s          [PIPELINE_LENGTH:1];
     forwarding_beat s_reg      [PIPELINE_LENGTH:1];
@@ -312,7 +315,7 @@ module forwarding_table #(
         .dest_wb_sel_o(dest_wbs1_sel_o),
         .dest_wb_we_o (dest_wbs1_we_o),
 
-        .debug_led(debug_led)
+        .debug_led(debug_cdc)
     );
 
     wishbone_cdc_handshake #(
@@ -531,7 +534,6 @@ module forwarding_table #(
         ST_READ3   // 获得结果
     } read_state_t;
 
-    reg error;
     forwarding_beat s_leaf, s_leaf_reg;
     read_state_t s_leaf_state;
     reg          s_leaf_ready;
@@ -546,7 +548,7 @@ module forwarding_table #(
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            error                <= '0;
+            debug_no_match_error <= '0;
             s_leaf_reg           <= '{default: 0};
             s_leaf_state         <= ST_INIT;
             leaf_addr            <= '0;
@@ -562,8 +564,8 @@ module forwarding_table #(
                                 leaf_addr    <= s_buf[PIPELINE_LENGTH].leaf_addr;
                                 s_leaf_state <= ST_READ;
                             end else begin
-                                error        <= 1'b1;
-                                s_leaf_state <= ST_INIT;
+                                debug_no_match_error <= 1'b1;
+                                s_leaf_state         <= ST_INIT;
                             end
                         end
                     end
