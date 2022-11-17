@@ -75,8 +75,8 @@ module wishbone_cdc_handshake #(
 
     typedef enum {
         SRC_IDLE,
-        SRC_WAIT_RCV,
-        SRC_WAIT_DATA
+        SRC_WAIT_DATA,
+        SRC_ACK
     } src_state_t;
     src_state_t src_state;
 
@@ -90,33 +90,32 @@ module wishbone_cdc_handshake #(
             debug_count  <= '0;
             debug_led    <= '0;
         end else begin
-            debug_led <= '0;
+            if (wb_cyc_i && wb_stb_i) begin
+                debug_count <= debug_count + 1;
+            end
+            if (SRC_src_rcv) begin
+                SRC_src_send <= 1'b0;
+            end
             case (src_state)
                 SRC_IDLE: begin
-                    debug_count <= 0;
-                    if (wb_ack_o) begin
-                        wb_ack_o <= 1'b0;
-                    end else if (wb_cyc_i && wb_stb_i && !SRC_src_rcv) begin
+                    if (wb_cyc_i && wb_stb_i && !(SRC_src_send | SRC_src_rcv)) begin
                         SRC_src_in   <= {wb_adr_i, wb_dat_i, wb_sel_i, wb_we_i};
                         SRC_src_send <= 1'b1;
-                        src_state    <= SRC_WAIT_RCV;
-                    end
-                end
-                SRC_WAIT_RCV: begin
-                    debug_count <= debug_count + 1;
-                    if (SRC_src_rcv) begin
-                        SRC_src_send <= 1'b0;
                         src_state    <= SRC_WAIT_DATA;
                     end
                 end
                 SRC_WAIT_DATA: begin
-                    debug_count <= debug_count + 1;
                     if (DEST_dest_req) begin
-                        debug_led[debug_count-5] <= 1;
-                        wb_dat_o                 <= DEST_dest_out;
-                        wb_ack_o                 <= 1'b1;
-                        src_state                <= SRC_IDLE;
+                        wb_dat_o  <= DEST_dest_out;
+                        wb_ack_o  <= 1'b1;
+                        src_state <= SRC_ACK;
                     end
+                end
+                SRC_ACK: begin
+                    debug_count              <= '0;
+                    debug_led[debug_count-7] <= 1;
+                    wb_ack_o                 <= 1'b0;
+                    src_state                <= SRC_IDLE;
                 end
                 default: begin
                     src_state <= SRC_IDLE;
@@ -148,6 +147,7 @@ module wishbone_cdc_handshake #(
     typedef enum {
         DEST_IDLE,
         DEST_WAIT_ACK,
+        DEST_WAIT_RCV_N,
         DEST_WAIT_RCV
     } dest_state_t;
     dest_state_t dest_state;
@@ -178,6 +178,17 @@ module wishbone_cdc_handshake #(
                         dest_wb_cyc_o <= 1'b0;
                         dest_wb_stb_o <= 1'b0;
                         DEST_src_in   <= dest_wb_dat_i;
+                        if (!DEST_src_rcv) begin
+                            DEST_src_send <= 1'b1;
+                            dest_state    <= DEST_WAIT_RCV;
+                        end else begin
+                            DEST_src_send <= 1'b0;
+                            dest_state    <= DEST_WAIT_RCV_N;
+                        end
+                    end
+                end
+                DEST_WAIT_RCV_N: begin
+                    if (!DEST_src_rcv) begin
                         DEST_src_send <= 1'b1;
                         dest_state    <= DEST_WAIT_RCV;
                     end
