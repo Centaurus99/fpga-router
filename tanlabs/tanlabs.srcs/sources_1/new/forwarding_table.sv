@@ -531,6 +531,7 @@ module forwarding_table #(
     // 查询叶节点中 next_hop 编号
     typedef enum {
         ST_INIT,   // 初始阶段
+        ST_ADDR,   // 多寄存一级地址
         ST_READ,   // 给出地址
         ST_READ2,  // 等待结果寄存器
         ST_READ3   // 获得结果
@@ -542,6 +543,7 @@ module forwarding_table #(
     assign s_buf_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s_buf[PIPELINE_LENGTH].beat.valid;
 
     reg [NEXT_HOP_ADDR_WIDTH - 1:0] s_leaf_next_hop_addr;
+    reg [    LEAF_ADDR_WIDTH - 1:0] leaf_addr_reg1;
 
     always_comb begin
         s_leaf            = s_leaf_reg;
@@ -554,6 +556,7 @@ module forwarding_table #(
             s_leaf_reg           <= '{default: 0};
             s_leaf_state         <= ST_INIT;
             leaf_addr            <= '0;
+            leaf_addr_reg1       <= '0;
             s_leaf_next_hop_addr <= '0;
         end else begin
             unique case (s_leaf_state)
@@ -563,14 +566,18 @@ module forwarding_table #(
                         if (`should_handle(s_buf[PIPELINE_LENGTH].beat)) begin
                             // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
                             if (s_buf[PIPELINE_LENGTH].matched) begin
-                                leaf_addr    <= s_buf[PIPELINE_LENGTH].leaf_addr;
-                                s_leaf_state <= ST_READ;
+                                leaf_addr_reg1 <= s_buf[PIPELINE_LENGTH].leaf_addr;
+                                s_leaf_state   <= ST_ADDR;
                             end else begin
                                 debug_no_match_error <= 1'b1;
                                 s_leaf_state         <= ST_INIT;
                             end
                         end
                     end
+                end
+                ST_ADDR: begin
+                    leaf_addr    <= leaf_addr_reg1;
+                    s_leaf_state <= ST_READ;
                 end
                 ST_READ: begin
                     s_leaf_state <= ST_READ2;
