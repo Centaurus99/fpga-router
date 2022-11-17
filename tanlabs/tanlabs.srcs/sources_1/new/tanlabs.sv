@@ -98,11 +98,26 @@ module tanlabs
     );
     
     // README: You may use this to reset your CPU.
+    wire reset_core_from_eth;
+    xpm_cdc_async_rst #(
+        .DEST_SYNC_FF(4),     // DECIMAL; range: 2-10
+        .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
+        .RST_ACTIVE_HIGH(0)   // DECIMAL; 0=active low reset, 1=active high reset
+    )
+    xpm_cdc_async_rst_inst (
+        .dest_arst(reset_core_from_eth), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
+                                         // clock domain. This output is registered. NOTE: Signal asserts asynchronously
+                                         // but deasserts synchronously to dest_clk. Width of the reset signal is at least
+                                         // (DEST_SYNC_FF*dest_clk) period.
+
+        .dest_clk(core_clk),    // 1-bit input: Destination clock.
+        .src_arst(reset_eth)     // 1-bit input: Source asynchronous reset signal.
+    );
     wire reset_core_without_bufg;
     wire reset_core;
     reset_sync reset_sync_reset_core(
         .clk(core_clk),
-        .i(reset_not_sync),
+        .i(reset_not_sync | reset_core_from_eth),
         .o(reset_core_without_bufg)
     );
 
