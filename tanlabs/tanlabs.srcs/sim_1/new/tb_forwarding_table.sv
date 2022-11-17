@@ -7,7 +7,8 @@ module tb_forwarding_table #(
     parameter WISHBONE_DATA_WIDTH = 32,
     parameter WISHBONE_ADDR_WIDTH = 32,
     parameter TEST_ROUNDS = 4,
-    parameter SIMPLE_TEST = 0
+    parameter SIMPLE_TEST = 0,
+    parameter SEND_STRESS = 0
 ) ();
 
     wire clk_125M, clk_100M;
@@ -62,6 +63,7 @@ module tb_forwarding_table #(
 
     typedef enum {
         ST_WRITE_RAM,
+        ST_READ_RAM,
         ST_SEND,
         ST_SEND_WAIT,
         ST_DONE
@@ -95,8 +97,14 @@ module tb_forwarding_table #(
                             wb_sel_i    <= 4'b1111;
                             wb_adr_i    <= ram_addr;
                             wb_dat_i    <= ram_data;
-                            state_write <= ST_WRITE_RAM;
+                            state_write <= ST_READ_RAM;
                         end
+                    end
+                end
+                ST_READ_RAM: begin
+                    if (wb_ack_o) begin
+                        wb_we_i     <= 1'b0;
+                        state_write <= ST_WRITE_RAM;
                     end
                 end
                 ST_DONE: begin
@@ -120,11 +128,16 @@ module tb_forwarding_table #(
                         case (state_send)
                             // 发送 const_ip 为 dst 的包
                             ST_SEND: begin
-                                in.valid        <= 1;
-                                in.is_first     <= 1;
-                                in.data.ip6.dst <= const_ip[send_count];
-                                send_count      <= send_count + 1;
-                                state_send      <= ST_SEND_WAIT;
+                                in.valid <= 1;
+                                if (!SEND_STRESS) begin
+                                    in.is_first     <= 1;
+                                    send_count      <= send_count + 1;
+                                    in.data.ip6.dst <= const_ip[send_count];
+                                    state_send      <= ST_SEND_WAIT;
+                                end else begin
+                                    in.data.ip6.dst <= const_ip[0];
+                                    if (in_ready) in.is_first <= ~in.is_first;
+                                end
                             end
                             // 等待收包, 共计发包 TETS_ROUNDS 次
                             ST_SEND_WAIT: begin

@@ -20,7 +20,8 @@ module tester #(
     output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o,
     input  wire [  WISHBONE_DATA_WIDTH-1:0] wb_dat_i,
     output reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_o,
-    output reg                              wb_we_o
+    output reg                              wb_we_o,
+    output reg  [                      7:0] dpy_number
 );
     logic [WISHBONE_ADDR_WIDTH-1:0] addr[0:60];
     logic [WISHBONE_DATA_WIDTH-1:0] data[0:60];
@@ -160,11 +161,10 @@ module tester #(
 
     state_t state_write;
 
-    int     write_count;
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             state_write <= ST_WRITE_RAM;
-            write_count <= 0;
+            dpy_number  <= 0;
             wb_cyc_o    <= 1'b0;
             wb_stb_o    <= 1'b0;
             wb_adr_o    <= '0;
@@ -174,19 +174,19 @@ module tester #(
         end else begin
             case (state_write)
                 ST_WRITE_RAM: begin
-                    if (write_count == 0 || wb_ack_i) begin
-                        if (write_count == 61) begin
+                    if (dpy_number == 0 || wb_ack_i) begin
+                        if (dpy_number == 61) begin
                             wb_cyc_o    <= 1'b0;
                             wb_stb_o    <= 1'b0;
                             state_write <= ST_DONE;
                         end else begin
-                            write_count <= write_count + 1;
+                            dpy_number  <= dpy_number + 1;
                             wb_cyc_o    <= 1'b1;
                             wb_stb_o    <= 1'b1;
                             wb_we_o     <= 1'b1;
                             wb_sel_o    <= 4'b1111;
-                            wb_adr_o    <= addr[write_count];
-                            wb_dat_o    <= data[write_count];
+                            wb_adr_o    <= addr[dpy_number];
+                            wb_dat_o    <= data[dpy_number];
                             state_write <= ST_WRITE_RAM;
                         end
                     end

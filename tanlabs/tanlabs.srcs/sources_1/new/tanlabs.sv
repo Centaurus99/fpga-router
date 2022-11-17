@@ -16,6 +16,8 @@ module tanlabs
     input wire gtrefclk_n,
 
     output wire [15:0] led,
+    output wire [ 7:0] dpy0,       // 数码管低位信号，包括小数点，输出 1 点亮
+    output wire [ 7:0] dpy1,       // 数码管高位信号，包括小数点，输出 1 点亮
 
     // SFP:
     // +-+-+
@@ -42,6 +44,8 @@ module tanlabs
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
+    wire [7:0] debug_forwarding_table_core;
+    wire debug_forwarding_table_eth;
 
     wire reset_in = RST;
     wire locked;
@@ -94,11 +98,26 @@ module tanlabs
     );
     
     // README: You may use this to reset your CPU.
+    wire reset_core_from_eth;
+    xpm_cdc_async_rst #(
+        .DEST_SYNC_FF(4),     // DECIMAL; range: 2-10
+        .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
+        .RST_ACTIVE_HIGH(0)   // DECIMAL; 0=active low reset, 1=active high reset
+    )
+    xpm_cdc_async_rst_inst (
+        .dest_arst(reset_core_from_eth), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
+                                         // clock domain. This output is registered. NOTE: Signal asserts asynchronously
+                                         // but deasserts synchronously to dest_clk. Width of the reset signal is at least
+                                         // (DEST_SYNC_FF*dest_clk) period.
+
+        .dest_clk(core_clk),    // 1-bit input: Destination clock.
+        .src_arst(reset_eth)     // 1-bit input: Source asynchronous reset signal.
+    );
     wire reset_core_without_bufg;
     wire reset_core;
     reset_sync reset_sync_reset_core(
         .clk(core_clk),
-        .i(reset_not_sync),
+        .i(reset_not_sync | reset_core_from_eth),
         .o(reset_core_without_bufg)
     );
 
@@ -771,7 +790,10 @@ module tanlabs
         .wb_dat_i(wb_dat_i),
         .wb_dat_o(wb_dat_o),
         .wb_sel_i(wb_sel_i),
-        .wb_we_i (wb_we_i)
+        .wb_we_i (wb_we_i),
+
+        .debug_led_cpu(debug_forwarding_table_core),
+        .debug_led_eth(debug_forwarding_table_eth)
     );
 
     wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
@@ -879,14 +901,28 @@ module tanlabs
     led_delayer led_delayer_debug_i1(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({1'b0, ~debug_egress_interconnect_ready,
+        .in_led({debug_forwarding_table_eth, ~debug_egress_interconnect_ready,
                  ~debug_datapath_fifo_ready,
                  ~debug_ingress_interconnect_ready}),
         .out_led(led[7:0])
     );
-    assign led[15:8] = 0;
+    led_delayer led_delayer_debug_i2(
+        .clk(core_clk),
+        .reset(reset_core),
+        .in_led(debug_forwarding_table_core),
+        .out_led(led[15:8])
+    );
 
     // README: Your code here.
+    logic [7:0] dpy_number;
+    SEG7_LUT segL (
+        .oSEG1(dpy0),
+        .iDIG (dpy_number[3:0])
+    );  // dpy0 是低位数码管
+    SEG7_LUT segH (
+        .oSEG1(dpy1),
+        .iDIG (dpy_number[7:4])
+    );  // dpy1 是高位数码管
     tester #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
@@ -900,6 +936,8 @@ module tanlabs
         .wb_dat_o(wb_dat_i),
         .wb_dat_i(wb_dat_o),
         .wb_sel_o(wb_sel_i),
-        .wb_we_o (wb_we_i)
+        .wb_we_o (wb_we_i),
+        
+        .dpy_number(dpy_number)
     );
 endmodule
