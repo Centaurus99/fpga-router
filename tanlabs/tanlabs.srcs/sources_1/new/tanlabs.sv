@@ -44,7 +44,8 @@ module tanlabs
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
-    wire [7:0] debug_frame_datapath;
+    wire [7:0] debug_forwarding_table_core;
+    wire debug_forwarding_table_eth;
 
     wire reset_in = RST;
     wire locked;
@@ -776,7 +777,8 @@ module tanlabs
         .wb_sel_i(wb_sel_i),
         .wb_we_i (wb_we_i),
 
-        .debug_led(debug_frame_datapath)
+        .debug_led_cpu(debug_forwarding_table_core),
+        .debug_led_eth(debug_forwarding_table_eth)
     );
 
     wire [DATA_WIDTH - 1:0] eth_tx_data [0:4];
@@ -884,7 +886,7 @@ module tanlabs
     led_delayer led_delayer_debug_i1(
         .clk(eth_clk),
         .reset(reset_eth),
-        .in_led({1'b0, ~debug_egress_interconnect_ready,
+        .in_led({debug_forwarding_table_eth, ~debug_egress_interconnect_ready,
                  ~debug_datapath_fifo_ready,
                  ~debug_ingress_interconnect_ready}),
         .out_led(led[7:0])
@@ -892,7 +894,7 @@ module tanlabs
     led_delayer led_delayer_debug_i2(
         .clk(core_clk),
         .reset(reset_core),
-        .in_led(debug_frame_datapath),
+        .in_led(debug_forwarding_table_core),
         .out_led(led[15:8])
     );
 

@@ -44,7 +44,8 @@ module frame_datapath #(
     input  wire                             wb_we_i,
 
     // debug
-    output reg [7:0] debug_led
+    output reg [7:0] debug_led_cpu,
+    output reg       debug_led_eth
 );
 
     logic [127:0] nc_in_v6_r, nc_in_v6_w;
@@ -205,7 +206,8 @@ module frame_datapath #(
         .wb_sel_i (wb_sel_i),
         .wb_we_i  (wb_we_i),
 
-        .debug_led(debug_led)
+        .debug_led_cpu(debug_led_cpu),
+        .debug_led_eth(debug_led_eth)
     );
 
     typedef enum {

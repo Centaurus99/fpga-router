@@ -34,11 +34,13 @@ module forwarding_table #(
     input  wire                             wb_we_i,
 
     // debug
-    output wire [7:0] debug_led
+    output wire [7:0] debug_led_cpu,
+    output wire       debug_led_eth
 );
     reg [7:0] debug_cdc;
     reg       debug_no_match_error;
-    assign debug_led = {debug_cdc[7:1], debug_no_match_error};
+    assign debug_led_cpu = debug_cdc;
+    assign debug_led_eth = debug_no_match_error;
 
     forwarding_beat s          [PIPELINE_LENGTH:1];
     forwarding_beat s_reg      [PIPELINE_LENGTH:1];
