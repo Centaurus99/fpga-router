@@ -15,11 +15,11 @@ module ndp_datapath #(
     input wire [ 47:0] mac[3:0],
     input wire [127:0] ip [3:0],
 
-    output reg         nc_we,
-    output reg [127:0] nc_in_v6_w,
-    output reg [ 47:0] nc_in_mac,
-    output reg   [1:0] nc_in_id_w,
-    input wire         nc_ready,
+    output reg          nc_we,
+    output reg  [127:0] nc_in_v6_w,
+    output reg  [ 47:0] nc_in_mac,
+    output reg  [  1:0] nc_in_id_w,
+    input  wire         nc_ready,
 
     input  frame_meta                        s_meta,
     input  wire       [    DATA_WIDTH - 1:0] s_data,
@@ -89,14 +89,14 @@ module ndp_datapath #(
         .out_ready(in_ready)
     );
 
-    
+
     typedef enum {
         ST_SEND_RECV,
         ST_WAIT_NC_READY
     } s1_state_t;
     s1_state_t s1_state;
     frame_beat s1, s1_reg;
-    wire       s1_ready;
+    wire s1_ready;
     assign in_ready = (s1_ready && s1_state == ST_SEND_RECV) || !in.valid;
 
     ip6_hdr in_ip6;
@@ -111,24 +111,23 @@ module ndp_datapath #(
         .mac_out(in_multicast_mac)
     );
 
-    always @ (*)
-    begin
-        s1 = s1_reg;
+    always @(*) begin
+        s1       = s1_reg;
         s1.valid = s1_reg.valid && s1_state == ST_SEND_RECV;
     end
 
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s1_reg <= 0;
-            nc_we <= 0;
-            nc_in_mac <= 0;
+            s1_reg     <= 0;
+            nc_we      <= 0;
+            nc_in_mac  <= 0;
             nc_in_v6_w <= 0;
             nc_in_id_w <= 0;
-            s1_state <= ST_SEND_RECV;
+            s1_state   <= ST_SEND_RECV;
         end else if (s1_state == ST_SEND_RECV) begin
             if (s1_ready) begin
-                s1_reg    <= in;
-                nc_we <= 0;
+                s1_reg <= in;
+                nc_we  <= 0;
                 if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
                     // Receipt of Neighbor Solicitations
                     // 解除锁定
@@ -199,7 +198,7 @@ module ndp_datapath #(
                                     nc_in_id_w <= in.meta.id[1:0];
                                     nc_in_mac  <= in_ip6.p.ns_data.source_link_layer_address;
                                     nc_we      <= 1;
-                                    if (!nc_ready)  s1_state <= ST_WAIT_NC_READY;
+                                    if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
                                 end
                             end
 
@@ -261,12 +260,12 @@ module ndp_datapath #(
                             // 单播 NA
                         end else begin
                             // 更新邻居缓存
-                            nc_in_v6_w   <= in_ip6.p.na_data.target_address;
-                            nc_in_id_w   <= in.meta.id[1:0];
-                            nc_in_mac    <= in_ip6.p.na_data.target_link_layer_address;
-                            nc_we        <= 1;
+                            nc_in_v6_w       <= in_ip6.p.na_data.target_address;
+                            nc_in_id_w       <= in.meta.id[1:0];
+                            nc_in_mac        <= in_ip6.p.na_data.target_link_layer_address;
+                            nc_we            <= 1;
                             s1_reg.meta.drop <= 1'b1;
-                            if (!nc_ready)  s1_state <= ST_WAIT_NC_READY;
+                            if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
                         end
                     end else begin
                         s1_reg.meta.drop <= 1'b1;
@@ -274,9 +273,23 @@ module ndp_datapath #(
                 end
             end
         end else if (s1_state == ST_WAIT_NC_READY) begin
-            if (nc_ready)  s1_state <= ST_SEND_RECV;
+            if (nc_ready) s1_state <= ST_SEND_RECV;
         end
     end
+
+    frame_beat s1_skid;
+    wire       s1_skid_ready;
+
+    // Skid buffer
+    basic_skid_buffer u_basic_skid_buffer_3 (
+        .clk     (eth_clk),
+        .reset   (reset),
+        .in_data (s1),
+        .in_ready(s1_ready),
+
+        .out_data (s1_skid),
+        .out_ready(s1_skid_ready)
+    );
 
     frame_beat        s1_checked;
     wire              s1_checked_ready;
@@ -285,8 +298,8 @@ module ndp_datapath #(
         .clk  (eth_clk),
         .reset(reset),
 
-        .in      (s1),
-        .in_ready(s1_ready),
+        .in      (s1_skid),
+        .in_ready(s1_skid_ready),
 
         .out      (s1_checked),
         .sum      (s1_checked_sum),

@@ -1,0 +1,8 @@
+*.o
+lookup
+std
+std.cpp
+*_output*.txt
+!Makefile
+data/
+mem.txt
