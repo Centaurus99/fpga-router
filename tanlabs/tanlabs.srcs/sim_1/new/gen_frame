@@ -35,8 +35,8 @@ IFACE_DEFAULT_ROUTE = 3
 MAC_DEFAULT_ROUTE = '54:45:53:54:5f:33'
 
 if SEND_FRAMES:
-  MAC_DUT0 = '00:00:00:03:0a:00'
-  MAC_DUT1 = '00:00:00:03:0a:01'
+    MAC_DUT0 = '8C:1F:64:69:10:30'
+    MAC_DUT1 = '8C:1F:64:69:10:31'
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
@@ -48,15 +48,18 @@ if SEND_FRAMES:
 IP_PREFIX = '2a0e:aa06:497:0a0'
 IP_TESTER0 = IP_PREFIX + '0::2'
 IP_TESTER1 = IP_PREFIX + '1::2'
-IP_DUT0 = 'fe80::200:ff:fe03:a00'  # Device under test.
+IP_DUT0 = 'fe80::8e1f:64ff:fe69:1030'  # Device under test.
 IP_DUT0_GUA = IP_PREFIX + '0::1'
-IP_DUT1 = 'fe80::200:ff:fe03:a01'
-IP_DUT3 = 'fe80::200:ff:fe03:a03'
-IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'  # The IP address of the default route.
+IP_DUT1 = 'fe80::8e1f:64ff:fe69:1031'
+IP_DUT3 = 'fe80::8e1f:64ff:fe69:1033'
+# The IP address of the default route.
+IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'
 IP_TEST_NDP = 'fe80::8888'
 IP_TEST_DST = '2402:f000::1'  # Forward destination. Route should exist.
-IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'  # Forward destination. Route should exist. MAC address should not exist.
-IP_TEST_DST_NO_ROUTE = 'fd00::1'  # Forward destination. Route should not exist.
+# Forward destination. Route should exist. MAC address should not exist.
+IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'
+# Forward destination. Route should not exist.
+IP_TEST_DST_NO_ROUTE = 'fd00::1'
 IP_RIP = 'ff02::9'  # RIP multicast group address.
 INTERFACES = [f'tanlabs-veth{i}' for i in range(4)]
 
@@ -68,28 +71,30 @@ pout = RawPcapWriter('in_frames.pcap', DLT_EN10MB)  # for wireshark
 
 
 def write_frame(iface, f):
-  print('Writing frame (interface #{}):'.format(iface))
-  f.show()
-  data = bytes(f)
-  # We use VLAN ID to indicate the interface ID in pcap files.
-  pout.write(data[:12] + struct.pack('>HH', 0x8100, 1000 + iface) + data[12:])
-  fout.write('{} {} '.format(iface, len(data)))
-  fout.write(' '.join(map(lambda x: '{:02x}'.format(x), data)))
-  fout.write('\n')
+    print('Writing frame (interface #{}):'.format(iface))
+    f.show()
+    data = bytes(f)
+    # We use VLAN ID to indicate the interface ID in pcap files.
+    pout.write(data[:12] + struct.pack('>HH',
+               0x8100, 1000 + iface) + data[12:])
+    fout.write('{} {} '.format(iface, len(data)))
+    fout.write(' '.join(map(lambda x: '{:02x}'.format(x), data)))
+    fout.write('\n')
 
-  if SEND_FRAMES:
-    sendp(f, iface=INTERFACES[iface])
+    if SEND_FRAMES:
+        sendp(f, iface=INTERFACES[iface])
 
 
 def getll(mac):
-  data = binascii.a2b_hex(mac.replace(':', ''))
-  a = [0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, *data[:3], 0xff, 0xfe, *data[3:]]
-  a[8] ^= 0x02
-  return inet_ntop(socket.AF_INET6, a)
+    data = binascii.a2b_hex(mac.replace(':', ''))
+    a = [0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x00, *data[:3], 0xff, 0xfe, *data[3:]]
+    a[8] ^= 0x02
+    return inet_ntop(socket.AF_INET6, a)
 
 
 def getnsma(a):
-  return inet_ntop(socket.AF_INET6, in6_getnsma(inet_pton(socket.AF_INET6, a)))
+    return inet_ntop(socket.AF_INET6, in6_getnsma(inet_pton(socket.AF_INET6, a)))
 
 
 # Neighbor Solicitation test.
@@ -264,7 +269,8 @@ write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0) /
             UDP(sport=7, dport=7) / b'hello, 00013')
 
 # L2 garbage test.
-write_frame(0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00014'))
+write_frame(
+    0, Ether(b'BeLrYEeECrHIsbxfm734+jLpfJshQTmHsz+NJrYR8PCKodcW9OU8p+jPotD00014'))
 
 # L3 garbage test (IPv4).
 write_frame(0, Ether(src=MAC_TESTER0, dst=MAC_DUT0, type='IPv4') /
