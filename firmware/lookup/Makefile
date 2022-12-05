@@ -2,10 +2,6 @@ CXX ?= g++
 CXXFLAGS ?= --std=c++11 -g
 LDFLAGS ?= -g
 
-RV ?= riscv64-unknown-elf-gcc
-RVFLAGS ?= -march=rv32i -mabi=ilp32 -nostdlib -nostdinc -g
-RVLDFLAGS ?= -march=rv32i -mabi=ilp32 -Wl,-Ttext,0x0
-
 .PHONY: all clean grade
 all: lookup
 
@@ -31,17 +27,6 @@ forsim: lookup lookup_bf
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
-
-%_r.o: %.c
-	$(RV) $(RVFLAGS) -c $^ -o $@
-
-uart_r.o: uart.s
-	$(RV) $(RVFLAGS) -c $^ -o $@
-
-lookup_rv32i.elf: main_rv32i_r.o lookup_r.o memhelper_r.o uart_r.o
-	$(RV)  $^ -o $@ $(RVLDFLAGS)
-%.bin: %.elf
-	riscv64-unknown-elf-objcopy -j .text -O binary -S $< $@
 
 lookup: main.o lookup.o memhelper.o debug.o
 	$(CXX) $^ -o $@ $(LDFLAGS)

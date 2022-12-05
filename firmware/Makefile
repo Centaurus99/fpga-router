@@ -7,8 +7,8 @@ QEMU = qemu-system-riscv32
 DEFINES = -DPRINTF_DISABLE_SUPPORT_FLOAT -DPRINTF_DISABLE_SUPPORT_EXPONENTIAL \
           -DPRINTF_DISABLE_SUPPORT_LONG_LONG
 CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-sections -O2 -Wall \
-         -Iinclude $(DEFINES) -march=rv32i -mabi=ilp32 -DRV32
-LDFLAGS = -z separate-code
+         -Iinclude $(DEFINES) -march=rv32i -mabi=ilp32 -DRV32 -g
+LDFLAGS = -z separate-code -g
 
 -include Makefile.config
 
@@ -21,6 +21,8 @@ HEADERS=$(wildcard include/*.h)
 SOURCES=$(wildcard *.c *.S)
 OBJECTS=$(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.S,%.o,$(wildcard *.S))
 TARGET=kernel.elf
+
+LOOKUP=lookup/lookup.o lookup/memhelper.o
 
 .PHONY: all
 all: $(OBJECTS) $(TARGET) kernel.bin
@@ -37,7 +39,7 @@ inst: $(TARGET)
 	$(OBJDUMP) -xd $< > $@
 
 %.bin: %.elf
-	$(OBJCOPY) -S --adjust-vma -0x80000000 -O binary $< $@
+	$(OBJCOPY) -S --adjust-vma -0x00000000 -O binary $< $@
 
 %.o: %.c $(HEADERS)
 	$(GCC) $(CFLAGS) -c $< -o $@
@@ -45,12 +47,15 @@ inst: $(TARGET)
 %.o: %.S $(HEADERS)
 	$(GCC) $(CFLAGS) -c $< -o $@
 
-$(TARGET): $(OBJECTS) linker.ld
-	$(GCC) -Tlinker.ld $(CFLAGS) $(LDFLAGS) $(OBJECTS) -lgcc -o $@
+lookup/%.o: lookup/%.c $(HEADERS)
+	$(GCC) $(CFLAGS) -c $< -o $@
+
+$(TARGET): $(OBJECTS) linker.ld $(LOOKUP)
+	$(GCC) -Tlinker.ld $(CFLAGS) $(LDFLAGS) $(OBJECTS) $(LOOKUP) -lgcc -o $@
 
 .PHONY: sim
 sim: $(TARGET)
-	$(QEMU) -machine virt -nographic -m 8M -kernel $(TARGET) -s -bios none
+	$(QEMU) -machine virt -nographic -m 8M -kernel $(TARGET) -s -bios none -serial tcp::6666,server
 
 .PHONY: debug
 debug: $(TARGET)
@@ -58,4 +63,4 @@ debug: $(TARGET)
 
 .PHONY: clean
 clean:
-	-rm *.o *.elf *.bin *.asm $(TARGET)
+	-rm -f *.o *.elf *.bin *.asm $(TARGET) $(LOOKUP)
