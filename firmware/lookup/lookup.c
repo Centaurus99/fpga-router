@@ -1,63 +1,30 @@
 #include "lookup.h"
 #include "memhelper.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+// #include<cstdio>
 
-#define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
-#define NODEINDEX(v)    ((v) >> STRIDE)
-#define VEC_CLEAR(v, i) ((v) &= ~((u64)1 << (i)))
-#define VEC_BT(v, i)    ((v) & (u64)1 << (i))
-#define VEC_SET(v, i)   ((v) |= (u64)1 << (i))
-#define popcnt(v)               __builtin_popcountll(v)
-#define POPCNT(v)       popcnt(v)
-#define ZEROCNT(v)      popcnt(~(v))
-#define POPCNT_LS(v, i) popcnt((v) & (((u64)2 << (i)) - 1))
-#define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u64)2 << (i)) - 1))
-
-#define NOW nodes[(dep) / STRIDE / STAGE_HEIGHT][nid]
-#define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
-
-static inline u64 INDEX (u128 addr, int s, int n) {
-    if ( 0 == ((s) + (n)) ) {
-        return 0;
-    } else {
-        int shift = (128 - ((s) + (n)));
-        // printf("~INDEX %x <- %d %d\n", (u32)(((addr) >> shift) & ((1ULL << (n)) - 1)), s, n);
-        return ((addr) >> shift) & ((1ULL << (n)) - 1);
+static inline u32 INDEX (in6_addr addr, int s, int n) {
+    u32 res = 0;
+    int shift = 128 - s - n;
+    for (int i = 15; i >= 0; -- i) {
+        if (shift >= 0 && shift < 8)
+            res |= addr.s6_addr[i] >> shift;
+        else if (shift < 0 && shift > -8)
+            res |= (u32)addr.s6_addr[i] << (-shift);
+        shift -= 8;
+        if (shift < -32) break;
     }
+    res = res & ((1u << n) - 1);
+    // print_ip(addr);printf("%d %d %x\n", s, n, (u32)res);
+    return res;
 }
-
-inline u128 calc_addr(in6_addr in) {
-    u128 addr = 0;
-    for (int i = 0; i < 16; ++i) addr = (addr << 8) | in.s6_addr[i];
-    return addr;
-}
-
-// //小端序
-// inline TrieNode u8s_to_u32s(_TrieNode n) {
-//     return TrieNode {
-//         (u32) n.vec[1] << 8 | n.vec[0],
-//         (u32) n.leaf_vec[1] << 8 | n.leaf_vec[0],
-//         (u32) n.child_base[2] << 16 | n.child_base[1] << 8 | n.child_base[0],
-//         (u32) n.leaf_base[1] << 8 | n.leaf_base[0]
-//     };
-// }
-// inline _TrieNode u32s_to_u8s(TrieNode n) {
-//     return _TrieNode {
-//         {(u8)n.vec, (u8)(n.vec >> 8)},
-//         {(u8)n.leaf_vec, (u8)(n.leaf_vec >> 8)},
-//         {(u8)n.child_base, (u8)(n.child_base >> 8), (u8)(n.child_base >> 16)},
-//         {(u8)n.leaf_base, (u8)(n.leaf_base >> 8)}
-//     };
-// }
 
 TrieNode nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE]; // TODO: 使用__attribute__(at ...) 指定地址
 leaf_t leafs[LEAF_COUNT];
 NextHopEntry next_hops[ENTRY_COUNT];
-TrieNode stk[32];
 leaf_t entry_count;
 int node_root;
+
+TrieNode stk[32];
 
 leaf_t _new_entry(const RoutingTableEntry entry) {
     for (leaf_t i = 0; i < entry_count; ++ i) {
@@ -163,7 +130,7 @@ void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id) {
 
 // 移除now的pfx位置的叶子（保证存在）然后把后面的往前挪
 void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
-    printf("~REMOVE LEAF: %x, %x\n", now, pfx);
+    // printf("~REMOVE LEAF: %x, %x\n", now, pfx);
     int p = POPCNT_LS(now->leaf_vec, pfx);
     if (p <= 1) {
         leaf_free(now->leaf_base, 1);
@@ -183,11 +150,11 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
 }
 
 
-void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
+void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_id) {
     if (dep + STRIDE > len) {
         int l = len - dep;
         u32 pfx = INDEX(addr, dep, l) | (1 << l);
-        printf("INSERT %d %x\n", dep,pfx);
+        // printf("INSERT %d %x\n", dep,pfx);
         if (VEC_BT(now->leaf_vec, pfx)) { // change
             leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1] = entry_id;
         } else { // add
@@ -195,7 +162,7 @@ void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
         }
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
-        printf("INSERT %d %x\n", dep,idx);
+        // printf("INSERT %d %x\n", dep,idx);
         // TODO: 如果now做了leaf-in-node优化，判断是否要把孩子下放
         if (VEC_BT(now->child_base, 24) && len != dep + STRIDE) {
             int cnt = popcnt(now->vec);
@@ -205,7 +172,7 @@ void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
         } else {
             TrieNode *child = &stk[dep/STRIDE + 1];
-            *child = {0, 0, 0, 0};
+            child->vec = child->leaf_vec = 0;
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
             _insert_node(dep, now, idx, child);
         }
@@ -213,7 +180,7 @@ void insert_entry(int dep, TrieNode *now, u128 addr, int len, leaf_t entry_id) {
 }
 
 // HACK: 为了方便，即使是没有叶子的点也会保留在树里
-void remove_entry(int dep, int nid, u128 addr, int len) {
+void remove_entry(int dep, int nid, in6_addr addr, int len) {
     TrieNode *now = &NOW;
     if (dep + STRIDE > len) {
         int l = len - dep;
@@ -232,18 +199,18 @@ void remove_entry(int dep, int nid, u128 addr, int len) {
 void update(bool insert, const RoutingTableEntry entry) {
     if (insert) {
         leaf_t eid = _new_entry(entry);
-        insert_entry(0, &nodes[0][node_root], calc_addr(entry.addr), entry.len, eid);
+        insert_entry(0, &nodes[0][node_root], entry.addr, entry.len, eid);
     } else {
-        remove_entry(0, node_root, calc_addr(entry.addr), entry.len);
+        remove_entry(0, node_root, entry.addr, entry.len);
     }
 }
 
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
     int leaf = -1;
     TrieNode *now = &nodes[0][node_root];
     // print(node_root, 0);
     for (int dep = 0; dep < 128; dep += STRIDE) {
-        u32 idx = INDEX(calc_addr(addr), dep, STRIDE);
+        u32 idx = INDEX(addr, dep, STRIDE);
         // 在当前层匹配一个最长的前缀
         for (u32 pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
             if (VEC_BT(now->leaf_vec, pfx)) {
@@ -271,85 +238,3 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, ui
 
 }
 
-int mask_to_len(const in6_addr mask) {
-    for (int i=0; i<128; i+=8) {
-        int m = 0x80;
-        for (int j=0; j<8; ++j, m>>=1) {
-            if (!(mask.s6_addr[i/8] & m)) {
-                return i+j;
-            }
-        }
-    }
-    return 128;
-}
-
-in6_addr len_to_mask(int len) {
-    in6_addr res={};
-    for (int i=0; i<len; i+=8) {
-        if (i+8 < len)  res.s6_addr[i/8] = 0xff;
-        else {
-            res.s6_addr[i/8] = 0xff << (8 + i - len);
-        }
-    }
-    return res;
-}
-
-void print(u32 nid, int dep) {
-    // TrieNode now = u8s_to_u32s(NOW);
-    if (!dep) printf("PRINTING TREE:\n");
-    for (int i = 0;i<dep/STRIDE;++i) printf("  ");
-    printf("%x-%x: %x %x %x %x\n", STAGE(dep), nid, NOW.vec, NOW.leaf_vec, NOW.child_base, NOW.leaf_base);
-    for (int i = 0; i < POPCNT(NOW.vec); ++i)
-        print(NOW.child_base + i, dep + STRIDE);
-    if (!dep) printf("#################################\n");
-}
-
-// inline void _write_u8s(FILE *f, u32 addr, u8 *ptr, int len) {
-//     for (int i = 0; i < len; ++i) {
-//         if (*(ptr + i) != 0)
-//             fprintf(f, "%08X %02X\n", addr+i, *(ptr+i));
-//     }
-// }
-
-inline void _write_u32s(FILE *f, u32 addr, u32 *ptr, int len) {
-    for (int i = 0; i < len; ++i) {
-        if (*(ptr + i) != 0)
-            fprintf(f, "%08X %08X\n", addr+i*4, *(ptr+i));
-    }
-}
-
-void export_mem() {
-    print(node_root, 0);
-    FILE *f = fopen("mem.txt", "w");
-    // nodes
-    u32 addr;
-    for (int s = 0; s < STAGE_COUNT; ++s) {
-        addr = NODE_ADDRESS[s];
-        for (int i = 0; i < NODE_COUNT_PER_STAGE; ++ i) {
-            if (is_node_used(s, i)) {
-                _write_u32s(f, addr, (u32 *)(&nodes[s][i]), 4);
-            }
-            addr += 16;  // 按照16字节对齐，方便总线计算
-        }
-    }
-
-    // leafs
-    addr = LEAF_ADDRESS;
-    for (int i = 0; i < LEAF_COUNT; ++i) {
-        if (is_leaf_used(i)) {
-            _write_u32s(f, addr, (u32 *)&leafs[i], 1);
-        }
-        addr += 4;
-    }
-
-    // next hops
-    addr = NEXT_HOP_ADDRESS;
-    for (int i = 0; i < entry_count; ++i) {
-        _write_u32s(f, addr, (u32 *)(next_hops[i].ip), 4);
-        _write_u32s(f, addr + 16, (u32 *)(&next_hops[i].port), 1);
-        _write_u32s(f, addr + 20, (u32 *)(&next_hops[i].route_type), 1);
-        addr += 32;  // 按照32字节对齐，方便总线计算
-    }
-    
-    fclose(f);
-}
