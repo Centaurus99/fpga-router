@@ -15,7 +15,7 @@ module tanlabs
     input wire gtrefclk_p,
     input wire gtrefclk_n,
 
-    output wire [15:0] led,
+    output wire [15:0] leds,
     output wire [ 7:0] dpy0,       // 数码管低位信号，包括小数点，输出 1 点亮
     output wire [ 7:0] dpy1,       // 数码管高位信号，包括小数点，输出 1 点亮
 
@@ -904,13 +904,13 @@ module tanlabs
         .in_led({debug_forwarding_table_eth, ~debug_egress_interconnect_ready,
                  ~debug_datapath_fifo_ready,
                  ~debug_ingress_interconnect_ready}),
-        .out_led(led[7:0])
+        .out_led(leds[7:0])
     );
     led_delayer led_delayer_debug_i2(
         .clk(core_clk),
         .reset(reset_core),
         .in_led(debug_forwarding_table_core),
-        .out_led(led[15:8])
+        .out_led(leds[15:8])
     );
 
     // README: Your code here.
