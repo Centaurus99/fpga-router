@@ -10,7 +10,7 @@ module tanlabs
     parameter WISHBONE_ADDR_WIDTH = 32
 )
 (
-    input wire RST,
+    input wire reset_btn, // 改动了tanlabs对push_btn和reset_btn的命名
 
     input wire gtrefclk_p,
     input wire gtrefclk_n,
@@ -47,7 +47,7 @@ module tanlabs
     wire [7:0] debug_forwarding_table_core;
     wire debug_forwarding_table_eth;
 
-    wire reset_in = RST;
+    wire reset_in = reset_btn;
     wire locked;
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core

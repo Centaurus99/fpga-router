@@ -13,14 +13,14 @@ set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]
 create_clock -period 8.000 -name gtref_clk -waveform {0.000 4.000} [get_nets gtref_clk]
 
 # Reset Button (BTN6)
-set_property PACKAGE_PIN F22 [get_ports RST]
-set_property IOSTANDARD LVCMOS33 [get_ports RST]
-set_false_path -from [get_ports RST]
+set_property PACKAGE_PIN F22 [get_ports reset_btn]
+set_property IOSTANDARD LVCMOS33 [get_ports reset_btn]
+set_false_path -from [get_ports reset_btn]
 
 # Clock Button (BTN5)
-set_property PACKAGE_PIN H19 [get_ports BTN]
-set_property IOSTANDARD LVCMOS33 [get_ports BTN]
-set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets BTN_IBUF]
+set_property PACKAGE_PIN H19 [get_ports push_btn]
+set_property IOSTANDARD LVCMOS33 [get_ports push_btn]
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets push_btn_IBUF]
 
 # Buttons
 set_property -dict {PACKAGE_PIN J19 IOSTANDARD LVCMOS33} [get_ports touch_btn[0]] ;#BTN1
