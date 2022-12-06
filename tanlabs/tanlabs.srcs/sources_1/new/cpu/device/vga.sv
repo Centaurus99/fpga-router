@@ -110,7 +110,7 @@ module vga #(
             state      <= ST_IDLE;
         end else begin
             case (state)
-                ST_IDLE: begin 
+                ST_IDLE: begin
                     state <= ST_WAIT;
                 end
                 ST_WAIT: begin
@@ -143,8 +143,8 @@ module vga #(
     // logic              is_scanner_movable;  // 横纵坐标平移信号
     // logic       [11:0] hdata;  // 图像的横坐标
     // logic       [11:0] vdata;  // 图像的纵坐标
-    pixel_block        color_block;  // 一团颜色
-    pixel              color;  // 单一点位的颜色
+    pixel_block color_block;  // 一团颜色
+    pixel       color;  // 单一点位的颜色
 
     typedef enum {
         SCAN_ST_IDLE,
@@ -161,12 +161,12 @@ module vga #(
     } vga_scanner_state_t;
 
     vga_scanner_state_t scanner_state;
-    vga_reader_state_t reader_state;
+    vga_reader_state_t  reader_state;
 
-    assign graph_en_b   = 1'b1;
-    assign graph_we_b   = 1'b0;
+    assign graph_en_b = 1'b1;
+    assign graph_we_b = 1'b0;
     assign graph_addr_b = ({5'b0, read.hdata} >> 2) + ({5'b0, read.vdata} << 3) + ({5'b0, read.vdata} << 6) +  ({5'b0, read.vdata} << 7); // (hdata + vdata * 800) / 4
-    assign graph_din_b  = 32'h0000_0000;
+    assign graph_din_b = 32'h0000_0000;
 
     stage_vga read;
 
@@ -193,8 +193,9 @@ module vga #(
     always_ff @(posedge vga_clk) begin
         if (vga_rst) begin
             reader_state <= SCAN_ST_IDLE;
-            read.hdata <= 0;
-            read.vdata <= 0;
+            read.hdata   <= 0;
+            read.vdata   <= 0;
+            scan.valid   <= 1'b1;
         end else begin
             case (reader_state)
                 SCAN_ST_IDLE: begin
@@ -206,22 +207,22 @@ module vga #(
                 SCAN_ST_READ2: begin
                     // 这个时钟上升沿沿将返回数据
                     reader_state <= SCAN_ST_MOVE_READER;
-                    scan.pix <= graph_dout_b;
-                    scan.hdata <= read.hdata;
-                    scan.vdata <= read.vdata;
+                    scan.pix     <= graph_dout_b;
+                    scan.hdata   <= read.hdata;
+                    scan.vdata   <= read.vdata;
                 end
                 SCAN_ST_MOVE_READER: begin
                     reader_state <= SCAN_ST_IDLE;
                     if (read.hdata == (HMAX - 4)) begin
                         if (read.vdata == (VMAX - 1)) begin
-                            read.hdata  <= 0;
-                            read.vdata  <= 0;
+                            read.hdata <= 0;
+                            read.vdata <= 0;
                         end else begin
-                            read.hdata  <= 0;
-                            read.vdata  <= read.vdata + 1;
+                            read.hdata <= 0;
+                            read.vdata <= read.vdata + 1;
                         end
                     end else begin
-                        read.hdata  <= read.hdata + 4;
+                        read.hdata <= read.hdata + 4;
                     end
                 end
             endcase
@@ -229,8 +230,8 @@ module vga #(
     end
 
     stage_vga scan;
-    
-    assign color_block  = scan.pix;
+
+    assign color_block = scan.pix;
 
     always_ff @(posedge vga_clk) begin
         if (vga_rst) begin
