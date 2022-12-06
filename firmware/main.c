@@ -1,53 +1,93 @@
 #include "lookup/lookup.h"
 #include <stdint.h>
-#include <stdio.h>
+#include <printf.h>
 #include <uart.h>
+// #include <gpio.h>
 
-char _getchar();
+char buffer[1025];
+int header;
 
-char _getop() {
-    char c = _getchar();
-    while (c != 'E' && c != 'I' && c != 'D' && c != 'Q') c= _getchar();
-    return c;
-}
-
-u32 _gethex() {
-    u32 ret = 0;
-    char c = _getchar();
-    while (!((c>='0' && c<='9') || (c>='a' && c<='f'))) c = _getchar();
-    for (; (c>='0' && c<='9') || (c>='a' && c<='f'); c = _getchar()) {
-        ret = ret * 16 + (c>'9' ? c-'a'+10 : c-'0');
+bool _gets(char *buf, int len) {
+    for (int i = 0; i < len; i++) {
+        buf[i] = _getchar();
+        if (buf[i] == '\b') {
+            buf[i] = 0;
+            // update_pos(VGA_H - 1, i, 0);
+            i -= 1;
+        } else if (buf[i] == '\n') {
+            buf[i+1] = 0;
+            return 1;
+        }
     }
-    return ret;
+    return 0;
+} 
+
+char _getnonspace() {
+    while (buffer[header] == ' ') header++;
+    return buffer[header++];
 }
 
 u32 _getdec() {
     u32 ret = 0;
-    char c= _getchar();
-    while (!(c>='0' && c<='9')) c = _getchar();
-    for (; c>='0' && c<='9'; c = _getchar()) {
-        ret = ret * 10 + c-'0';
+    char c= _getnonspace();
+    for (; c>='0' && c<='9'; c = buffer[header++]) {
+        ret = ret * 10 + c - '0';
     }
     return ret;
 }
 
-void _getip(in6_addr *addr) {
-    for (int i = 0; i < 4; i++) {
-        addr->s6_addr32[i] = _gethex();
-    }
-}
+bool _getip(in6_addr *addr) {
+    while (buffer[header] == ' ') header++;
+    int l = header;
+    while (
+        (buffer[header] >= '0' && buffer[header] <= '9') ||
+        (buffer[header] >= 'a' && buffer[header] <= 'f') ||
+        buffer[header] == ':'
+    ) header++;
+    int r = header;
+    for (int i=0; i<8; ++i) addr->s6_addr16[i] = 0;
 
-bool _gets(char *buf, int size) {
-    for (int i = 0; i < size; i++) {
-        buf[i] = _getchar();
+    if (r == l + 2 && buffer[l]==':' && buffer[l+1]==':') {
+        return 1;
     }
-    return 1;
+    if (r - l <= 2) return 0;
+    int i = 0, c = 0;
+    for (; l < r; ++l) {
+        if (buffer[l] == ':') {
+            if (l+1 < r && buffer[l+1] == ':') {
+                int n = 0;  // 后面的冒号的数量
+                for (int j=l+1; j<r; j++) {
+                    if (buffer[j] == ':') {
+                        ++n;
+                        if (j+1 < r && buffer[j+1] == ':') return 0;
+                    }
+                }
+                if (i + n > 8) return 0;
+                i = 8 - n;
+                ++l;
+            } else if (++i >= 8) return 0;
+            c = 0;
+        } else {
+            if (++c > 4) return 0;
+            if (buffer[l] >= '0' && buffer[l] <= '9') {
+                addr->s6_addr16[i] = addr->s6_addr16[i] * 16 + buffer[l] - '0';
+            } else if (buffer[l] >= 'a' && buffer[l] <= 'f') {
+                addr->s6_addr16[i] = addr->s6_addr16[i] * 16 + buffer[l] - 'a' + 10;
+            } else {
+                return 0;
+            }
+        }
+    }
+    for (int i=0; i<8; ++i) {
+        addr->s6_addr16[i] = ((addr->s6_addr16[i] & 0xff) << 8) | addr->s6_addr16[i] >> 8;  // 小端序
+    }
+
+    return i == 7;
 }
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
 
-char buffer[1024];
 
 void start (int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
@@ -59,30 +99,33 @@ void start (int argc, char *argv[]) {
     u32 len, if_index, route_type;
     in6_addr addr, nexthop;
     char op;
-    while (1) {
-        op = _getop();
-        if (op == 'E') {
+    while (_gets(buffer, 1024)) {
+        printf("BUFFER: %s",buffer);
+        header = 0;
+        op = _getnonspace();
+        if (op == 'e') {
             printf("EXIT\n");
             break;
         }
-        else if (op == 'I') {
-            _getip(&addr);
+        else if (op == 'a') {
+            if (!_getip(&addr)) continue;
             len = _getdec();
             if_index = _getdec();
-            _getip(&nexthop);
-            route_type = _getdec();
+            if (!_getip(&nexthop)) continue;
+            route_type = 0; // FIXME
             RoutingTableEntry entry = {
                 .addr = addr, .len = len, 
                 .if_index = if_index, .nexthop = nexthop,
                 .route_type = route_type
             };
+            printf("INSERT %08x %08x %08x %08x %d %d\r\n", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], len, if_index);
             update(1, entry);
             printf("INSERTED %08x %08x %08x %08x %d %d\r\n", addr.s6_addr32[0], addr.s6_addr32[1], addr.s6_addr32[2], addr.s6_addr32[3], len, if_index);
         }
-        else if (op == 'D') {
-            _getip(&addr);
+        else if (op == 'd') {
+            if (!_getip(&addr)) continue;
             len = _getdec();
-            route_type = _getdec();
+            route_type = 0; // FIXME
             RoutingTableEntry entry = {
                 .addr = addr, .len = len, 
                 .if_index = 0, .nexthop = 0, .route_type = route_type
@@ -90,8 +133,8 @@ void start (int argc, char *argv[]) {
             update(0, entry);
             printf("DELETED %08x %08x %08x %08x %d %d\r\n", addr.s6_addr32[0], addr.s6_addr32[1], addr.s6_addr32[2], addr.s6_addr32[3], len, route_type);
         }
-        else if (op == 'Q') {
-            _getip(&addr);
+        else if (op == 'f') {
+            if (!_getip(&addr)) continue;
             if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
                 printf("Y %08x %08x %08x %08x %d %d\r\n",
                        nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3],
@@ -102,5 +145,4 @@ void start (int argc, char *argv[]) {
             }
         }
     }
-    return 0;
 }

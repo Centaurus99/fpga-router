@@ -1,6 +1,6 @@
 #include "memhelper.h"
 
-const int NODE_ADDRESS[8] = {
+const int NODE_ADDRESS[STAGE_COUNT] = {
     0x40000000,
     0x41000000,
     0x42000000,
@@ -13,8 +13,8 @@ const int NODE_ADDRESS[8] = {
 const int LEAF_ADDRESS = 0x50000000;
 const int NEXT_HOP_ADDRESS = 0x51000000;
 
-int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1};
-bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {1};
+int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {{1}};
 int leaf_top = 1;
 bool leaf_used[LEAF_COUNT];
 

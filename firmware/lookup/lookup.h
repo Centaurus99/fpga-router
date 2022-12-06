@@ -8,18 +8,21 @@
 #define ENTRY_COUNT  64
 #define STAGE_HEIGHT  4
 #define STRIDE  4
-#define STAGE_COUNT  8
+#define STAGE_COUNT  9
+// FIXME stage_count should be 8
 
 extern const int NODE_ADDRESS[STAGE_COUNT];
 extern const int LEAF_ADDRESS;
 extern const int NEXT_HOP_ADDRESS;
+
+int popcnt(int x);
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
 #define NODEINDEX(v)    ((v) >> STRIDE)
 #define VEC_CLEAR(v, i) ((v) &= ~((u32)1 << (i)))
 #define VEC_BT(v, i)    ((v) & (u32)1 << (i))
 #define VEC_SET(v, i)   ((v) |= (u32)1 << (i))
-#define popcnt(v)               __builtin_popcountll(v)
+// #define popcnt(v)               __builtin_popcountll(v)
 // #define popcnt(v) (v)
 #define POPCNT(v)       popcnt(v)
 #define ZEROCNT(v)      popcnt(~(v))

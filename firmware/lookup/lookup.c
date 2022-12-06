@@ -1,6 +1,15 @@
 #include "lookup.h"
 #include "memhelper.h"
-// #include<cstdio>
+#include <printf.h>
+
+int popcnt(int x) {
+    int cnt = 0;
+    while (x) {
+        if (x & 1) cnt++;
+        x >>= 1;
+    }
+    return cnt;
+}
 
 static inline u32 INDEX (in6_addr addr, int s, int n) {
     u32 res = 0;
@@ -14,7 +23,8 @@ static inline u32 INDEX (in6_addr addr, int s, int n) {
         if (shift < -32) break;
     }
     res = res & ((1u << n) - 1);
-    // print_ip(addr);printf("%d %d %x\n", s, n, (u32)res);
+    // print_ip(addr);
+    // printf("%d %d %x\n", s, n, (u32)res);
     return res;
 }
 
@@ -24,7 +34,7 @@ NextHopEntry next_hops[ENTRY_COUNT];
 leaf_t entry_count;
 int node_root;
 
-TrieNode stk[32];
+TrieNode stk[33];
 
 leaf_t _new_entry(const RoutingTableEntry entry) {
     for (leaf_t i = 0; i < entry_count; ++ i) {
@@ -48,7 +58,7 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
 
 // 在now的idx处增加一个新节点（保证之前不存在），必要时整体移动子节点
 void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
-    // printf("NODE %d %d\n",dep, nid);
+    // printf("NODE %d %d\n",dep, idx);
     int child_stage = STAGE(dep + STRIDE);
 
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
@@ -104,7 +114,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
 
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
 void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id) {
-    // printf("~INSERT LEAF: %x, %x %x\n", now - nodes, pfx, entry_id);
+    // printf("~INSERT LEAF: %x %x\n", pfx, entry_id);
     int cnt = POPCNT(now->leaf_vec);
     if (!cnt) { // 如果now没有叶子
         now->leaf_base = leaf_malloc(1);
