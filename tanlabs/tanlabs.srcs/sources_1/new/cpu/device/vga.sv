@@ -75,6 +75,7 @@ module vga #(
 
     typedef enum {
         ST_IDLE,
+        ST_WAIT,
         ST_READ,
         ST_WRITE
     } vga_slave_state_t;
@@ -111,12 +112,16 @@ module vga #(
             case (state)
                 ST_IDLE: begin
                     if (wb_cyc_i & wb_stb_i) begin
-                        if (wb_we_i == 1'b0) begin
-                            state <= ST_READ;
-                        end else begin
-                            graph_we_a <= 1'b1;
-                            state      <= ST_WRITE;
-                        end
+                        state <= ST_WAIT;
+                    end
+                end
+                ST_WAIT: begin
+                    // 如果是READ, 进入ST_READ, 否则进入WRITE
+                    if (wb_we_i == 1'b0) begin
+                        state <= ST_READ;
+                    end else begin
+                        graph_we_a <= 1'b1;
+                        state <= ST_WRITE;
                     end
                 end
                 ST_READ: begin
@@ -145,6 +150,7 @@ module vga #(
     typedef enum {
         SCAN_ST_IDLE,
         SCAN_ST_READ,
+        SCAN_ST_READ2,
         SCAN_ST_0,
         SCAN_ST_1,
         SCAN_ST_2,
@@ -193,6 +199,9 @@ module vga #(
                     scanner_state <= SCAN_ST_READ;
                 end
                 SCAN_ST_READ: begin
+                    scanner_state <= SCAN_ST_READ2;
+                end
+                SCAN_ST_READ2: begin
                     // 这个时钟上升沿将返回数据
                     scanner_state <= SCAN_ST_0;
                 end
