@@ -128,7 +128,7 @@ int mask_to_len(const in6_addr mask);
  */
 in6_addr len_to_mask(int len);
 
-void print_ip(const in6_addr addr);
+// void print_ip(const in6_addr addr);
 
 void print(u32 id, int dep);
 

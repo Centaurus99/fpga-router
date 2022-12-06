@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <gpio.h>
-#include <vga.h>
 
 #define GPIO_BASE 0x10000000
 
