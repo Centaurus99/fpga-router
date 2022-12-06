@@ -111,16 +111,16 @@ module vga #(
         end else begin
             case (state)
                 ST_IDLE: begin
-                    state <= ST_WAIT;
+                    if (wb_cyc_i & wb_stb_i) begin
+                        state <= ST_WAIT;
+                    end
                 end
                 ST_WAIT: begin
-                    if (wb_cyc_i & wb_stb_i) begin
-                        if (wb_we_i == 1'b0) begin
-                            state <= ST_READ;
-                        end else begin
-                            graph_we_a <= 1'b1;
-                            state      <= ST_WRITE;
-                        end
+                    if (wb_we_i == 1'b0) begin
+                        state <= ST_READ;
+                    end else begin
+                        graph_we_a <= 1'b1;
+                        state      <= ST_WRITE;
                     end
                 end
                 ST_READ: begin
