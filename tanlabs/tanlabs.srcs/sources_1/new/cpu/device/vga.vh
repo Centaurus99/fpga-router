@@ -19,11 +19,11 @@ typedef struct packed {
 
 // TODO: 也许未来可以把 VGA 的扫描和显示分开，改成两张图片
 
-// typedef struct packed {
-//     pixel_block pix;
-//     logic [11:0] hdata;
-//     logic [11:0] vdata;
-//     logic valid;
-// } stage_vga;
+typedef struct packed {
+    pixel_block pix;
+    logic [11:0] hdata;
+    logic [11:0] vdata;
+    logic valid;
+} stage_vga;
 
 `endif
