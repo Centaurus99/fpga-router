@@ -247,41 +247,43 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *ro
     return 1;
 }
 
-void _append_answer(int leaf, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
+void _append_answer(int leaf, in6_addr* nexthop, u32 *if_index, u32 *route_type) {
+    // printf("%d\n",leaf);
     nexthop->s6_addr32[0] = next_hops[leaf].ip[0];
     nexthop->s6_addr32[1] = next_hops[leaf].ip[1];
     nexthop->s6_addr32[2] = next_hops[leaf].ip[2];
     nexthop->s6_addr32[3] = next_hops[leaf].ip[3];
     *if_index = next_hops[leaf].port;
     *route_type = next_hops[leaf].route_type;
-    nexthop++, if_index++, route_type++;
 }
 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
 int _prefix_query_all(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
     int leaf = -1;
     TrieNode *now = &nodes[0][node_root];
-    int count = 0;
+    int cnt = 0;
     for (int dep = 0; dep < 128; dep += STRIDE) {
         u32 idx = INDEX(addr, dep, STRIDE);
+        // 在当前层匹配所有的前缀
+        u32 x = (idx>>1)|(1<<(STRIDE-1));
+        for (int i = STRIDE-1; i >= 0; --i) {
+            u32 pfx = x >> i;
+            if (VEC_BT(now->leaf_vec, pfx)) {
+                leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                _append_answer(leaf, nexthop+cnt, if_index+cnt, route_type+cnt);
+                ++cnt;
+            }
+        }
         // 跳下一层
         if (VEC_BT(now->vec, idx)) {
             now = &nodes[STAGE(dep + STRIDE)][now->child_base + POPCNT_LS(now->vec, idx) - 1];
             if (dep + STRIDE >= 128 && VEC_BT(now->leaf_vec, 1)) {
                 leaf = leafs[now->leaf_base];
-                _append_answer(leaf, nexthop, if_index, route_type);
-                ++count;
+                _append_answer(leaf, nexthop+cnt, if_index+cnt, route_type+cnt);
+                ++cnt;
             }
-        }
-        // 在当前层匹配所有的前缀
-        for (u32 pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
-            if (VEC_BT(now->leaf_vec, pfx)) {
-                leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
-                _append_answer(leaf, nexthop, if_index, route_type);
-                ++count;
-            }
-        }
+        } else break;
     }
-    return count;
+    return cnt;
 
 }

@@ -80,9 +80,10 @@ void start(int argc, char *argv[]) {
 
         flush();
         int n = _prefix_query_all(checking_addr, &nexthops, &if_indices, &route_types);
-        for (int i = 0; i < n; ++i) {
+        for (int i = n-1; i >=0; --i) {
             printip(nexthops+i, ipbuffer);
             sprintf(buffer, "%s %d %d", ipbuffer, if_indices[i], route_types[i]);
+            printf("%s\r\n", buffer);
             display(buffer);
         }
     }
