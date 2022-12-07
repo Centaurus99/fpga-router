@@ -39,6 +39,6 @@
 
 void init_uart(void);
 
-char _getchar();
+char _getchar_uart();
 
 #endif

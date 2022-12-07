@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
-// #include <gpio.h>
+#include <gpio.h>
 #include <vga.h>
 
 
@@ -22,17 +22,125 @@ extern int _prefix_query_all(const in6_addr addr, in6_addr *nexthop, u32 *if_ind
 in6_addr nexthops[100], checking_addr = {0};
 u32 if_indices[100], route_types[100];
 
+u32 len, if_index, route_type;
+in6_addr addr, nexthop;
+char op;
+char ipbuffer[48], info[100];
+bool error;
+
+void display() {
+    flush();
+
+    sprintf(buffer, "Welcome to IPv6 routing table management system!");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(0, i, buffer[i], VGA_WHITE);
+    sprintf(buffer, "Usage: [a]dd [d]elete [c]heck [e]xit");
+    for (int i = 0; buffer[i]; ++i)
+        if (i == 8 || i == 14 || i == 23 || i == 31)
+            update_pos(1, i, buffer[i], VGA_GREEN);
+        else
+            update_pos(1, i, buffer[i], VGA_BLUE);
+    
+    printip(&checking_addr, ipbuffer);
+    sprintf(buffer, "Checking %s", ipbuffer);
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(2, i, buffer[i], VGA_WHITE);
+
+    int c = _prefix_query_all(checking_addr, &nexthops, &if_indices, &route_types);
+    int n = 4, m = 0;
+    for (int i = c-1; i >=0 ; --i) {
+        printip(nexthops+i, ipbuffer);
+        m = 0;
+        for (int j = 0; ipbuffer[j]; ++j) {
+            update_pos(n, m++, ipbuffer[j], VGA_WHITE);
+        }
+        m = 48;
+        sprintf(buffer, "%d", if_indices[i]);
+        for (int j = 0; buffer[j]; ++j) {
+            update_pos(n, m++, buffer[j], VGA_BLUE);
+        }
+        m = 64;
+        sprintf(buffer, "%d", route_types[i]);
+        for (int j = 0; buffer[j]; ++j) {
+            update_pos(n, m++, buffer[j], VGA_BLUE);
+        }
+        ++n;
+    }
+
+    
+    for (int j = 0; j < VGA_W; j++) {
+        update_pos(3, j, '-', VGA_WHITE);
+        update_pos(VGA_ROW - 3, j, '-', VGA_WHITE);
+    }
+    update_pos(VGA_ROW - 2, 0, '>', VGA_GREEN);
+
+    for (int j = 0; info[j]; ++j) {
+        update_pos(VGA_ROW - 1, j, info[j], error ? VGA_RED : VGA_GREEN);
+    }
+}
+
+bool operate_a() {
+    if (!_getip(&addr)) {
+        sprintf(info, "Invalid IP addr; Usage: a [addr] [len] [if_index] [nexthop] [route_type]");
+        return 0;
+    }
+    len = _getdec();
+    if_index = _getdec();
+    if (!_getip(&nexthop)){
+        sprintf(info, "Invalid IP nexthop; Usage: a [addr] [len] [if_index] [nexthop] [route_type]");
+        return 0;
+    }
+    route_type = _getdec();
+    RoutingTableEntry entry = {
+        .addr = addr, .len = len, 
+        .if_index = if_index, .nexthop = nexthop,
+        .route_type = route_type
+    };
+    update(1, entry);
+
+    printip(&addr, buffer);
+    printip(&nexthop, buffer+100);
+    sprintf(info, "Added %s %d %d %s", buffer, len, if_index, buffer+100);
+    return 1;
+}
+
+bool operate_d() {
+    if (!_getip(&addr)) {
+        sprintf(info, "Invalid IP addr; Usage: d [addr] [len] [route_type]");
+        return 0;
+    }
+    len = _getdec();
+    route_type = _getdec();
+    RoutingTableEntry entry = {
+        .addr = addr, .len = len, 
+        .if_index = 0, .nexthop = 0, .route_type = route_type
+    };
+    update(0, entry);
+    printip(&addr, ipbuffer);
+    sprintf(info, "Deleted %s %d %d", ipbuffer, len, if_index);
+    return 1;
+}
+
+bool operate_c() {
+    if (!_getip(&addr)) {
+        sprintf(info, "Invalid IP addr; Usage: c [addr]");
+        return 0;
+    }
+    printip(&addr, ipbuffer);
+    checking_addr = addr;
+    sprintf(info, "Checking legal routing entry of %s\r\n", ipbuffer);
+    return 1;
+}
+
 void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
     }
     init_uart();
+
+    display();
     printf("INITIALIZED\n");
 
-    u32 len, if_index, route_type;
-    in6_addr addr, nexthop;
-    char op;
-    char ipbuffer[44];
     while (_gets(buffer, 1024)) {
         printf("Buffer: %s",buffer);
         header = 0;
@@ -42,49 +150,19 @@ void start(int argc, char *argv[]) {
             break;
         }
         else if (op == 'a') { // add
-            if (!_getip(&addr)) continue;
-            len = _getdec();
-            if_index = _getdec();
-            if (!_getip(&nexthop)) continue;
-            route_type = _getdec();
-            RoutingTableEntry entry = {
-                .addr = addr, .len = len, 
-                .if_index = if_index, .nexthop = nexthop,
-                .route_type = route_type
-            };
-            update(1, entry);
-
-            printip(&addr, ipbuffer);
-            printf("Added %s %d %d ", ipbuffer, len, if_index);
-            printip(&nexthop, ipbuffer);
-            printf("%s\r\n", ipbuffer);
+            error = !operate_a();
         }
         else if (op == 'd') { //delete
-            if (!_getip(&addr)) continue;
-            len = _getdec();
-            route_type = _getdec();
-            RoutingTableEntry entry = {
-                .addr = addr, .len = len, 
-                .if_index = 0, .nexthop = 0, .route_type = route_type
-            };
-            update(0, entry);
-            printip(&addr, ipbuffer);
-            printf("Deleted %s %d %d\r\n", ipbuffer, len, if_index);
+            error = !operate_d();
         }
         else if (op == 'c') { // check
-            if (!_getip(&addr)) continue;
-            printip(&addr, ipbuffer);
-            printf("Checking %s\r\n", ipbuffer);
-            checking_addr = addr;
-        } else  continue;
-
-        flush();
-        int n = _prefix_query_all(checking_addr, &nexthops, &if_indices, &route_types);
-        for (int i = n-1; i >=0; --i) {
-            printip(nexthops+i, ipbuffer);
-            sprintf(buffer, "%s %d %d", ipbuffer, if_indices[i], route_types[i]);
-            printf("%s\r\n", buffer);
-            display(buffer);
+            error = !operate_c();
+        } else {
+            error = 1;
+            sprintf(info, "Invalid Operation");
         }
+
+        printf("%s\r\n", info);
+        display();
     }
 }

@@ -10,6 +10,7 @@
         "cstdio": "c",
         "assert.h": "c",
         "printf.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "uart.h": "c"
     }
 }

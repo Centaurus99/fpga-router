@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
-// #include <gpio.h>
+#include <gpio.h>
 #include <vga.h>
 
 char buffer[1025];
@@ -10,19 +10,16 @@ int header;
 
 bool _gets(char *buf, int len) {
     for (int i = 0; i < len; i++) {
-        buf[i] = _getchar();
+        buf[i] = _getchar_gpio();
         if (buf[i] == '\b') {
             buf[i] = 0; buf[i-1] = 0;
-            update_pos(VGA_H - 1, i-1, 0);
-            i -= 1;
+            update_pos(VGA_ROW - 2, i-1 + 2, 0, VGA_BLACK);
+            i -= 2;
         } else if (buf[i] == '\n') {
             buf[i+1] = 0;
-            for (int j = 0; j < i; j++) {
-                update_pos(VGA_H - 1, j, 0);
-            }
             return 1;
         } else {
-            update_pos(VGA_H - 1, i, buf[i]);
+            update_pos(VGA_ROW - 2, i + 2, buf[i], VGA_WHITE);
         }
     }
     return 0;
