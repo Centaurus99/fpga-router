@@ -1,8 +1,10 @@
 `default_nettype none
 
 module gpio #(
-    parameter DATA_WIDTH = 32,  // DATA_WIDTH: wishbone data width
-    parameter ADDR_WIDTH = 32   // DATA_WIDTH: wishbone data width
+    parameter CLK_FREQ      = 50_000_000,
+    parameter DATA_WIDTH    = 32,             // DATA_WIDTH: wishbone data width
+    parameter ADDR_WIDTH    = 32,             // DATA_WIDTH: wishbone data width
+    parameter SAMPLE_CYCLES = CLK_FREQ / 100  // 采样周期
 ) (
     input wire clk,
     input wire rst,
@@ -26,16 +28,16 @@ module gpio #(
 
 );
 
-    reg   [15:0] leds_reg;
-    reg   [ 7:0] dpy0_reg;
-    reg   [ 7:0] dpy1_reg;
+    reg [15:0] leds_reg;
+    reg [ 7:0] dpy0_reg;
+    reg [ 7:0] dpy1_reg;
 
-    reg   [31:0] buffer          [31:0];
-    reg   [ 4:0] buffer_head;
-    reg   [ 4:0] buffer_tail;
+    reg [31:0] buffer      [31:0];
+    reg [ 4:0] buffer_head;
+    reg [ 4:0] buffer_tail;
 
-    reg   [31:0] dip_sw_reg;
-    reg   [ 3:0] touch_btn_reg;
+    reg [31:0] dip_sw_reg, dip_sw_reg2;
+    reg [3:0] touch_btn_reg, touch_btn_reg2;
 
     reg          is_read;
     reg          is_write;
@@ -46,9 +48,9 @@ module gpio #(
     logic        is_btn_changed;
     logic        is_buffer_full;
     logic        is_buffer_empty;
-    assign is_buffer_full  = buffer_head == $unsigned(buffer_tail) + 5'b00001;
+    assign is_buffer_full = buffer_head == $unsigned(buffer_tail) + 5'b00001;
     assign is_buffer_empty = buffer_head == buffer_tail;
-    assign is_btn_changed  = |{~touch_btn_reg & touch_btn, dip_sw_reg[15:0] ^ dip_sw[15:0]};
+    assign is_btn_changed  = |{~touch_btn_reg2 & touch_btn_reg, dip_sw_reg2[15:0] ^ dip_sw_reg[15:0]};
 
     typedef enum {
         ST_IDLE,
@@ -61,16 +63,22 @@ module gpio #(
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            is_write      <= 1'b0;
-            buffer_data_i <= 32'h0000_0000;
+            is_write       <= 1'b0;
+            buffer_data_i  <= 32'h0000_0000;
+            touch_btn_reg  <= 4'b0000;
+            dip_sw_reg     <= 32'h0000_0000;
+            touch_btn_reg2 <= 4'b0000;
+            dip_sw_reg2    <= 32'h0000_0000;
         end else begin
-            touch_btn_reg <= touch_btn;
-            dip_sw_reg    <= dip_sw;
+            touch_btn_reg  <= touch_btn;
+            dip_sw_reg     <= dip_sw;
+            touch_btn_reg2 <= touch_btn_reg;
+            dip_sw_reg2    <= dip_sw_reg;
             if (!is_write) begin
                 if (is_btn_changed) begin
                     is_write <= 1'b1;
                     buffer_data_i <= {
-                        12'b0, ~touch_btn_reg & touch_btn, dip_sw_reg[15:0] ^ dip_sw[15:0]
+                        12'b0, ~touch_btn_reg2 & touch_btn_reg, dip_sw_reg2[15:0] ^ dip_sw_reg[15:0]
                     };
                 end
             end else begin
@@ -82,7 +90,7 @@ module gpio #(
 
     // 在时钟上升沿更新循环队列
 
-    logic write_done;
+    int   write_count;
     logic read_done;
 
     always_ff @(posedge clk) begin
@@ -92,16 +100,20 @@ module gpio #(
             end
             buffer_head <= 5'b00000;
             buffer_tail <= 5'b00000;
+            write_count <= 0;
+            read_done   <= 1'b0;
         end else begin
             if (is_write) begin
                 if (!is_buffer_full) begin
                     buffer[buffer_tail] <= buffer_data_i;
-                    write_done          <= 1'b1;
+                    write_count         <= SAMPLE_CYCLES;
                 end
             end else begin
-                if (write_done) begin
-                    buffer_tail <= buffer_tail + 1;
-                    write_done  <= 1'b0;
+                if (write_count != 0) begin
+                    write_count <= write_count - 1;
+                    if (write_count == 1) begin
+                        buffer_tail <= buffer_tail + 1;
+                    end
                 end
             end
             if (is_read) begin

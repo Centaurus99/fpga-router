@@ -11,8 +11,6 @@ module tanlabs
     parameter SYS_CLK_FREQ = 90_000_000
 )
 (
-    input wire reset_btn, // 改动了tanlabs对push_btn和reset_btn的命名
-
     input wire gtrefclk_p,
     input wire gtrefclk_n,
 
@@ -36,8 +34,67 @@ module tanlabs
 
     // unused.
     input wire sfp_sda,
-    input wire sfp_scl
+    input wire sfp_scl,
+
+    input wire clk_50M,     // 50MHz 时钟输入
+    input wire clk_11M0592, // 11.0592MHz 时钟输入（备用，可不用）
+
+    input wire push_btn,  // BTN5 按钮开关，带消抖电路，按下时为 1
+    input wire reset_btn, // BTN6 复位按钮，带消抖电路，按下时为 1
+
+    input  wire [ 3:0] touch_btn,  // BTN1~BTN4，按钮开关，按下时为 1
+    input  wire [15:0] dip_sw,     // 32 位拨码开关，拨到“ON”时为 1
+
+    // CPLD 串口控制器信号
+    output wire uart_rdn,        // 读串口信号，低有效
+    output wire uart_wrn,        // 写串口信号，低有效
+    input  wire uart_dataready,  // 串口数据准备好
+    input  wire uart_tbre,       // 发送数据标志
+    input  wire uart_tsre,       // 数据发送完毕标志
+
+    // BaseRAM 信号
+    inout wire [31:0] base_ram_data,  // BaseRAM 数据，低 8 位与 CPLD 串口控制器共享
+    output wire [19:0] base_ram_addr,  // BaseRAM 地址
+    output wire [3:0] base_ram_be_n,  // BaseRAM 字节使能，低有效。如果不使用字节使能，请保持为 0
+    output wire base_ram_ce_n,  // BaseRAM 片选，低有效
+    output wire base_ram_oe_n,  // BaseRAM 读使能，低有效
+    output wire base_ram_we_n,  // BaseRAM 写使能，低有效
+
+    // ExtRAM 信号
+    inout wire [31:0] ext_ram_data,  // ExtRAM 数据
+    output wire [19:0] ext_ram_addr,  // ExtRAM 地址
+    output wire [3:0] ext_ram_be_n,  // ExtRAM 字节使能，低有效。如果不使用字节使能，请保持为 0
+    output wire ext_ram_ce_n,  // ExtRAM 片选，低有效
+    output wire ext_ram_oe_n,  // ExtRAM 读使能，低有效
+    output wire ext_ram_we_n,  // ExtRAM 写使能，低有效
+
+    // 直连串口信号
+    output wire txd,  // 直连串口发送端
+    input  wire rxd,  // 直连串口接收端
+
+    // Flash 存储器信号，参考 JS28F640 芯片手册
+    output wire [22:0] flash_a,  // Flash 地址，a0 仅在 8bit 模式有效，16bit 模式无意义
+    inout wire [15:0] flash_d,  // Flash 数据
+    output wire flash_rp_n,  // Flash 复位信号，低有效
+    output wire flash_vpen,  // Flash 写保护信号，低电平时不能擦除、烧写
+    output wire flash_ce_n,  // Flash 片选信号，低有效
+    output wire flash_oe_n,  // Flash 读使能信号，低有效
+    output wire flash_we_n,  // Flash 写使能信号，低有效
+    output wire flash_byte_n, // Flash 8bit 模式选择，低有效。在使用 flash 的 16 位模式时请设为 1
+
+    // 图像输出信号
+    output wire [2:0] video_red,    // 红色像素，3 位
+    output wire [2:0] video_green,  // 绿色像素，3 位
+    output wire [1:0] video_blue,   // 蓝色像素，2 位
+    output wire       video_hsync,  // 行同步（水平同步）信号
+    output wire       video_vsync,  // 场同步（垂直同步）信号
+    output wire       video_clk,    // 像素时钟输出
+    output wire       video_de      // 行数据有效信号，用于区分消隐区
+
 );
+    wire [15:0] leds_debug;
+    wire [ 7:0] dpy0_debug;
+    wire [ 7:0] dpy1_debug;
 
     localparam DATA_WIDTH = 64;
     localparam ID_WIDTH = 3;
@@ -57,7 +114,7 @@ module tanlabs
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
-        .core_clk_out(core_clk),
+        .clk_out2(core_clk),
         .reset(1'b0),
         .locked(locked),
         .clk_in1(gtref_clk)
@@ -905,23 +962,23 @@ module tanlabs
         .in_led({debug_forwarding_table_eth, ~debug_egress_interconnect_ready,
                  ~debug_datapath_fifo_ready,
                  ~debug_ingress_interconnect_ready}),
-        .out_led(leds[7:0])
+        .out_led(leds_debug[7:0])
     );
     led_delayer led_delayer_debug_i2(
         .clk(core_clk),
         .reset(reset_core),
         .in_led(debug_forwarding_table_core),
-        .out_led(leds[15:8])
+        .out_led(leds_debug[15:8])
     );
 
     // README: Your code here.
     logic [7:0] dpy_number;
     SEG7_LUT segL (
-        .oSEG1(dpy0),
+        .oSEG1(dpy0_debug),
         .iDIG (dpy_number[3:0])
     );  // dpy0 是低位数码管
     SEG7_LUT segH (
-        .oSEG1(dpy1),
+        .oSEG1(dpy1_debug),
         .iDIG (dpy_number[7:4])
     );  // dpy1 是高位数码管
     // tester #(
@@ -1130,14 +1187,14 @@ module tanlabs
     logic [ 3:0] wbs2_sel_o;
     logic        wbs2_we_o;
 
-    logic        wbs3_cyc_o = wb_router_cyc_i;
-    logic        wbs3_stb_o = wb_router_stb_i;
-    logic        wbs3_ack_i = wb_router_ack_o;
-    logic [31:0] wbs3_adr_o = wb_router_adr_i;
-    logic [31:0] wbs3_dat_o = wb_router_dat_i;
-    logic [31:0] wbs3_dat_i = wb_router_dat_o;
-    logic [ 3:0] wbs3_sel_o = wb_router_sel_i;
-    logic        wbs3_we_o = wb_router_we_i;
+    wire        wbs3_cyc_o = wb_router_cyc_i;
+    wire        wbs3_stb_o = wb_router_stb_i;
+    wire        wbs3_ack_i = wb_router_ack_o;
+    wire [31:0] wbs3_adr_o = wb_router_adr_i;
+    wire [31:0] wbs3_dat_o = wb_router_dat_i;
+    wire [31:0] wbs3_dat_i = wb_router_dat_o;
+    wire [ 3:0] wbs3_sel_o = wb_router_sel_i;
+    wire        wbs3_we_o = wb_router_we_i;
 
     logic        wbs4_cyc_o;
     logic        wbs4_stb_o;
@@ -1422,14 +1479,14 @@ module tanlabs
         .vga_rst(vga_rst),
 
         // Wishbone slave (to MUX)
-        .wb_cyc_i(wbs3_cyc_o),
-        .wb_stb_i(wbs3_stb_o),
-        .wb_ack_o(wbs3_ack_i),
-        .wb_adr_i(wbs3_adr_o),
-        .wb_dat_i(wbs3_dat_o),
-        .wb_dat_o(wbs3_dat_i),
-        .wb_sel_i(wbs3_sel_o),
-        .wb_we_i (wbs3_we_o),
+        .wb_cyc_i(wbs4_cyc_o),
+        .wb_stb_i(wbs4_stb_o),
+        .wb_ack_o(wbs4_ack_i),
+        .wb_adr_i(wbs4_adr_o),
+        .wb_dat_i(wbs4_dat_o),
+        .wb_dat_o(wbs4_dat_i),
+        .wb_sel_i(wbs4_sel_o),
+        .wb_we_i (wbs4_we_o),
 
         // VGA Output
         .video_red  (video_red),
@@ -1442,7 +1499,9 @@ module tanlabs
     );
 
     // GPIO模块
-    gpio gpio(
+    gpio #(
+        .CLK_FREQ(SYS_CLK_FREQ)
+    ) gpio (
 
         .clk(sys_clk),
         .rst(sys_rst),
