@@ -8,9 +8,21 @@
 char buffer[1025];
 int header;
 
+char _getchar() {
+    while (1) {
+        int d = GPIO_DATA;
+        if (!(d & 0xff000000)) {
+            return gpio_decode(d);
+        }
+        if(UART_LSR & COM_LSR_DR) {
+            return UART_THR;
+        }
+    }
+}
+
 bool _gets(char *buf, int len) {
     for (int i = 0; i < len; i++) {
-        buf[i] = _getchar_gpio();
+        buf[i] = _getchar();
         if (buf[i] == '\b') {
             buf[i] = 0;
             if (i > 0) {

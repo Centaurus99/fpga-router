@@ -2,10 +2,7 @@
 #include <gpio.h>
 #include <printf.h>
 
-
-char _getchar_gpio() {
-    int d = GPIO_DATA;
-    while (d & 0xff000000) {d = GPIO_DATA;}
+char gpio_decode(int d) {
     switch (d) {
         case 0x1: return '0';
         case 0x2: return '1';
@@ -29,4 +26,10 @@ char _getchar_gpio() {
         case 0x80000: return '\b';
         default: return '?';
     }
+}
+
+char _getchar_gpio() {
+    int d = GPIO_DATA;
+    while (d & 0xff000000) {d = GPIO_DATA;}
+    return gpio_decode(d);
 }

@@ -5,6 +5,8 @@
 
 #define GPIO_DATA (*(volatile int *)(GPIO_BASE + 0))
 
+char gpio_decode(int d);
+
 char _getchar_gpio();
 
 #endif
