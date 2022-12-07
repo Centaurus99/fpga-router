@@ -54,7 +54,7 @@ module sram_controller #(
     end
 
     generate
-        if (CLK_FREQ <= 90_000_000) begin
+        if (CLK_FREQ <= 60_000_000) begin
             // 两周期读写
             ODDR #(
                 .DDR_CLK_EDGE("OPPOSITE_EDGE"),  // "OPPOSITE_EDGE" or "SAME_EDGE" 

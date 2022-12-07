@@ -6,6 +6,44 @@ set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets clk_11M0592_IBUF]
 create_clock -period 20.000 -name clk_50M -waveform {0.000 10.000} [get_ports clk_50M]
 create_clock -period 90.422 -name clk_11M0592 -waveform {0.000 45.211} [get_ports clk_11M0592]
 
+# SRAM delay for 100MHz clock and 3 cycles read/write
+# input setup delay = 10ns(read) - 10ns(clock period) - (-2.9ns)(output delay) + 1.6ns(pcb route time)
+set_input_delay -clock clk_out1_pll_example -max 4.500 [get_ports {base_ram_data[*]}]
+set_input_delay -clock clk_out1_pll_example -max 4.500 [get_ports {ext_ram_data[*]}]
+# input hold time 2.5ns
+set_input_delay -clock clk_out1_pll_example -min 2.500 [get_ports {base_ram_data[*]}]
+set_input_delay -clock clk_out1_pll_example -min 2.500 [get_ports {ext_ram_data[*]}]
+
+# 10ns + 2.9ns for output setup and 2.9ns for we_n hold
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {base_ram_data[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {base_ram_addr[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {base_ram_be_n[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports base_ram_ce_n]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports base_ram_oe_n]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {ext_ram_data[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {ext_ram_addr[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports {ext_ram_be_n[*]}]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports ext_ram_ce_n]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports ext_ram_oe_n]
+# we_n signal should be covered with other signal
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports base_ram_we_n]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports ext_ram_we_n]
+
+# 2.9ns for output hold and 5ns + 2.9ns we_n setup
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {base_ram_data[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {base_ram_addr[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {base_ram_be_n[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports base_ram_ce_n]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports base_ram_oe_n]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {ext_ram_data[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {ext_ram_addr[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports {ext_ram_be_n[*]}]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports ext_ram_ce_n]
+set_output_delay -clock clk_out1_pll_example -min -2.900 [get_ports ext_ram_oe_n]
+# we_n signal should be covered with other signal
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports base_ram_we_n]
+set_output_delay -clock clk_out1_pll_example -max -2.900 [get_ports ext_ram_we_n]
+
 # GTP clock 125MHz
 set_property PACKAGE_PIN AA13 [get_ports gtrefclk_p]
 set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]

@@ -4,7 +4,7 @@ module mmio_mtime #(
     parameter CLK_FREQ   = 50_000_000,
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32,
-    parameter TICK_TIME  = 10
+    parameter TICK_TIME  = CLK_FREQ / 10_000_000
 ) (
     // clk and reset
     input wire clk,
