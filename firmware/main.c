@@ -21,8 +21,10 @@ extern void printprefix();
 extern int _prefix_query_all(const in6_addr addr, int *checking_leafs);
 
 in6_addr checking_addr = {0};
+bool checking_all = 1;
 int checking_leaf[64];
 extern RoutingTableEntry routing_table[];
+extern int entry_count;
 
 u32 len, if_index, route_type;
 in6_addr addr, nexthop;
@@ -43,8 +45,12 @@ void display() {
         else
             update_pos(1, i, buffer[i], VGA_BLUE);
     
-    printip(&checking_addr, ipbuffer);
-    sprintf(buffer, "Checking %s", ipbuffer);
+    if (checking_all) {
+        sprintf(buffer, "Checking all entries", ipbuffer);
+    } else {
+        printip(&checking_addr, ipbuffer);
+        sprintf(buffer, "Checking %s", ipbuffer);
+    }
     for (int i = 0; buffer[i]; ++i)
         update_pos(2, i, buffer[i], VGA_WHITE);
 
@@ -65,11 +71,11 @@ void display() {
     for (int i = 0; buffer[i]; ++i)
         update_pos(3, m++, buffer[i], VGA_WHITE);
 
-    int c = _prefix_query_all(checking_addr, checking_leaf);
+    int c = checking_all ? entry_count : _prefix_query_all(checking_addr, checking_leaf);
     int n = 5;
     m = 0;
     for (int i = c-1; i >= 0 ; --i) {
-        RoutingTableEntry *entry = &routing_table[checking_leaf[i]];
+        RoutingTableEntry *entry = checking_all ? &routing_table[i] : &routing_table[checking_leaf[i]];
         printprefix(entry->addr, entry->len, ipbuffer);
         m = 0;
         for (int j = 0; ipbuffer[j]; ++j) {
@@ -92,6 +98,7 @@ void display() {
         }
         ++n;
     }
+    
     
     for (int j = 0; j < VGA_W; j++) {
         update_pos(4, j, '-', VGA_WHITE);
@@ -143,15 +150,21 @@ bool operate_d() {
     };
     update(0, entry);
     printip(&addr, ipbuffer);
-    sprintf(info, "Deleted %s %d %d", ipbuffer, len, if_index);
+    sprintf(info, "Deleted %s %d %d", ipbuffer, len, route_type);
     return 1;
 }
 
 bool operate_c() {
+    if (buffer[header] == '\n') {
+        checking_all = 1;
+        sprintf(info, "Checking all routing entries");
+        return 1;
+    }
     if (!_getip(&addr)) {
-        sprintf(info, "Invalid IP addr; Usage: c [addr]");
+        sprintf(info, "Invalid IP addr; Usage: c [addr] or only c for checking all");
         return 0;
     }
+    checking_all = 0;
     printip(&addr, ipbuffer);
     checking_addr = addr;
     sprintf(info, "Checking legal routing entry of %s", ipbuffer);

@@ -112,7 +112,7 @@ void printprefix(in6_addr *addr, int len, char *out) {
     for (int i=0; i<16; ++i) {
         if (i>0 && (i%2 == 0)) {
             out[n++] = ':';
-            if (i*4 >= len) {
+            if (i*8 >= len) {
                 out[n++] = ':';
                 break;
             }

@@ -21,7 +21,7 @@
 
 #define VGA_BLACK 0
 #define VGA_WHITE 0xff
-#define VGA_RED 0b11100000
+#define VGA_RED 0b11101101
 #define VGA_GREEN 0b00011100
 #define VGA_BLUE 0b01010111
 
