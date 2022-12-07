@@ -38,9 +38,9 @@ TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 leaf_t leafs[LEAF_COUNT];
 NextHopEntry next_hops[ENTRY_COUNT];
 #else
-#define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
-#define leafs ((leaf_t *)LEAF_ADDRESS)
-#define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
+#define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
+#define leafs ((volatile leaf_t *)LEAF_ADDRESS)
+#define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
 leaf_t entry_count;
 int node_root;
@@ -284,8 +284,9 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
     if (dep > 128) return;
     TrieNode *now = &NOW;
     // 在当前层匹配所有的前缀
+    // printf("~~~%d %d %d\n", dep, nid, *count);
+    // for (int i = 0; i < 10; ++i);
     if (checking_all) {
-        // printf("~~~%d %d %d\n", dep, nid, *count);
         for (int pfx = 1; pfx < (1<<(STRIDE)); ++pfx) {
             if (!VEC_BT(now->leaf_vec, pfx)) continue;
             for (int l = 3; l >= 0; --l) {
