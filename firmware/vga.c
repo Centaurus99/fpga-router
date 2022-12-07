@@ -1,5 +1,6 @@
 #include <vga.h>
-#include <font.h>
+
+extern char char_bitmap[95][VGA_C_H];
 
 int line = 0;
 
@@ -9,7 +10,7 @@ bool update_pos(int n, int m, char c, char color) {
     int l = VGA_PAD_L + m * VGA_C_W;
     for (int i = 0; i < VGA_C_H; i++) {
         for (int j = 0; j < VGA_C_W; j++) {
-            VGA_DATA(t + i, l + j) = (bitmap[c][j] & (1<<i)) ? color : 0;
+            VGA_DATA(t + i, l + j) = (char_bitmap[c-' '][i] & (1<<(VGA_C_W - j - 1))) ? 0 : color;
         }
     }
     return 1;

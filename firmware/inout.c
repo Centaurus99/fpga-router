@@ -10,16 +10,20 @@ int header;
 
 bool _gets(char *buf, int len) {
     for (int i = 0; i < len; i++) {
-        buf[i] = _getchar_gpio();
+        buf[i] = _getchar_uart();
         if (buf[i] == '\b') {
-            buf[i] = 0; buf[i-1] = 0;
-            update_pos(VGA_ROW - 2, i-1 + 2, 0, VGA_BLACK);
-            i -= 2;
+            buf[i] = 0;
+            if (i > 0) {
+                buf[i-1] = 0;
+                update_pos(VGA_ROW - 2, i-1 + 2, '_', VGA_GREEN);
+                i -= 2;
+            } else i -= 1;
         } else if (buf[i] == '\n') {
             buf[i+1] = 0;
             return 1;
         } else {
             update_pos(VGA_ROW - 2, i + 2, buf[i], VGA_WHITE);
+            update_pos(VGA_ROW - 2, i + 1 + 2, '_', VGA_GREEN);
         }
     }
     return 0;
@@ -101,4 +105,20 @@ void printip(in6_addr *addr, char *out) {
         out[n++] = hextochar(addr->s6_addr[i]&0xf);
     }
     out[n] = 0;
+}
+
+void printprefix(in6_addr *addr, int len, char *out) {
+    int n = 0;
+    for (int i=0; i<16; ++i) {
+        if (i>0 && (i%2 == 0)) {
+            out[n++] = ':';
+            if (i*4 >= len) {
+                out[n++] = ':';
+                break;
+            }
+        }
+        out[n++] = hextochar(addr->s6_addr[i]>>4);
+        out[n++] = hextochar(addr->s6_addr[i]&0xf);
+    }
+    sprintf(out+n, "/%d", len);
 }

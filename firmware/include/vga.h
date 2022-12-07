@@ -11,10 +11,11 @@
 #define VGA_DATA(n, m) (*(volatile char *)(VGA_BASE + (n) * VGA_W + (m)))
 #define VGA_DATA_4(n, m) (*(volatile int *)(VGA_BASE + (n) * VGA_W + (m)))
 
-#define VGA_C_W 6
-#define VGA_C_H 13
-#define VGA_COL 120
-#define VGA_ROW 44
+#define VGA_C_W 7
+#define VGA_C_H 14
+#define VGA_LINE_H 14
+#define VGA_COL 110
+#define VGA_ROW 42
 #define VGA_PAD_L 8
 #define VGA_PAD_T 8
 
@@ -22,7 +23,7 @@
 #define VGA_WHITE 0xff
 #define VGA_RED 0b11100000
 #define VGA_GREEN 0b00011100
-#define VGA_BLUE 0b00000011
+#define VGA_BLUE 0b01010111
 
 bool update_pos(int n, int m, char c, char color); // 更新某个位置的字符
 

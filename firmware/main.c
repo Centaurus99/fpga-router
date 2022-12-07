@@ -16,11 +16,13 @@ extern char _getnonspace();
 extern u32 _getdec();
 extern bool _getip();
 extern void printip();
+extern void printprefix();
 
-extern int _prefix_query_all(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type);
+extern int _prefix_query_all(const in6_addr addr, int *checking_leafs);
 
-in6_addr nexthops[100], checking_addr = {0};
-u32 if_indices[100], route_types[100];
+in6_addr checking_addr = {0};
+int checking_leaf[64];
+extern RoutingTableEntry routing_table[];
 
 u32 len, if_index, route_type;
 in6_addr addr, nexthop;
@@ -46,33 +48,57 @@ void display() {
     for (int i = 0; buffer[i]; ++i)
         update_pos(2, i, buffer[i], VGA_WHITE);
 
-    int c = _prefix_query_all(checking_addr, &nexthops, &if_indices, &route_types);
-    int n = 4, m = 0;
-    for (int i = c-1; i >=0 ; --i) {
-        printip(nexthops+i, ipbuffer);
+    int m = 0;
+    sprintf(buffer, "%s", "Prefix");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(3, m++, buffer[i], VGA_WHITE);
+    m = 44;
+    sprintf(buffer, "%s", "If Index");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(3, m++, buffer[i], VGA_BLUE);
+    m = 54;
+    sprintf(buffer, "%s", "Next Hop");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(3, m++, buffer[i], VGA_GREEN);
+    m = 98;
+    sprintf(buffer, "%s", "Route Type");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(3, m++, buffer[i], VGA_WHITE);
+
+    int c = _prefix_query_all(checking_addr, checking_leaf);
+    int n = 5;
+    m = 0;
+    for (int i = c-1; i >= 0 ; --i) {
+        RoutingTableEntry *entry = &routing_table[checking_leaf[i]];
+        printprefix(entry->addr, entry->len, ipbuffer);
         m = 0;
         for (int j = 0; ipbuffer[j]; ++j) {
             update_pos(n, m++, ipbuffer[j], VGA_WHITE);
         }
-        m = 48;
-        sprintf(buffer, "%d", if_indices[i]);
+        m = 44;
+        sprintf(buffer, "%d", entry->if_index);
         for (int j = 0; buffer[j]; ++j) {
             update_pos(n, m++, buffer[j], VGA_BLUE);
         }
-        m = 64;
-        sprintf(buffer, "%d", route_types[i]);
+        m = 54;
+        printip(entry->nexthop, ipbuffer);
+        for (int j = 0; ipbuffer[j]; ++j) {
+            update_pos(n, m++, ipbuffer[j], VGA_GREEN);
+        }
+        m = 98;
+        sprintf(buffer, "%d", entry->route_type);
         for (int j = 0; buffer[j]; ++j) {
-            update_pos(n, m++, buffer[j], VGA_BLUE);
+            update_pos(n, m++, buffer[j], VGA_WHITE);
         }
         ++n;
     }
-
     
     for (int j = 0; j < VGA_W; j++) {
-        update_pos(3, j, '-', VGA_WHITE);
+        update_pos(4, j, '-', VGA_WHITE);
         update_pos(VGA_ROW - 3, j, '-', VGA_WHITE);
     }
     update_pos(VGA_ROW - 2, 0, '>', VGA_GREEN);
+    update_pos(VGA_ROW - 2, 2, '_', VGA_GREEN);
 
     for (int j = 0; info[j]; ++j) {
         update_pos(VGA_ROW - 1, j, info[j], error ? VGA_RED : VGA_GREEN);
@@ -113,7 +139,7 @@ bool operate_d() {
     route_type = _getdec();
     RoutingTableEntry entry = {
         .addr = addr, .len = len, 
-        .if_index = 0, .nexthop = 0, .route_type = route_type
+        .if_index = 0, .nexthop = {{{0}}}, .route_type = route_type
     };
     update(0, entry);
     printip(&addr, ipbuffer);
@@ -128,8 +154,43 @@ bool operate_c() {
     }
     printip(&addr, ipbuffer);
     checking_addr = addr;
-    sprintf(info, "Checking legal routing entry of %s\r\n", ipbuffer);
+    sprintf(info, "Checking legal routing entry of %s", ipbuffer);
     return 1;
+}
+
+void init_direct_route() {
+    RoutingTableEntry entry;
+    entry.addr.s6_addr32[0] = 0x06aa0e2a;
+    entry.addr.s6_addr32[1] = 0x000a9704;
+    entry.addr.s6_addr32[2] = 0x00000000;
+    entry.addr.s6_addr32[3] = 0x00000000;
+    entry.len = 64;
+    entry.if_index = 0;
+    entry.nexthop.s6_addr32[0] = 0x06aa0e2a;
+    entry.nexthop.s6_addr32[1] = 0x000a9704;
+    entry.nexthop.s6_addr32[2] = 0x00000000;
+    entry.nexthop.s6_addr32[3] = 0x00000000;
+    entry.route_type = 0;
+    update(1, entry);
+    entry.addr.s6_addr32[1] = 0x010a9704;
+    entry.if_index = 1;
+    entry.nexthop.s6_addr32[3] = 0x44340000;
+    update(1, entry);
+    entry.addr.s6_addr32[1] = 0x020a9704;
+    entry.if_index = 2;
+    entry.nexthop.s6_addr32[3] = 0x55450000;
+    update(1, entry);
+    entry.addr.s6_addr32[1] = 0x030a9704;
+    entry.if_index = 3;
+    entry.nexthop.s6_addr32[3] = 0x66560000;
+    update(1, entry);
+    entry.addr.s6_addr32[0] = 0;
+    entry.addr.s6_addr32[1] = 0;
+    entry.addr.s6_addr32[2] = 0;
+    entry.addr.s6_addr32[3] = 0;
+    entry.len = 0;
+    update(1, entry);
+
 }
 
 void start(int argc, char *argv[]) {
@@ -138,6 +199,7 @@ void start(int argc, char *argv[]) {
     }
     init_uart();
 
+    init_direct_route();
     display();
     printf("INITIALIZED\n");
 

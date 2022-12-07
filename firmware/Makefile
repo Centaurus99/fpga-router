@@ -10,6 +10,14 @@ CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-s
          -Iinclude $(DEFINES) -march=rv32i -mabi=ilp32 -DRV32 -g
 LDFLAGS = -z separate-code -g
 
+override EN_BITMANIP ?= n
+ifeq ($(EN_BITMANIP), y)
+	TRIPLE = /opt/riscv64b/bin/riscv64-unknown-elf-
+	CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-sections -O2 -Wall \
+         -Iinclude $(DEFINES) -march=rv32ib -mabi=ilp32 -DRV32 -g
+	CFLAGS += -DENABLE_BITMANIP
+endif
+
 -include Makefile.config
 
 override EN_UART16550 ?= n
