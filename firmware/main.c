@@ -18,11 +18,13 @@ extern bool _getip();
 extern void printip();
 extern void printprefix();
 
-extern int _prefix_query_all(const in6_addr addr, int *checking_leafs);
+extern void _prefix_query_all(int dep, int nid, const in6_addr addr, 
+    RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip);
+
 
 in6_addr checking_addr = {0};
 bool checking_all = 1;
-int checking_leaf[64];
+RoutingTableEntry checking_entry[100];
 extern RoutingTableEntry routing_table[];
 extern int entry_count;
 
@@ -71,11 +73,12 @@ void display() {
     for (int i = 0; buffer[i]; ++i)
         update_pos(3, m++, buffer[i], VGA_WHITE);
 
-    int c = checking_all ? entry_count : _prefix_query_all(checking_addr, checking_leaf);
+    int c = 0;
+    _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
     int n = 5;
     m = 0;
-    for (int i = c-1; i >= 0 ; --i) {
-        RoutingTableEntry *entry = checking_all ? &routing_table[i] : &routing_table[checking_leaf[i]];
+    for (int i = 0; i < c ; ++i) {
+        RoutingTableEntry *entry = checking_entry + i;
         printprefix(entry->addr, entry->len, ipbuffer);
         m = 0;
         for (int j = 0; ipbuffer[j]; ++j) {

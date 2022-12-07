@@ -10,11 +10,12 @@ int header;
 
 bool _gets(char *buf, int len) {
     for (int i = 0; i < len; i++) {
-        buf[i] = _getchar_uart();
+        buf[i] = _getchar_gpio();
         if (buf[i] == '\b') {
             buf[i] = 0;
             if (i > 0) {
                 buf[i-1] = 0;
+                update_pos(VGA_ROW - 2, i + 2, ' ', VGA_WHITE);
                 update_pos(VGA_ROW - 2, i-1 + 2, '_', VGA_GREEN);
                 i -= 2;
             } else i -= 1;

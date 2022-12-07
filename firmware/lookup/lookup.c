@@ -2,21 +2,18 @@
 #include "memhelper.h"
 #include <printf.h>
 
+#ifndef ENABLE_BITMANIP
 int popcnt(int x) {
     int cnt = 0;
-#ifndef ENABLE_BITMANIP
     while (x) {
         if (x & 1) cnt++;
         x >>= 1;
     }
-#else
-    __asm__("pcnt %0, %1\n"
-            : "=r"(cnt)
-            : "r"(x)
-            :);
-#endif
     return cnt;
 }
+#else
+extern int popcnt(int x);
+#endif
 
 static inline u32 INDEX (in6_addr addr, int s, int n) {
     u32 res = 0;
@@ -41,7 +38,7 @@ NextHopEntry next_hops[ENTRY_COUNT];
 leaf_t entry_count;
 int node_root;
 
-RoutingTableEntry routing_table[ENTRY_COUNT]; // TODO: 删掉
+// RoutingTableEntry routing_table[ENTRY_COUNT]; // TODO: 删掉
 
 TrieNode stk[33];
 
@@ -52,12 +49,12 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
             next_hops[i].ip[1] == entry.nexthop.s6_addr32[1] && 
             next_hops[i].ip[2] == entry.nexthop.s6_addr32[2] && 
             next_hops[i].ip[3] == entry.nexthop.s6_addr32[3] &&
-            // FIXME: 正式路由表里不应该判断addr和len相不相同！
-            routing_table[i].addr.s6_addr32[0] == entry.addr.s6_addr32[0] && 
-            routing_table[i].addr.s6_addr32[1] == entry.addr.s6_addr32[1] && 
-            routing_table[i].addr.s6_addr32[2] == entry.addr.s6_addr32[2] && 
-            routing_table[i].addr.s6_addr32[3] == entry.addr.s6_addr32[3] &&
-            routing_table[i].len == entry.len &&
+            // // FIXME: 正式路由表里不应该判断addr和len相不相同！
+            // routing_table[i].addr.s6_addr32[0] == entry.addr.s6_addr32[0] && 
+            // routing_table[i].addr.s6_addr32[1] == entry.addr.s6_addr32[1] && 
+            // routing_table[i].addr.s6_addr32[2] == entry.addr.s6_addr32[2] && 
+            // routing_table[i].addr.s6_addr32[3] == entry.addr.s6_addr32[3] &&
+            // routing_table[i].len == entry.len &&
             next_hops[i].route_type == entry.route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
@@ -69,7 +66,7 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
     next_hops[entry_count].ip[3] = entry.nexthop.s6_addr32[3];
     next_hops[entry_count].route_type = entry.route_type;
 
-    routing_table[entry_count] = entry;
+    // routing_table[entry_count] = entry;
     return entry_count++;
 }
 
@@ -264,31 +261,102 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *ro
     return 1;
 }
 
+void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, int leaf) {
+    t->addr = *ip;
+    t->len = len;
+    t->nexthop.s6_addr32[0] = next_hops[leaf].ip[0];
+    t->nexthop.s6_addr32[1] = next_hops[leaf].ip[1];
+    t->nexthop.s6_addr32[2] = next_hops[leaf].ip[2];
+    t->nexthop.s6_addr32[3] = next_hops[leaf].ip[3];
+    t->if_index = next_hops[leaf].port;
+    t->route_type = next_hops[leaf].route_type;
+}
+
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
-int _prefix_query_all(const in6_addr addr, int *checking_leafs) {
-    int leaf = -1;
-    TrieNode *now = &nodes[0][node_root];
-    int cnt = 0;
-    for (int dep = 0; dep < 128; dep += STRIDE) {
-        u32 idx = INDEX(addr, dep, STRIDE);
-        // 在当前层匹配所有的前缀
-        u32 x = (idx>>1)|(1<<(STRIDE-1));
-        for (int i = STRIDE-1; i >= 0; --i) {
-            u32 pfx = x >> i;
-            if (VEC_BT(now->leaf_vec, pfx)) {
-                leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
-                checking_leafs[cnt++] = leaf;
+void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip) {
+    if (dep > 128) return;
+    TrieNode *now = &NOW;
+    // 在当前层匹配所有的前缀
+    if (checking_all) {
+        // printf("~~~%d %d %d\n", dep, nid, *count);
+        for (int pfx = 1; pfx < (1<<(STRIDE)); ++pfx) {
+            if (!VEC_BT(now->leaf_vec, pfx)) continue;
+            for (int l = 3; l >= 0; --l) {
+                if (pfx & (1<<l)) {
+                    int leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                    if (dep%8==0) {
+                        ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0x0f) | ((pfx ^ (1<<l)) << (8-l));
+                    } else {
+                        ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | ((pfx ^ (1<<l)) << (4-l));
+                    }
+                    _append_answer(checking_entry + (*count)++, &ip, dep + l, leaf);
+                    break;
+                }
             }
         }
-        // 跳下一层
-        if (VEC_BT(now->vec, idx)) {
-            now = &nodes[STAGE(dep + STRIDE)][now->child_base + POPCNT_LS(now->vec, idx) - 1];
-            if (dep + STRIDE >= 128 && VEC_BT(now->leaf_vec, 1)) {
-                leaf = leafs[now->leaf_base];
-                checking_leafs[cnt++] = leaf;
+        for (int idx = 0; idx < (1<<(STRIDE)); ++idx) {
+            if (VEC_BT(now->vec, idx)) {
+                if (dep%8==0) {
+                    ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf) | (idx << 4);
+                } else {
+                    ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
+                }
+                _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
             }
-        } else break;
+        }
+    } else {
+        u32 idx = INDEX(addr, dep, STRIDE);
+        u32 x = (idx>>1)|(1<<(STRIDE-1));
+        for (int i = 0; i < STRIDE; ++i) {
+            u32 pfx = x >> i;
+            u32 idxi = idx >> (i+1);
+            if (VEC_BT(now->leaf_vec, pfx)) {
+                int leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                if (dep%8==0) {
+                    ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf) | (idxi << (4+i+1));
+                } else {
+                    ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | (idxi << (i+1));
+                }
+                _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE - 1 - i, leaf);
+            }
+        }
+        if (VEC_BT(now->vec, idx)) {
+            if (dep%8==0) {
+                ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf) | (idx << 4);
+            } else {
+                ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
+            }
+            _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+        }
     }
-    return cnt;
 
 }
+
+
+// int _prefix_query_all(const in6_addr addr, int *checking_leafs) {
+//     int leaf = -1;
+//     TrieNode *now = &nodes[0][node_root];
+//     int cnt = 0;
+//     for (int dep = 0; dep < 128; dep += STRIDE) {
+//         u32 idx = INDEX(addr, dep, STRIDE);
+//         // 在当前层匹配所有的前缀
+//         u32 x = (idx>>1)|(1<<(STRIDE-1));
+//         for (int i = STRIDE-1; i >= 0; --i) {
+//             u32 pfx = x >> i;
+//             if (VEC_BT(now->leaf_vec, pfx)) {
+//                 leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+//                 checking_leafs[cnt++] = leaf;
+//             }
+//         }
+//         // 跳下一层
+//         if (VEC_BT(now->vec, idx)) {
+//             now = &nodes[STAGE(dep + STRIDE)][now->child_base + POPCNT_LS(now->vec, idx) - 1];
+//             if (dep + STRIDE >= 128 && VEC_BT(now->leaf_vec, 1)) {
+//                 leaf = leafs[now->leaf_base];
+//                 checking_leafs[cnt++] = leaf;
+//             }
+//         } else break;
+//     }
+//     return cnt;
+
+// }
