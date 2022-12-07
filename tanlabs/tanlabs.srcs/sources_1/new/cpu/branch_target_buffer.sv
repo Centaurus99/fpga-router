@@ -6,7 +6,7 @@ module branch_target_buffer #(
     input wire rst,
 
     input  wire [31:0] pc_r,
-    output reg  [31:0] next_pc_r,
+    output wire  [31:0] next_pc_r,
 
     input wire [31:0] pc_w,
     input wire [31:0] next_pc_w,
@@ -34,6 +34,7 @@ module branch_target_buffer #(
     logic                   we_o     [WAY_NUMBER-1:0];
 
     logic [LOG_WAY_NUMBER-1:0] tail  [SET_NUMBER-1:0];
+    logic [LOG_WAY_NUMBER-1:0] new_tail;
     logic [LOG_WAY_NUMBER-1:0] w_way;
     wire [31-2-IDX_BIT:0] r_tag = pc_r[31:2+IDX_BIT];
     wire [31-2-IDX_BIT:0] w_tag = pc_w_reg[31:2+IDX_BIT];
@@ -60,14 +61,6 @@ module branch_target_buffer #(
     endgenerate
 
     always_comb begin
-        w_way = tail[w_idx];  // 如果都满了则覆盖到tail的位置
-        for (int i = 0; i < WAY_NUMBER; ++i) begin
-            if (!w_entry_i[i].valid) begin  // 如果有不valid的则写到那个位置
-                w_way = i;
-                break;
-            end
-        end
-
         next_pc_r_comb = pc_r + 4;
         for (int i = 0; i < WAY_NUMBER; ++i) begin
             if (r_entry_i[i].valid & (r_entry_i[i].tag == r_tag)) begin
@@ -75,45 +68,55 @@ module branch_target_buffer #(
                     next_pc_r_comb = {r_entry_i[i].data, 2'b0};
                 end
             end
-            if (w_entry_i[i].valid & (w_entry_i[i].tag == w_tag)) begin  // 如果匹配上了则覆写
-                w_way = i;
-            end
         end
     end
 
     always_comb begin
-        w_entry_o = w_entry_i[w_way];
-        if (w_entry_i[w_way].valid && w_entry_i[w_way].tag == w_tag && w_entry_i[w_way].data == next_pc_w_reg[31:2]) begin
-            if (jump_reg) begin
-                if (w_entry_i[w_way].history != 2'b11)
-                    w_entry_o.history = w_entry_i[w_way].history + 1;
-            end else begin
-                if (w_entry_i[w_way].history != 2'b00)
-                    w_entry_o.history = w_entry_i[w_way].history - 1;
+        w_entry_o.valid = 1;
+        w_entry_o.tag = w_tag;
+        w_entry_o.data = next_pc_w_reg[31:2];
+        w_entry_o.history = jump_reg ? 2'b10 : 2'b01;
+
+        w_way = tail[w_idx];  // 如果都满了则覆盖到tail的位置
+        if (tail[w_idx] == WAY_NUMBER - 1) new_tail = 0;
+        else new_tail = tail[w_idx] + 1;
+        
+        for (int i = 0; i < WAY_NUMBER; ++i) begin
+            if (!w_entry_i[i].valid) begin  // 如果有不valid的则写到那个位置
+                w_way = i;
+                break;
             end
-        end else begin
-            w_entry_o.valid = 1;
-            w_entry_o.tag = w_tag;
-            w_entry_o.data = next_pc_w_reg[31:2];
-            w_entry_o.history = jump_reg ? 2'b10 : 2'b01;
+        end
+
+        for (int i = 0; i < WAY_NUMBER; ++i) begin
+            if (w_entry_i[i].valid & (w_entry_i[i].tag == w_tag)) begin  // 如果匹配上了则覆写
+                w_way = i;
+                if (w_entry_i[i].data == next_pc_w_reg[31:2]) begin
+                    if (jump_reg) begin
+                        if (w_entry_i[i].history != 2'b11)
+                            w_entry_o.history = w_entry_i[i].history + 1;
+                    end else begin
+                        if (w_entry_i[i].history != 2'b00)
+                            w_entry_o.history = w_entry_i[i].history - 1;
+                    end
+                end
+            end
         end
     end
 
+    assign next_pc_r = next_pc_r_comb;
     always_ff @(posedge clk) begin
         if (rst) begin
             tail <= '{default: 0};
-            next_pc_r <= 0;
+            // next_pc_r <= 0;
             pc_w_reg <= 0;
             next_pc_w_reg <= 0;
             we_reg <= 0;
         end else begin
-            next_pc_r <= next_pc_r_comb;
+            // next_pc_r <= next_pc_r_comb;
             if (we_reg) begin
                 we_reg <= 0;
-                if (w_entry_i[w_way].valid && w_entry_i[w_way].tag != w_tag) begin  // 如果是覆盖了一个tag不同的的话则tail++
-                    if (tail[w_idx] == WAY_NUMBER - 1) tail[w_idx] <= 0;
-                    else tail[w_idx] <= tail[w_idx] + 1;
-                end
+                tail[w_idx] <= new_tail;
             end else if (we) begin // 打一拍 避免时序问题
                 pc_w_reg <= pc_w;
                 next_pc_w_reg <= next_pc_w;

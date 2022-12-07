@@ -10,6 +10,7 @@ module cpu_pipeline_exe (
     output wire    in_ready,
     output stage_t out,
     input  wire    out_ready,
+    input  wire    flush_i,
 
     output wire [31:0] alu_a_o,
     output wire [31:0] alu_b_o,
@@ -19,7 +20,9 @@ module cpu_pipeline_exe (
     output reg [ 4:0] exe_rd,
     output reg [31:0] exe_alu_y
 );
-    assign in_ready = out_ready || !out.valid;
+    wire flush = flush_i;
+
+    assign in_ready = out_ready || !in.valid || flush;
 
     assign alu_op_o = in.alu_op;
     assign alu_a_o  = in.alu_a;
@@ -32,9 +35,10 @@ module cpu_pipeline_exe (
             out       <= 0;
             exe_alu_y <= 0;
             exe_rd    <= 0;
-        end else if (in_ready) begin
-            out <= in;
-            if (in.valid) begin
+        end else if (out_ready) begin
+            out       <= in;
+            out.valid <= in.valid & ~flush;
+            if (in.valid & ~flush) begin
                 out.alu_y <= alu_y_i;
                 exe_rd    <= forward_valid_n ? 0 : `rd(in);
                 exe_alu_y <= forward_valid_n ? '0 : alu_y_i;

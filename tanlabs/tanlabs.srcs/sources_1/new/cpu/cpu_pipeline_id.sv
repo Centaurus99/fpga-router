@@ -12,13 +12,16 @@ module cpu_pipeline_id (
     output wire in_ready,
     output stage_t out,
     input wire out_ready,
+    input wire flush_i,   // 当前流水线需要 flush
+    output wire flush_o,  // 请求当前和之前的流水线 flush
+    output reg [31:0] flush_pc_o,  // flush 后的 PC
+    output wire flush_branch_o,  // branch 的 flush 单独给出, 优化时序
+    output reg [31:0] flush_branch_pc_o,  // branch 的 PC 单独给出, 优化时序
 
     output reg [4:0] rf_raddr_a_o,
     output reg [4:0] rf_raddr_b_o,
     input wire [31:0] rf_rdata_a_i,
     input wire [31:0] rf_rdata_b_i,
-
-    input wire [31:0] M_Interrupt,
     
     output reg [11:0] csr_addr,
     output reg [31:0] csr_wdata,
@@ -27,29 +30,41 @@ module cpu_pipeline_id (
 
     output reg trap_in,
     output reg trap_out,
+    output reg trap_type,
 
-    output mepc_t mepc_w,
-    output mcause_t mcause_w,
-    output mtval_t mtval_w,
+    output mepc_t epc_w,
+    output mcause_t cause_w,
+    output mtval_t tval_w,
+    
+    input stvec_t stvec_r,
+    input sepc_t  sepc_r,
+    input medeleg_t medeleg_r,
     input mtvec_t mtvec_r,
     input mepc_t  mepc_r,
 
+    input  wire [31:0] M_Interrupt,
+    input  wire [31:0] S_Interrupt,
+
     input stage_t exe_mem,
     input stage_t mem_wb,
-    output reg wait_wb,
 
     input wire[4:0]  exe_rd,
     input wire[31:0] exe_alu_y,
 
-    output wire branch,
-    output reg [31:0] new_pc,
-
     output wire [31:0] btb_pc_w,
     output reg [31:0] btb_next_pc_w,
     output reg btb_jump,
-    output reg btb_we
+    output reg btb_we,
+
+    output reg fencei
 );
-    assign in_ready = out_ready || !out.valid;
+    reg  stall;
+    wire flush = flush_i | flush_o;
+    medeleg_t edeleg;
+
+    assign edeleg = in.PMODE[1] == 1'b0 ? medeleg_r : 32'b0;  // 是否将异常委托至 S 态
+
+    assign in_ready = (out_ready && !stall) || !in.valid || flush;
 
     assign rf_raddr_a_o = `rs1(in);
     assign rf_raddr_b_o = `rs2(in);
@@ -70,14 +85,20 @@ module cpu_pipeline_id (
     end
 
     always_comb begin
-        wait_wb = 0;
+        stall = 0;
+        if (in.valid && (in.cause || `opcode(in) == 7'b1110011 || `opcode(in) == 7'b0001111)) begin
+            // 中断 / 异常 / 特权 / fence / fence.i / sfence.vma 指令, 等待流水线清空
+            if (out.valid || exe_mem.valid || mem_wb.valid) begin
+                stall = 1;
+            end
+        end
         if (in.valid && (out.rf_we && out.valid)) begin
             if (`rd(out) != 0) begin
                 if (`rd(out) == `rs1(in)) begin
-                    wait_wb = 1;
+                    stall = 1;
                 end else if (`opcode(in) == 7'b0110011 || `opcode(in) == 7'b1100011 || `opcode(in) == 7'b0100011) begin  // R / B / S
                     if (`rd(out) == `rs2(in)) begin
-                        wait_wb = 1;
+                        stall = 1;
                     end
                 end
             end
@@ -85,10 +106,10 @@ module cpu_pipeline_id (
         if (in.valid && (`opcode(exe_mem) == 7'b0000011 && exe_mem.valid)) begin
             if (`rd(exe_mem) != 0) begin
                 if (`rd(exe_mem) == `rs1(in)) begin
-                    wait_wb = 1;
+                    stall = 1;
                 end else if (`opcode(in) == 7'b0110011 || `opcode(in) == 7'b1100011 || `opcode(in) == 7'b0100011) begin  // R / B / S
                     if (`rd(exe_mem) == `rs2(in)) begin
-                        wait_wb = 1;
+                        stall = 1;
                     end
                 end
             end
@@ -121,42 +142,74 @@ module cpu_pipeline_id (
         endcase
     end
 
-    assign branch = (btb_we && new_pc != out.next_pc) || trap_in || trap_out;
+    assign flush_branch_o = (btb_we && flush_branch_pc_o != out.next_pc);
+    assign flush_o = flush_branch_o || trap_in || trap_out || fencei;
     assign btb_pc_w = out.pc;
 
     always_ff @(posedge clk) begin
         if (rst) begin
             out <= 0;
             btb_we <= 0;
-            new_pc <= 0;
+            flush_pc_o <= 0;
+            flush_branch_pc_o <= 0;
             trap_in <= 1'b0;
             trap_out <= 1'b0;
-            mepc_w <= '{default: '0};
-            mcause_w <= '{default: '0};
-            mtval_w <= '{default: '0};
+            trap_type <= 1'b0;
+            epc_w <= '{default: '0};
+            cause_w <= '{default: '0};
+            tval_w <= '{default: '0};
+            fencei <= 1'b0;
         end else begin
             btb_we <= 0;
             trap_in <= 1'b0;
             trap_out <= 1'b0;
-            if (in_ready) begin
+            trap_type <= 1'b0;
+            fencei <= 1'b0;
+            if (out_ready) begin
                 out <= in;
-                out.valid <= in.valid & ~wait_wb & ~branch;
-                if (in.valid & ~wait_wb & ~branch) begin
-                    // 中断, 此处实现待改进
-                    if (M_Interrupt[EX_INT_M_TIMER] && in.PMODE < 2'b11) begin
+                out.valid <= in.valid & ~stall & ~flush;
+                if (in.valid & ~stall & ~flush) begin
+                    // 来自 IF 的异常 / 中断
+                    if (in.cause) begin
                         out.inst_type <= CSR_TYPE;
                         trap_in <= 1'b1;
-                        new_pc <= mtvec_r;
-                        mepc_w <= in.pc;
-                        mtval_w <= '{default: '0};
-                        mcause_w.Interrupt <= 1'b1;
-                        mcause_w.Exception_Code <= EX_INT_M_TIMER;
+                        epc_w <= in.pc;
+                        if (in.cause == EX_INST_PAGE_FAULT) begin
+                            tval_w <= in.pc;
+                        end else begin
+                            tval_w <= '{default: '0};
+                        end
+                        if (in.cause.Interrupt) begin  // 中断
+                            cause_w.Interrupt <= 1'b1;
+                            if (S_Interrupt[EX_INT_S_TIMER]) begin  // 进入 S 态
+                                trap_type <= 1'b0;
+                                flush_pc_o <= stvec_r;
+                                cause_w.Exception_Code <= EX_INT_S_TIMER;
+                            end else begin  // 进入 M 态
+                                trap_type <= 1'b1;
+                                flush_pc_o <= mtvec_r;
+                                if (M_Interrupt[EX_INT_M_TIMER]) begin
+                                    cause_w.Exception_Code <= EX_INT_M_TIMER;
+                                end else begin
+                                    cause_w.Exception_Code <= '1;  // Unknown interrupt
+                                end
+                            end
+                        end else begin  // IF 段异常
+                            cause_w <= in.cause;
+                            if (edeleg[in.cause.Exception_Code]) begin  // 进入 S 态
+                                trap_type <= 1'b0;
+                                flush_pc_o <= stvec_r;
+                            end else begin  // 进入 M 态
+                                trap_type <= 1'b1;
+                                flush_pc_o <= mtvec_r;
+                            end
+                        end
                     end else begin
                         out.alu_a <= rs1_data;
-                        case (`opcode(in))
+                        unique case (`opcode(in))
                             7'b1101111: begin // JAL: x[rd] = pc + 4 and pc += offset
                                 out.inst_type <= J_TYPE;
-                                new_pc <= btb_next_pc_w;
+                                flush_branch_pc_o <= btb_next_pc_w;
                                 btb_we <= 1;
                                 out.alu_a <= in.pc;
                                 out.alu_op <= 4'b0000;
@@ -165,7 +218,7 @@ module cpu_pipeline_id (
                             end
                             7'b1100111: begin // JALR: x[rd] = pc + 4 and pc = x[rs1] + offset
                                 out.inst_type <= I_TYPE;
-                                new_pc <= btb_next_pc_w;
+                                flush_branch_pc_o <= btb_next_pc_w;
                                 btb_we <= 1;
                                 out.alu_a <= in.pc;
                                 out.alu_op <= 4'b0000;
@@ -207,6 +260,16 @@ module cpu_pipeline_id (
                                     3'b100: out.wbm1_sel <= 4'b0001; // LBU
                                     3'b101: out.wbm1_sel <= 4'b0011; // LHU
                                     3'b110: out.wbm1_sel <= 4'b1111; // LWU
+                                    default: begin // 未知指令
+                                        out.wbm1_stb <= 1'b0;
+                                        out.rf_we <= 1'b0;
+                                        trap_in <= 1'b1;
+                                        trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                        flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                        epc_w <= in.pc;
+                                        tval_w <= in.inst;
+                                        cause_w <= EX_ILLEGAL_INST;
+                                    end
                                 endcase
                             end
                             7'b0110111: begin  // LUI : rd = 0 + imm
@@ -240,39 +303,96 @@ module cpu_pipeline_id (
                                     3'b010: begin  // SW
                                         out.wbm1_sel <= 4'b1111;
                                     end
+                                    default: begin // 未知指令
+                                        out.wbm1_stb <= 1'b0;
+                                        out.wbm1_we <= 1'b0;
+                                        trap_in <= 1'b1;
+                                        trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                        flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                        epc_w <= in.pc;
+                                        tval_w <= in.inst;
+                                        cause_w <= EX_ILLEGAL_INST;
+                                    end
                                 endcase
                             end
                             7'b1100011: begin
                                 out.inst_type <= B_TYPE;
                                 btb_we <= 1;
-                                new_pc <= btb_jump ? btb_next_pc_w : (in.pc + 4);
+                                flush_branch_pc_o <= btb_jump ? btb_next_pc_w : (in.pc + 4);
+                            end
+                            7'b0001111: begin  // FENCE / FENCE.I
+                                out.inst_type <= I_TYPE;
+                                case (`funct3(in))
+                                    3'b000: ;  // FENCE = nop
+                                    3'b001: begin  // FENCE.I
+                                        fencei <= 1'b1;
+                                        flush_pc_o <= in.pc + 4;
+                                    end
+                                    default: begin // 未知指令
+                                        trap_in <= 1'b1;
+                                        trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                        flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                        epc_w <= in.pc;
+                                        tval_w <= in.inst;
+                                        cause_w <= EX_ILLEGAL_INST;
+                                    end
+                                endcase
                             end
                             7'b1110011: begin // 特权态相关指令
                                 out.inst_type <= CSR_TYPE;
                                 out.alu_a <= '0;
                                 out.alu_op <= 4'b0000;
                                 out.alu_b <= csr_rdata;
+                                fencei <= 1'b1;  // 需要重新取指
+                                flush_pc_o <= in.pc + 4;
                                 // TODO: 判断 PMODE 是否有权限
-                                case (`funct3(in))
+                                unique case (`funct3(in))
                                     3'b000: begin
-                                        case (`rs2(in))
-                                            5'b00000: begin // ECALL
+                                        unique casez (in.inst)
+                                            32'h00000073: begin  // ECALL
                                                 trap_in <= 1'b1;
-                                                new_pc <= mtvec_r;
-                                                mepc_w <= in.pc;
-                                                mtval_w <= '{default: '0};
-                                                mcause_w <= EX_ECALL_U + in.PMODE;
+                                                trap_type <= ~edeleg[EX_ECALL_U + in.PMODE];
+                                                flush_pc_o <= edeleg[EX_ECALL_U + in.PMODE] ? stvec_r : mtvec_r;
+                                                epc_w <= in.pc;
+                                                tval_w <= '{default: '0};
+                                                cause_w <= EX_ECALL_U + in.PMODE;
                                             end
-                                            5'b00001: begin // EBREAK
+                                            32'h00100073: begin // EBREAK
                                                 trap_in <= 1'b1;
-                                                new_pc <= mtvec_r;
-                                                mepc_w <= in.pc;
-                                                mtval_w <= '{default: '0};
-                                                mcause_w <= EX_BREAK;
+                                                trap_type <= ~edeleg[EX_BREAK];
+                                                flush_pc_o <= edeleg[EX_BREAK] ? stvec_r : mtvec_r;
+                                                epc_w <= in.pc;
+                                                tval_w <= '{default: '0};
+                                                cause_w <= EX_BREAK;
                                             end
-                                            5'b00010: begin // xRET
+                                            32'h10200073: begin // SRET
                                                 trap_out <= 1'b1;
-                                                new_pc <= mepc_r;
+                                                trap_type <= 1'b0;
+                                                flush_pc_o <= sepc_r;
+                                            end
+                                            32'h30200073: begin // MRET
+                                                trap_out <= 1'b1;
+                                                trap_type <= 1'b1;
+                                                flush_pc_o <= mepc_r;
+                                            end
+                                            32'b0001001_?????_?????_000_00000_1110011: begin // SFENCE.VMA
+                                                // nop
+                                            end
+                                            32'h10500073: begin // WFI, 视为异常
+                                                trap_in <= 1'b1;
+                                                trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                                flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                                epc_w <= in.pc;
+                                                tval_w <= in.inst;
+                                                cause_w <= EX_ILLEGAL_INST;
+                                            end
+                                            default: begin // 未知指令
+                                                trap_in <= 1'b1;
+                                                trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                                flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                                epc_w <= in.pc;
+                                                tval_w <= in.inst;
+                                                cause_w <= EX_ILLEGAL_INST;
                                             end
                                         endcase
                                     end
@@ -296,6 +416,14 @@ module cpu_pipeline_id (
                                     end
                                 endcase
                             end
+                            default: begin // 未知指令
+                                trap_in <= 1'b1;
+                                trap_type <= ~edeleg[EX_ILLEGAL_INST];
+                                flush_pc_o <= edeleg[EX_ILLEGAL_INST] ? stvec_r : mtvec_r;
+                                epc_w <= in.pc;
+                                tval_w <= in.inst;
+                                cause_w <= EX_ILLEGAL_INST;
+                            end
                         endcase
                     end
                 end
@@ -308,7 +436,7 @@ module cpu_pipeline_id (
         csr_addr = `csr(in);
         csr_wdata = '0;
         csr_we = 0;
-        if ((in_ready & in.valid & ~wait_wb & ~branch) && `opcode(in) == 7'b1110011) begin
+        if ((out_ready & in.valid & ~stall & ~flush) && !in.cause && `opcode(in) == 7'b1110011) begin
             // TODO: 判断 PMODE 是否有权限
             case (`funct3(in))
                 3'b001: begin // CSRRW

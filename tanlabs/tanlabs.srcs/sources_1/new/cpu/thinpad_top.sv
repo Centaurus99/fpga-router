@@ -10,7 +10,7 @@ module thinpad_top #(
     input wire reset_btn, // BTN6 复位按钮，带消抖电路，按下时为 1
 
     input  wire [ 3:0] touch_btn,  // BTN1~BTN4，按钮开关，按下时为 1
-    input  wire [15:0] dip_sw,     // 32 位拨码开关，拨到“ON”时为 1
+    input  wire [31:0] dip_sw,     // 32 位拨码开关，拨到“ON”时为 1
     output wire [15:0] leds,       // 16 位 LED，输出时 1 点亮
     output wire [ 7:0] dpy0,       // 数码管低位信号，包括小数点，输出 1 点亮
     output wire [ 7:0] dpy1,       // 数码管高位信号，包括小数点，输出 1 点亮
@@ -71,7 +71,6 @@ module thinpad_top #(
     // output wire        dm9k_cs_n,
     // output wire        dm9k_pwrst_n,
     // input  wire        dm9k_int,
-    // 这些外设tanlabs里面没有
 
     // Signal for TB
     // synthesis translate_off
@@ -225,16 +224,28 @@ module thinpad_top #(
 
     /* =========== Demo code end =========== */
     logic sys_clk;
-    logic sys_rst;
+    assign sys_clk = clk_10M;
 
-    assign sys_clk  = clk_10M;
-    assign sys_rst  = reset_of_clk10M;
+    wire sys_rst_without_bufg;
+    wire sys_rst;
+    // 异步复位同步释放
+    reset_sync reset_sync_reset_core (
+        .clk(sys_clk),
+        .i  (reset_of_clk10M),
+        .o  (sys_rst_without_bufg)
+    );
+    // 使用 BUFG 优化 reset 信号布线
+    BUFG BUFG_inst_eth (
+        .O(sys_rst),              // 1-bit output: Clock output
+        .I(sys_rst_without_bufg)  // 1-bit input: Clock input
+    );
 
     // 本实验不使用 CPLD 串口，禁用防止总线冲突
     assign uart_rdn = 1'b1;
     assign uart_wrn = 1'b1;
 
     // 时钟中断
+    logic [63:0] mtime;
     logic        mtime_int;
 
     logic [31:0] alu_a_o;
@@ -301,6 +312,7 @@ module thinpad_top #(
         .tb_wdata(tb_wdata),
         // synthesis translate_on
 
+        .mtime_i     (mtime),
         .mtime_int_i (mtime_int),
         .wbm0_ack_i  (wbm0_ack_i),
         .wbm0_dat_i  (wbm0_dat_i),
@@ -424,7 +436,7 @@ module thinpad_top #(
     logic [31:0] wbs4_dat_i;
     logic [ 3:0] wbs4_sel_o;
     logic        wbs4_we_o;
-    
+
     logic        wbs5_cyc_o;
     logic        wbs5_stb_o;
     logic        wbs5_ack_i;
@@ -433,7 +445,7 @@ module thinpad_top #(
     logic [31:0] wbs5_dat_i;
     logic [ 3:0] wbs5_sel_o;
     logic        wbs5_we_o;
-    
+
     logic        wbs6_cyc_o;
     logic        wbs6_stb_o;
     logic        wbs6_ack_i;
@@ -442,7 +454,7 @@ module thinpad_top #(
     logic [31:0] wbs6_dat_i;
     logic [ 3:0] wbs6_sel_o;
     logic        wbs6_we_o;
-    
+
     logic        wbs7_cyc_o;
     logic        wbs7_stb_o;
     logic        wbs7_ack_i;
@@ -551,9 +563,9 @@ module thinpad_top #(
         .wbs4_cyc_o(wbs4_cyc_o),
 
         // Slave interface 5 (to Flash)
-        // Address range: 0x1000_0000 ~ 0x1000_FFFF
-        .wbs5_addr    (32'h1000_0000),
-        .wbs5_addr_msk(32'hFFFF_FFFF),
+        // Address range: 0x9000_0000 ~ 0x907F_FFFF
+        .wbs5_addr    (32'h9000_0000),
+        .wbs5_addr_msk(32'hFF80_0000),
 
         .wbs5_adr_o(wbs5_adr_o),
         // .wbs5_dat_i(wbs5_dat_i),
@@ -583,7 +595,7 @@ module thinpad_top #(
         .wbs6_err_i('0),
         .wbs6_rty_i('0),
         .wbs6_cyc_o(wbs6_cyc_o),
-        
+
         // Slave interface 7 (to UART controller)
         // Address range: 0x1000_0000 ~ 0x1000_FFFF
         .wbs7_addr    (32'h1000_0000),
@@ -605,7 +617,7 @@ module thinpad_top #(
 
     /* =========== CPU Slaves begin =========== */
     sram_controller #(
-        .CLK_FREQ(SYS_CLK_FREQ),
+        .CLK_FREQ       (SYS_CLK_FREQ),
         .SRAM_ADDR_WIDTH(20),
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_base (
@@ -632,7 +644,7 @@ module thinpad_top #(
     );
 
     sram_controller #(
-        .CLK_FREQ(SYS_CLK_FREQ),
+        .CLK_FREQ       (SYS_CLK_FREQ),
         .SRAM_ADDR_WIDTH(20),
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_ext (
@@ -673,6 +685,7 @@ module thinpad_top #(
         .wb_sel_i(wbs2_sel_o),
         .wb_we_i (wbs2_we_o),
 
+        .mtime_o    (mtime),
         .mtime_int_o(mtime_int)
     );
 
@@ -695,13 +708,13 @@ module thinpad_top #(
         .wb_we_i (wbs3_we_o),
 
         // VGA Output
-        .video_red(video_red),
+        .video_red  (video_red),
         .video_green(video_green),
-        .video_blue(video_blue),
+        .video_blue (video_blue),
         .video_hsync(video_hsync),
         .video_vsync(video_vsync),
-        .video_clk(video_clk),
-        .video_de(video_de)
+        .video_clk  (video_clk),
+        .video_de   (video_de)
     );
 
     // GPIO模块
@@ -722,10 +735,10 @@ module thinpad_top #(
 
         // GPIO
         .touch_btn(touch_btn),
-        .dip_sw(dip_sw),
-        .leds(leds),      
-        .dpy0(dpy0),
-        .dpy1(dpy1)   
+        .dip_sw   (dip_sw),
+        .leds     (leds),
+        .dpy0     (dpy0),
+        .dpy1     (dpy1)
     );
 
     // 串口控制器模块

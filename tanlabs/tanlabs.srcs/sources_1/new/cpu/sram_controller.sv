@@ -6,7 +6,7 @@ module sram_controller #(
     parameter SRAM_ADDR_WIDTH = 20,
     parameter SRAM_DATA_WIDTH = 32,
 
-    localparam SRAM_BYTES = SRAM_DATA_WIDTH / 8,
+    localparam SRAM_BYTES      = SRAM_DATA_WIDTH / 8,
     localparam SRAM_BYTE_WIDTH = $clog2(SRAM_BYTES)
 ) (
     // clk and reset
@@ -58,8 +58,8 @@ module sram_controller #(
             // 两周期读写
             ODDR #(
                 .DDR_CLK_EDGE("OPPOSITE_EDGE"),  // "OPPOSITE_EDGE" or "SAME_EDGE" 
-                .INIT(1'b1),  // Initial value of Q: 1'b0 or 1'b1
-                .SRTYPE("ASYNC")  // Set/Reset type: "SYNC" or "ASYNC" 
+                .INIT        (1'b1),             // Initial value of Q: 1'b0 or 1'b1
+                .SRTYPE      ("ASYNC")           // Set/Reset type: "SYNC" or "ASYNC" 
             ) ODDR_inst (
                 .Q (sram_we_n),                             // 1-bit DDR output
                 .C (clk_i),                                 // 1-bit clock input
@@ -67,7 +67,7 @@ module sram_controller #(
                 .D1(sram_we_n_ddr1 ^ (request & wb_we_i)),  // 1-bit data input (positive edge)
                 .D2(sram_we_n_ddr2 ^ (request & wb_we_i)),  // 1-bit data input (negative edge)
                 .R (),                                      // 1-bit reset
-                .S (rst_i)                                  // 1-bit set
+                .S ()                                       // 1-bit set
             );
 
             typedef enum logic [1:0] {
@@ -123,6 +123,7 @@ module sram_controller #(
                             sram_we_n_ddr1 <= 1'b0;
                             sram_we_n_ddr2 <= 1'b0;
                         end
+                        default: ;  // do nothing
                     endcase
                 end
             end
@@ -131,8 +132,8 @@ module sram_controller #(
             // 三周期读写
             ODDR #(
                 .DDR_CLK_EDGE("OPPOSITE_EDGE"),  // "OPPOSITE_EDGE" or "SAME_EDGE" 
-                .INIT(1'b1),  // Initial value of Q: 1'b0 or 1'b1
-                .SRTYPE("ASYNC")  // Set/Reset type: "SYNC" or "ASYNC" 
+                .INIT        (1'b1),             // Initial value of Q: 1'b0 or 1'b1
+                .SRTYPE      ("ASYNC")           // Set/Reset type: "SYNC" or "ASYNC" 
             ) ODDR_inst (
                 .Q (sram_we_n),                             // 1-bit DDR output
                 .C (clk_i),                                 // 1-bit clock input
@@ -140,7 +141,7 @@ module sram_controller #(
                 .D1(sram_we_n_ddr1 ^ (request & wb_we_i)),  // 1-bit data input (positive edge)
                 .D2(sram_we_n_ddr2),                        // 1-bit data input (negative edge)
                 .R (),                                      // 1-bit reset
-                .S (rst_i)                                  // 1-bit set
+                .S ()                                       // 1-bit set
             );
 
             typedef enum logic [2:0] {
@@ -204,6 +205,7 @@ module sram_controller #(
                             sram_we_n_ddr1 <= 1'b0;
                             sram_we_n_ddr2 <= 1'b1;
                         end
+                        default: ;  // do nothing
                     endcase
                 end
             end

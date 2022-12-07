@@ -1,7 +1,10 @@
 `include "cpu_pipeline.vh"
 `include "exception/csr_file.vh"
 
-module cpu_pipeline (
+module cpu_pipeline #(
+    parameter ENABLE_BRANCH_PREDICT = 1,
+    parameter ENABLE_IF_CACHE       = 1
+) (
     input wire clk,
     input wire rst,
 
@@ -16,7 +19,8 @@ module cpu_pipeline (
     // synthesis translate_on
 
     // 中断
-    input wire mtime_int_i,  // M 时钟中断
+    input wire [63:0] mtime_i,
+    input wire        mtime_int_i, // M 时钟中断
 
     // wishbone master
     output wire        wbm0_cyc_o,
@@ -52,47 +56,137 @@ module cpu_pipeline (
     output reg [ 4:0] rf_waddr_o
 );
     stage_t if_id, id_exe, exe_mem, mem_wb;
-    logic if_ready, id_ready, exe_ready, mem_ready;
+    logic if_id_ready, id_exe_ready, exe_mem_ready;
 
-    logic [31:0] next_pc, pc, new_pc;
-    logic branch;
-    logic wait_wb;
+    logic [31:0] next_pc, pc;
+    wire id_flush_o, flush_branch_o, mem_flush_o;
+    wire [31:0] id_flush_pc_o, flush_branch_pc_o, mem_flush_pc_o;
 
+    /* =========== 页表总线信号 start =========== */
+    wire        if_wb_cyc_o;
+    wire        if_wb_stb_o;
+    wire        if_wb_ack_i;
+    wire        if_wb_err_i;
+    wire [31:0] if_wb_adr_o;
+    wire [31:0] if_wb_dat_o;
+    wire [31:0] if_wb_dat_i;
+    wire [ 3:0] if_wb_sel_o;
+    wire        if_wb_we_o;
+
+    wire        mem_wb_cyc_o;
+    wire        mem_wb_stb_o;
+    wire        mem_wb_ack_i;
+    wire        mem_wb_err_i;
+    wire [31:0] mem_wb_adr_o;
+    wire [31:0] mem_wb_dat_o;
+    wire [31:0] mem_wb_dat_i;
+    wire [ 3:0] mem_wb_sel_o;
+    wire        mem_wb_we_o;
+    /* =========== 页表总线信号 end =========== */
+
+    /* =========== 分支预测 start =========== */
     logic [31:0] btb_pc_w, btb_next_pc_w;
     logic btb_jump, btb_we;
-    branch_target_buffer #(
-        .LOG_WAY_NUMBER(2),
-        .IDX_BIT       (4)
-    ) u_branch_target_buffer (
-        .clk      (clk),
-        .rst      (rst),
-        .pc_r     (pc),
-        .pc_w     (btb_pc_w),
-        .next_pc_w(btb_next_pc_w),
-        .jump     (btb_jump),
-        .we       (btb_we),
+    generate
+        if (ENABLE_BRANCH_PREDICT) begin
+            branch_target_buffer #(
+                .LOG_WAY_NUMBER(2),
+                .IDX_BIT       (4)
+            ) u_branch_target_buffer (
+                .clk      (clk),
+                .rst      (rst),
+                .pc_r     (pc),
+                .pc_w     (btb_pc_w),
+                .next_pc_w(btb_next_pc_w),
+                .jump     (btb_jump),
+                .we       (btb_we),
 
-        .next_pc_r(next_pc)
-    );
+                .next_pc_r(next_pc)
+            );
+        end else begin
+            assign next_pc = pc + 4;
+        end
+    endgenerate
+    /* =========== 分支预测 end =========== */
 
-    // 异常 & 中断
-    wire     [ 1:0] PMODE;
+    /* =========== 指令缓存 start =========== */
+    wire        if_cache_cyc_o;
+    wire        if_cache_stb_o;
+    wire        if_cache_ack_i;
+    wire        if_cache_err_i;
+    wire [31:0] if_cache_adr_o;
+    wire [31:0] if_cache_dat_o;
+    wire [31:0] if_cache_dat_i;
+    wire [ 3:0] if_cache_sel_o;
+    wire        if_cache_we_o;
+    reg         fencei;
+    generate
+        if (ENABLE_IF_CACHE) begin
+            if_cache u_if_cache (
+                .clk      (clk),
+                .rst      (rst),
+                .wbm_cyc_i(if_cache_cyc_o),
+                .wbm_stb_i(if_cache_stb_o),
+                .wbm_ack_o(if_cache_ack_i),
+                .wbm_err_o(if_cache_err_i),
+                .wbm_adr_i(if_cache_adr_o),
+                .wbm_dat_i(if_cache_dat_o),
+                .wbm_dat_o(if_cache_dat_i),
+                .wbm_sel_i(if_cache_sel_o),
+                .wbm_we_i (if_cache_we_o),
 
-    reg      [11:0] csr_addr;
-    reg      [31:0] csr_wdata;
-    reg             csr_we;
-    wire     [31:0] csr_rdata;
+                .wbs_cyc_o(if_wb_cyc_o),
+                .wbs_stb_o(if_wb_stb_o),
+                .wbs_ack_i(if_wb_ack_i),
+                .wbs_err_i(if_wb_err_i),
+                .wbs_adr_o(if_wb_adr_o),
+                .wbs_dat_i(if_wb_dat_i),
+                .wbs_dat_o(if_wb_dat_o),
+                .wbs_sel_o(if_wb_sel_o),
+                .wbs_we_o (if_wb_we_o),
 
-    wire            trap_in;
-    wire            trap_out;
+                .fencei(fencei)
+            );
+        end else begin
+            assign if_wb_cyc_o    = if_cache_cyc_o;
+            assign if_wb_stb_o    = if_cache_stb_o;
+            assign if_cache_ack_i = if_wb_ack_i;
+            assign if_cache_err_i = if_wb_err_i;
+            assign if_wb_adr_o    = if_cache_adr_o;
+            assign if_wb_dat_o    = if_cache_dat_o;
+            assign if_cache_dat_i = if_wb_dat_i;
+            assign if_wb_sel_o    = if_cache_sel_o;
+            assign if_wb_we_o     = if_cache_we_o;
+        end
+    endgenerate
+    /* =========== 指令缓存 end =========== */
 
-    mepc_t          mepc_w;
-    mcause_t        mcause_w;
-    mtval_t         mtval_w;
-    mie_t           mie_r;
-    mtvec_t         mtvec_r;
-    mepc_t          mepc_r;
-    mip_t           mip_r;
+    /* =========== 异常 & 中断 start =========== */
+    wire      [ 1:0] PMODE;
+
+    reg       [11:0] csr_addr;
+    reg       [31:0] csr_wdata;
+    reg              csr_we;
+    wire      [31:0] csr_rdata;
+
+    satp_t           satp_r;
+    wire             SUM_r;
+    stvec_t          stvec_r;
+    sepc_t           sepc_r;
+    medeleg_t        medeleg_r;
+    mtvec_t          mtvec_r;
+    mepc_t           mepc_r;
+
+    wire id_trap_in, mem_trap_in;
+    wire id_trap_out;
+    wire id_trap_type, mem_trap_type;
+
+    mepc_t id_epc_w, mem_epc_w;
+    mcause_t id_cause_w, mem_cause_w;
+    mtval_t id_tval_w, mem_tval_w;
+
+    wire [31:0] M_Interrupt;
+    wire [31:0] S_Interrupt;
 
     csr_file u_csr_file (
         .clk(clk),
@@ -105,44 +199,114 @@ module cpu_pipeline (
         .csr_we   (csr_we),
         .csr_rdata(csr_rdata),
 
-        .trap_in (trap_in),
-        .trap_out(trap_out),
+        .satp_r   (satp_r),
+        .SUM_r    (SUM_r),
+        .stvec_r  (stvec_r),
+        .sepc_r   (sepc_r),
+        .medeleg_r(medeleg_r),
+        .mtvec_r  (mtvec_r),
+        .mepc_r   (mepc_r),
 
-        .mepc_w  (mepc_w),
-        .mcause_w(mcause_w),
-        .mtval_w (mtval_w),
-        .mie_r   (mie_r),
-        .mtvec_r (mtvec_r),
-        .mepc_r  (mepc_r),
-        .mip_r   (mip_r),
+        .trap_in  (id_trap_in | mem_trap_in),
+        .trap_out (id_trap_out),
+        .trap_type(mem_trap_in ? mem_trap_type : id_trap_type),
 
-        .mtime_int_i(mtime_int_i)
+        .epc_w  (mem_trap_in ? mem_epc_w : id_epc_w),
+        .cause_w(mem_trap_in ? mem_cause_w : id_cause_w),
+        .tval_w (mem_trap_in ? mem_tval_w : id_tval_w),
+
+        .mtime_i    (mtime_i),
+        .mtime_int_i(mtime_int_i),
+        .M_Interrupt(M_Interrupt),
+        .S_Interrupt(S_Interrupt)
     );
+    /* =========== 异常 & 中断 end =========== */
+
+    /* =========== 页表 start =========== */
+    paging_controller IF_paging_controller (
+        .clk(clk),
+        .rst(rst),
+
+        .satp_r(satp_r),
+        .SUM_r (SUM_r),
+
+        .wbs_cyc_i(if_wb_cyc_o),
+        .wbs_stb_i(if_wb_stb_o),
+        .wbs_ack_o(if_wb_ack_i),
+        .wbs_err_o(if_wb_err_i),
+        .wbs_adr_i(if_wb_adr_o),
+        .wbs_dat_i(if_wb_dat_o),
+        .wbs_dat_o(if_wb_dat_i),
+        .wbs_sel_i(if_wb_sel_o),
+        .wbs_we_i (if_wb_we_o),
+        .wbs_IF   (1'b1),
+        .wbs_PMODE(PMODE),
+
+        .wbm_cyc_o(wbm0_cyc_o),
+        .wbm_stb_o(wbm0_stb_o),
+        .wbm_ack_i(wbm0_ack_i),
+        .wbm_adr_o(wbm0_adr_o),
+        .wbm_dat_o(wbm0_dat_o),
+        .wbm_dat_i(wbm0_dat_i),
+        .wbm_sel_o(wbm0_sel_o),
+        .wbm_we_o (wbm0_we_o)
+    );
+    paging_controller MEM_paging_controller (
+        .clk(clk),
+        .rst(rst),
+
+        .satp_r(satp_r),
+        .SUM_r (SUM_r),
+
+        .wbs_cyc_i(mem_wb_cyc_o),
+        .wbs_stb_i(mem_wb_stb_o),
+        .wbs_ack_o(mem_wb_ack_i),
+        .wbs_err_o(mem_wb_err_i),
+        .wbs_adr_i(mem_wb_adr_o),
+        .wbs_dat_i(mem_wb_dat_o),
+        .wbs_dat_o(mem_wb_dat_i),
+        .wbs_sel_i(mem_wb_sel_o),
+        .wbs_we_i (mem_wb_we_o),
+        .wbs_IF   (1'b0),
+        .wbs_PMODE(exe_mem.PMODE),
+
+        .wbm_cyc_o(wbm1_cyc_o),
+        .wbm_stb_o(wbm1_stb_o),
+        .wbm_ack_i(wbm1_ack_i),
+        .wbm_adr_o(wbm1_adr_o),
+        .wbm_dat_o(wbm1_dat_o),
+        .wbm_dat_i(wbm1_dat_i),
+        .wbm_sel_o(wbm1_sel_o),
+        .wbm_we_o (wbm1_we_o)
+    );
+    /* =========== 页表 end =========== */
 
     /* =========== IF start =========== */
     cpu_pipeline_if u_cpu_pipeline_if (
         .clk(clk),
         .rst(rst),
 
-        .in_ready (if_ready),
         .out      (if_id),
-        .out_ready(id_ready),
+        .out_ready(if_id_ready),
+        .flush_i  (id_flush_o || mem_flush_o),
 
-        .wb_cyc_o(wbm0_cyc_o),
-        .wb_stb_o(wbm0_stb_o),
-        .wb_ack_i(wbm0_ack_i),
-        .wb_adr_o(wbm0_adr_o),
-        .wb_dat_o(wbm0_dat_o),
-        .wb_dat_i(wbm0_dat_i),
-        .wb_sel_o(wbm0_sel_o),
-        .wb_we_o (wbm0_we_o),
+        .flush_pc_i(mem_flush_o ? mem_flush_pc_o : (id_flush_o ? (flush_branch_o ? flush_branch_pc_o :id_flush_pc_o) : 32'h0)),
 
-        .pc     (pc),
-        .next_pc(next_pc),
-        .new_pc (new_pc),
-        .branch (branch),
-        .wait_wb(wait_wb),
-        .PMODE  (PMODE)
+        .wb_cyc_o(if_cache_cyc_o),
+        .wb_stb_o(if_cache_stb_o),
+        .wb_ack_i(if_cache_ack_i),
+        .wb_err_i(if_cache_err_i),
+        .wb_adr_o(if_cache_adr_o),
+        .wb_dat_o(if_cache_dat_o),
+        .wb_dat_i(if_cache_dat_i),
+        .wb_sel_o(if_cache_sel_o),
+        .wb_we_o (if_cache_we_o),
+
+        .pc         (pc),
+        .next_pc    (next_pc),
+        .PMODE      (PMODE),
+        .M_Interrupt(M_Interrupt),
+        .S_Interrupt(S_Interrupt)
     );
     /* =========== IF end =========== */
 
@@ -154,45 +318,55 @@ module cpu_pipeline (
         .clk(clk),
         .rst(rst),
 
-        .in       (if_id),
-        .in_ready (id_ready),
-        .out      (id_exe),
-        .out_ready(exe_ready),
+        .in               (if_id),
+        .in_ready         (if_id_ready),
+        .out              (id_exe),
+        .out_ready        (id_exe_ready),
+        .flush_i          (mem_flush_o),
+        .flush_o          (id_flush_o),
+        .flush_pc_o       (id_flush_pc_o),
+        .flush_branch_o   (flush_branch_o),
+        .flush_branch_pc_o(flush_branch_pc_o),
 
         .rf_raddr_a_o(rf_raddr_a_o),
         .rf_raddr_b_o(rf_raddr_b_o),
         .rf_rdata_a_i(rf_rdata_a_i),
         .rf_rdata_b_i(rf_rdata_b_i),
 
-        .M_Interrupt(mie_r & mip_r),
-
         .csr_addr (csr_addr),
         .csr_wdata(csr_wdata),
         .csr_we   (csr_we),
         .csr_rdata(csr_rdata),
 
-        .trap_in (trap_in),
-        .trap_out(trap_out),
+        .trap_in  (id_trap_in),
+        .trap_out (id_trap_out),
+        .trap_type(id_trap_type),
 
-        .mepc_w  (mepc_w),
-        .mcause_w(mcause_w),
-        .mtval_w (mtval_w),
-        .mtvec_r (mtvec_r),
-        .mepc_r  (mepc_r),
+        .epc_w  (id_epc_w),
+        .cause_w(id_cause_w),
+        .tval_w (id_tval_w),
+
+        .stvec_r  (stvec_r),
+        .sepc_r   (sepc_r),
+        .medeleg_r(medeleg_r),
+        .mtvec_r  (mtvec_r),
+        .mepc_r   (mepc_r),
+
+        .M_Interrupt(M_Interrupt),
+        .S_Interrupt(S_Interrupt),
 
         .exe_mem(exe_mem),
         .mem_wb (mem_wb),
-        .wait_wb(wait_wb),
 
         .exe_rd   (exe_rd),
         .exe_alu_y(exe_alu_y),
 
-        .branch       (branch),
-        .new_pc       (new_pc),
         .btb_pc_w     (btb_pc_w),
         .btb_next_pc_w(btb_next_pc_w),
         .btb_jump     (btb_jump),
-        .btb_we       (btb_we)
+        .btb_we       (btb_we),
+
+        .fencei(fencei)
     );
     /* =========== ID end =========== */
 
@@ -202,9 +376,10 @@ module cpu_pipeline (
         .rst(rst),
 
         .in       (id_exe),
-        .in_ready (exe_ready),
+        .in_ready (id_exe_ready),
         .out      (exe_mem),
-        .out_ready(mem_ready),
+        .out_ready(exe_mem_ready),
+        .flush_i  (mem_flush_o),
 
         .alu_a_o (alu_a_o),
         .alu_b_o (alu_b_o),
@@ -221,18 +396,32 @@ module cpu_pipeline (
         .clk(clk),
         .rst(rst),
 
-        .in      (exe_mem),
-        .in_ready(mem_ready),
-        .out     (mem_wb),
+        .in        (exe_mem),
+        .in_ready  (exe_mem_ready),
+        .out       (mem_wb),
+        .out_ready (1'b1),
+        .flush_o   (mem_flush_o),
+        .flush_pc_o(mem_flush_pc_o),
 
-        .wb_cyc_o(wbm1_cyc_o),
-        .wb_stb_o(wbm1_stb_o),
-        .wb_ack_i(wbm1_ack_i),
-        .wb_adr_o(wbm1_adr_o),
-        .wb_dat_o(wbm1_dat_o),
-        .wb_dat_i(wbm1_dat_i),
-        .wb_sel_o(wbm1_sel_o),
-        .wb_we_o (wbm1_we_o)
+        .trap_in  (mem_trap_in),
+        .trap_type(mem_trap_type),
+        .epc_w    (mem_epc_w),
+        .cause_w  (mem_cause_w),
+        .tval_w   (mem_tval_w),
+
+        .stvec_r  (stvec_r),
+        .medeleg_r(medeleg_r),
+        .mtvec_r  (mtvec_r),
+
+        .wb_cyc_o(mem_wb_cyc_o),
+        .wb_stb_o(mem_wb_stb_o),
+        .wb_ack_i(mem_wb_ack_i),
+        .wb_err_i(mem_wb_err_i),
+        .wb_adr_o(mem_wb_adr_o),
+        .wb_dat_o(mem_wb_dat_o),
+        .wb_dat_i(mem_wb_dat_i),
+        .wb_sel_o(mem_wb_sel_o),
+        .wb_we_o (mem_wb_we_o)
     );
     /* =========== MEM end =========== */
 

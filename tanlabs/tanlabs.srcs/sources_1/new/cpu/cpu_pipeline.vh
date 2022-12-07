@@ -1,6 +1,8 @@
 `ifndef _CPU_PIPELINE_VH_
 `define _CPU_PIPELINE_VH_
 
+`include "exception/csr_file.vh"
+
 typedef enum logic [2:0] {
     R_TYPE,
     I_TYPE,
@@ -15,6 +17,7 @@ typedef struct packed {
     logic valid;
 
     logic [1:0] PMODE;  // Privilege mode
+    mcause_t cause;  // Exception cause
 
     logic [31:0] inst;
     inst_type_t  inst_type;

@@ -224,7 +224,7 @@ wire wbs6_match = ~|((wbm_adr_i ^ wbs6_addr) & wbs6_addr_msk);
 wire wbs7_match = ~|((wbm_adr_i ^ wbs7_addr) & wbs7_addr_msk);
 
 wire wbs0_sel = wbs0_match;
-wire wbs1_sel = wbs1_match & ~(wbs0_match);
+wire wbs1_sel = wbs1_match;
 wire wbs2_sel = wbs2_match & ~(wbs0_match | wbs1_match);
 wire wbs3_sel = wbs3_match & ~(wbs0_match | wbs1_match | wbs2_match);
 wire wbs4_sel = wbs4_match & ~(wbs0_match | wbs1_match | wbs2_match | wbs3_match);
@@ -278,7 +278,7 @@ assign wbm_rty_o = wbs0_rty_i |
 // slave 0
 assign wbs0_adr_o = wbm_adr_i;
 assign wbs0_dat_o = wbm_dat_i;
-assign wbs0_we_o = wbm_we_i & wbs0_sel;
+assign wbs0_we_o = wbm_we_i;
 assign wbs0_sel_o = wbm_sel_i;
 assign wbs0_stb_o = wbm_stb_i & wbs0_sel;
 assign wbs0_cyc_o = wbm_cyc_i & wbs0_sel;
@@ -286,7 +286,7 @@ assign wbs0_cyc_o = wbm_cyc_i & wbs0_sel;
 // slave 1
 assign wbs1_adr_o = wbm_adr_i;
 assign wbs1_dat_o = wbm_dat_i;
-assign wbs1_we_o = wbm_we_i & wbs1_sel;
+assign wbs1_we_o = wbm_we_i;
 assign wbs1_sel_o = wbm_sel_i;
 assign wbs1_stb_o = wbm_stb_i & wbs1_sel;
 assign wbs1_cyc_o = wbm_cyc_i & wbs1_sel;

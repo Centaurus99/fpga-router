@@ -25,8 +25,8 @@ THE SOFTWARE.
  * Wishbone 2 port arbiter
  */
 module wb_arbiter_2 #(
-    parameter DATA_WIDTH = 32,  // width of data bus in bits (8, 16, 32, or 64)
-    parameter ADDR_WIDTH = 32,  // width of address bus in bits
+    parameter DATA_WIDTH   = 32,               // width of data bus in bits (8, 16, 32, or 64)
+    parameter ADDR_WIDTH   = 32,               // width of address bus in bits
     parameter SELECT_WIDTH = (DATA_WIDTH / 8)  // width of word select bus (1, 2, 4, or 8)
 ) (
     input wire clk,
@@ -70,29 +70,19 @@ module wb_arbiter_2 #(
 );
     reg [1:0] grant;
 
-    always_ff @(posedge clk or posedge rst) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             grant <= 2'b10;
         end else begin
             case (grant)
                 2'b01: begin
-                    if (!wbm0_cyc_i) begin
+                    if (wbm1_cyc_i && (wbm0_ack_o || !wbm0_cyc_i)) begin
                         grant <= 2'b10;
-                    end else if (wbm0_ack_o) begin
-                        if (wbm1_cyc_i) begin
-                            grant <= 2'b10;
-                        end else begin
-                            grant <= 2'b01;
-                        end
                     end
                 end
                 2'b10: begin
-                    if (!wbm1_cyc_i) begin
-                        if (wbm0_cyc_i) begin
-                            grant <= 2'b01;
-                        end else begin
-                            grant <= 2'b10;
-                        end
+                    if (wbm0_cyc_i && !wbm1_cyc_i) begin
+                        grant <= 2'b01;
                     end
                 end
                 default: begin

@@ -26,6 +26,16 @@ module flash #(
     output wire flash_byte_n // Flash 8bit 模式选择，低有效。在使用 flash 的 16 位模式时请设为 1
 );
 
+    logic is_request;
+    assign is_request = wb_stb_i & wb_cyc_i;
+
+    assign flash_a = wb_adr_i[22:0];
+    assign flash_ce_n = 1'b0;
+
+    typedef enum { 
+        ST_IDLE
+    } flash_state_t;
+
     always_ff @(posedge clk) begin
 
     end

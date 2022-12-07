@@ -139,10 +139,6 @@ module vga #(
     end
 
     // VGA 扫描：从 BRAM 中读取数据， 组合逻辑显示到屏幕上
-
-    // logic              is_scanner_movable;  // 横纵坐标平移信号
-    // logic       [11:0] hdata;  // 图像的横坐标
-    // logic       [11:0] vdata;  // 图像的纵坐标
     pixel_block color_block;  // 一团颜色
     pixel       color;  // 单一点位的颜色
 
@@ -170,32 +166,12 @@ module vga #(
 
     stage_vga read;
 
-    // always_ff @(posedge vga_clk) begin
-    //     if (vga_rst) begin
-    //         hdata  <= 0;
-    //         vdata  <= 0;
-    //     end else if (is_scanner_movable) begin
-    //         if (hdata == (HMAX - 1)) begin
-    //             if (vdata == (VMAX - 1)) begin
-    //                 hdata  <= 0;
-    //                 vdata  <= 0;
-    //             end else begin
-    //                 hdata  <= 0;
-    //                 vdata  <= vdata + 1;
-    //             end
-    //         end else begin
-    //             hdata  <= hdata + 1;
-    //         end
-    //     end
-    // end
-    // TODO: 将 hsync 和 vsync 与原始的 hdata 和 vdata 解绑
-
     always_ff @(posedge vga_clk) begin
         if (vga_rst) begin
             reader_state <= SCAN_ST_IDLE;
             read.hdata   <= 0;
             read.vdata   <= 0;
-            scan.valid   <= 1'b1;
+            scan.valid   <= 1'b0;
         end else begin
             case (reader_state)
                 SCAN_ST_IDLE: begin
@@ -207,12 +183,13 @@ module vga #(
                 SCAN_ST_READ2: begin
                     // 这个时钟上升沿沿将返回数据
                     reader_state <= SCAN_ST_MOVE_READER;
-                    scan.pix     <= graph_dout_b;
-                    scan.hdata   <= read.hdata;
-                    scan.vdata   <= read.vdata;
                 end
                 SCAN_ST_MOVE_READER: begin
                     reader_state <= SCAN_ST_IDLE;
+                    scan.pix     <= graph_dout_b;
+                    scan.hdata   <= read.hdata;
+                    scan.vdata   <= read.vdata;
+                    scan.valid   <= 1'b1;
                     if (read.hdata == (HMAX - 4)) begin
                         if (read.vdata == (VMAX - 1)) begin
                             read.hdata <= 0;
@@ -239,19 +216,19 @@ module vga #(
         end else begin
             case (scanner_state)
                 SCAN_ST_0: begin
-                    color         <= color_block.pixel1;
+                    color         <= color_block.pixel4;
                     scanner_state <= SCAN_ST_1;
                 end
                 SCAN_ST_1: begin
-                    color         <= color_block.pixel2;
+                    color         <= color_block.pixel3;
                     scanner_state <= SCAN_ST_2;
                 end
                 SCAN_ST_2: begin
-                    color         <= color_block.pixel3;
+                    color         <= color_block.pixel2;
                     scanner_state <= SCAN_ST_3;
                 end
                 SCAN_ST_3: begin
-                    color         <= color_block.pixel4;
+                    color         <= color_block.pixel1;
                     scanner_state <= SCAN_ST_0;
                 end
             endcase
@@ -266,6 +243,6 @@ module vga #(
 
     assign video_hsync = ((scan.hdata >= HFP) && (scan.hdata < HSP)) ? HSPP : !HSPP;
     assign video_vsync = ((scan.vdata >= VFP) && (scan.vdata < VSP)) ? VSPP : !VSPP;
-    assign video_de    = ((scan.hdata < HSIZE) & (scan.vdata < VSIZE));
+    assign video_de    = ((scan.hdata < HSIZE) & (scan.vdata < VSIZE)) & scan.valid;
 
 endmodule
