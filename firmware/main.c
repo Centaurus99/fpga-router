@@ -33,6 +33,16 @@ in6_addr addr, nexthop;
 char op;
 char ipbuffer[48], info[100];
 bool error;
+unsigned int forward_speed[4];  // Mb/s
+
+void draw_speed() {
+    sprintf(buffer, "                   Port| %6s | %6s | %6s | %6s", "0", "1", "2", "3");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(0, 52 + i, buffer[i], VGA_WHITE);
+    sprintf(buffer, "Speed (Mb/s in last 1s)| %6d | %6d | %6d | %6d", forward_speed[0], forward_speed[1], forward_speed[2], forward_speed[3]);
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(1, 52 + i, buffer[i], VGA_WHITE);
+}
 
 void display() {
     flush();
@@ -46,6 +56,8 @@ void display() {
             update_pos(1, i, buffer[i], VGA_GREEN);
         else
             update_pos(1, i, buffer[i], VGA_BLUE);
+
+    draw_speed();
     
     if (checking_all) {
         sprintf(buffer, "Checking all entries", ipbuffer);

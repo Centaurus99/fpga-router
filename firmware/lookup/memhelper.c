@@ -1,18 +1,5 @@
 #include "memhelper.h"
 
-const int NODE_ADDRESS[STAGE_COUNT] = {
-    0x40000000,
-    0x41000000,
-    0x42000000,
-    0x43000000,
-    0x44000000,
-    0x45000000,
-    0x46000000,
-    0x47000000
-};
-const int LEAF_ADDRESS = 0x50000000;
-const int NEXT_HOP_ADDRESS = 0x51000000;
-
 int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
 bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {{1}};
 int leaf_top = 1;

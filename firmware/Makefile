@@ -27,6 +27,11 @@ ifeq ($(EN_UART16550), y)
 	CFLAGS += -DENABLE_UART16550
 endif
 
+override USE_BRAM ?= n
+ifeq ($(USE_BRAM), y)
+	CFLAGS += -DUSE_BRAM
+endif
+
 HEADERS=$(wildcard include/*.h)
 SOURCES=$(wildcard *.c *.S)
 OBJECTS=$(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.S,%.o,$(wildcard *.S))

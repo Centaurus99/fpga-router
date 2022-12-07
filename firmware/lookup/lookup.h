@@ -11,9 +11,9 @@
 #define STAGE_COUNT  9
 // FIXME stage_count should be 8
 
-extern const int NODE_ADDRESS[STAGE_COUNT];
-extern const int LEAF_ADDRESS;
-extern const int NEXT_HOP_ADDRESS;
+#define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
+#define LEAF_ADDRESS  0x50000000
+#define NEXT_HOP_ADDRESS  0x51000000
 
 int popcnt(int x);
 
@@ -29,7 +29,7 @@ int popcnt(int x);
 #define POPCNT_LS(v, i) popcnt((v) & (((u32)2 << (i)) - 1))
 #define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u32)2 << (i)) - 1))
 
-#define NOW nodes[(dep) / STRIDE / STAGE_HEIGHT][nid]
+#define NOW nodes((dep) / STRIDE / STAGE_HEIGHT)[nid]
 #define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
 
 typedef unsigned char u8;
@@ -64,6 +64,7 @@ typedef struct
     u32 ip[4];
     u32 port;
     u32 route_type;
+    u32 padding[2];
 } NextHopEntry;
 
 typedef struct

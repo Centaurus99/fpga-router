@@ -8,8 +8,27 @@
 char buffer[1025];
 int header;
 
+extern unsigned int forward_speed[4];  // Mb/s
+extern void draw_speed();
+
+
+void timer() {
+    static unsigned int last = 0;
+    unsigned int now = *(volatile unsigned int *)0x290BFF8;
+    if (now < last) last = now;
+    else if (now - last > 10000000) {
+        last = now;
+        for (int i = 0; i < 4; i++) {
+            unsigned int cnt = *(volatile unsigned int *)(0xa000000 + 0x010 * i);
+            forward_speed[i] = (10000000ll * cnt) / (now-last);
+        }
+        draw_speed();
+    }
+}
+
 char _getchar() {
     while (1) {
+        timer();
         int d = GPIO_DATA;
         if (!(d & 0xff000000)) {
             return gpio_decode(d);
@@ -17,6 +36,7 @@ char _getchar() {
         if(UART_LSR & COM_LSR_DR) {
             return UART_THR;
         }
+
     }
 }
 
