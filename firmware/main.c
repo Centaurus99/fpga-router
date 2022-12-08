@@ -33,40 +33,54 @@ in6_addr addr, nexthop;
 char op;
 char ipbuffer[48], info[100];
 bool error;
-unsigned int forward_speed[4];  // Mb/s
+unsigned int forward_speed[2][4];  // 0.01 MB/s
 
 void draw_speed() {
-    sprintf(buffer, "                   Port| %6s | %6s | %6s | %6s", "0", "1", "2", "3");
-    for (int i = 0; buffer[i]; ++i)
-        update_pos(0, 52 + i, buffer[i], VGA_WHITE);
-    sprintf(buffer, "Speed (Mb/s in last 1s)| %6d | %6d | %6d | %6d", forward_speed[0], forward_speed[1], forward_speed[2], forward_speed[3]);
-    for (int i = 0; buffer[i]; ++i)
-        update_pos(1, 52 + i, buffer[i], VGA_WHITE);
+    char tmp[10];
+    for (int p = 0; p < 2; ++p) {
+        for (int i = 0; i < 4; ++i) {
+            sprintf(tmp, "%4d.%02d", forward_speed[1][i]/100, forward_speed[1][i] % 100);
+            for (int j = 0; j < 7; ++j) {
+                update_pos(2 - p, 52 + 18 + 10 * i + j, tmp[j], p ? VGA_YELLOW : VGA_BLUE);
+            }
+        }
+    }
 }
 
 void display() {
     flush();
 
-    sprintf(buffer, "Welcome to IPv6 routing table management system!");
+    sprintf(buffer, "Welcome to IPv6 router manager!");
     for (int i = 0; buffer[i]; ++i)
-        update_pos(0, i, buffer[i], VGA_WHITE);
+        update_pos(0, i, buffer[i], VGA_PURPLE);
     sprintf(buffer, "Usage: [a]dd [d]elete [c]heck [e]xit");
     for (int i = 0; buffer[i]; ++i)
         if (i == 8 || i == 14 || i == 23 || i == 31)
             update_pos(1, i, buffer[i], VGA_GREEN);
         else
             update_pos(1, i, buffer[i], VGA_BLUE);
+    
+    
+    sprintf(buffer, "            Port| %7s | %7s | %7s | %7s", "0", "1", "2", "3");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(0, 52 + i, buffer[i], VGA_PINK);
+    sprintf(buffer, " In Speed (MB/s)| %7s | %7s | %7s | %7s","", "", "", "");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(1, 52 + i, buffer[i], VGA_PINK);
+    sprintf(buffer, "Out Speed (MB/s)| %7s | %7s | %7s | %7s","", "", "", "");
+    for (int i = 0; buffer[i]; ++i)
+        update_pos(2, 52 + i, buffer[i], VGA_PINK);
 
     draw_speed();
     
     if (checking_all) {
-        sprintf(buffer, "Checking all entries", ipbuffer);
+        sprintf(buffer, "<Checking all entries>", ipbuffer);
     } else {
         printip(&checking_addr, ipbuffer);
-        sprintf(buffer, "Checking %s", ipbuffer);
+        sprintf(buffer, "<Checking %s>", ipbuffer);
     }
     for (int i = 0; buffer[i]; ++i)
-        update_pos(2, i, buffer[i], VGA_WHITE);
+        update_pos(2, i, buffer[i], VGA_GREEN);
 
     int m = 0;
     sprintf(buffer, "%s", "Prefix");
@@ -146,9 +160,9 @@ bool operate_a() {
     };
     update(1, entry);
 
-    printip(&addr, buffer);
+    printprefix(&addr, len, buffer);
     printip(&nexthop, buffer+100);
-    sprintf(info, "Added %s %d %d %s", buffer, len, if_index, buffer+100);
+    sprintf(info, "Added %s %d %s %d", buffer, if_index, buffer+100, route_type);
     return 1;
 }
 
@@ -197,19 +211,22 @@ void init_direct_route() {
     entry.nexthop.s6_addr32[0] = 0x06aa0e2a;
     entry.nexthop.s6_addr32[1] = 0x000a9704;
     entry.nexthop.s6_addr32[2] = 0x00000000;
-    entry.nexthop.s6_addr32[3] = 0x00000000;
+    entry.nexthop.s6_addr32[3] = 0x33230000;
     entry.route_type = 0;
     update(1, entry);
     entry.addr.s6_addr32[1] = 0x010a9704;
     entry.if_index = 1;
+    entry.nexthop.s6_addr32[1] = 0x010a9704;
     entry.nexthop.s6_addr32[3] = 0x44340000;
     update(1, entry);
     entry.addr.s6_addr32[1] = 0x020a9704;
     entry.if_index = 2;
+    entry.nexthop.s6_addr32[1] = 0x020a9704;
     entry.nexthop.s6_addr32[3] = 0x55450000;
     update(1, entry);
     entry.addr.s6_addr32[1] = 0x030a9704;
     entry.if_index = 3;
+    entry.nexthop.s6_addr32[1] = 0x030a9704;
     entry.nexthop.s6_addr32[3] = 0x66560000;
     update(1, entry);
     entry.addr.s6_addr32[0] = 0;

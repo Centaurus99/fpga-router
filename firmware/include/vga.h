@@ -24,6 +24,9 @@
 #define VGA_RED 0b11101101
 #define VGA_GREEN 0b00011100
 #define VGA_BLUE 0b01010111
+#define VGA_PURPLE 239
+#define VGA_PINK 246
+#define VGA_YELLOW 241
 
 bool update_pos(int n, int m, char c, char color); // 更新某个位置的字符
 
