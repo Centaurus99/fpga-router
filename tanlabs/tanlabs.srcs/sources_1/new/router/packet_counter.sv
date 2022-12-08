@@ -62,7 +62,7 @@ module packet_counter #(
                     end
 
                     read_data[i] <= '0;
-                    if (request && !wb_ack_o) begin
+                    if (request && wb_adr_i[5:4] == i && !wb_ack_o) begin
                         case (wb_adr_i[3:0])
                             4'h0: begin
                                 read_data[i]  <= tx_counter[i];
