@@ -160,7 +160,7 @@ module tanlabs
     xpm_cdc_async_rst #(
         .DEST_SYNC_FF(4),     // DECIMAL; range: 2-10
         .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
-        .RST_ACTIVE_HIGH(0)   // DECIMAL; 0=active low reset, 1=active high reset
+        .RST_ACTIVE_HIGH(1)   // DECIMAL; 0=active low reset, 1=active high reset
     )
     xpm_cdc_async_rst_inst (
         .dest_arst(reset_core_from_eth), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
@@ -1328,20 +1328,18 @@ module tanlabs
         .wbs4_rty_i('0),
         .wbs4_cyc_o(wbs4_cyc_o),
 
-        // Slave interface 5 (to Flash)
-        // Address range: 0x9000_0000 ~ 0x907F_FFFF
-        .wbs5_addr    (32'h9000_0000),
-        .wbs5_addr_msk(32'hFF80_0000),
+        // Slave interface 5 (to Router MMIO)
+        // Address range: 0xA000_0000 ~ 0xA000_003F
+        .wbs5_addr    (32'hA000_0000),
+        .wbs5_addr_msk(32'hFFFF_FFC0),
 
         .wbs5_adr_o(wbs5_adr_o),
-        // .wbs5_dat_i(wbs5_dat_i),
-        .wbs5_dat_i(32'h0000_0000),
+        .wbs5_dat_i(wbs5_dat_i),
         .wbs5_dat_o(wbs5_dat_o),
         .wbs5_we_o (wbs5_we_o),
         .wbs5_sel_o(wbs5_sel_o),
         .wbs5_stb_o(wbs5_stb_o),
-        // .wbs5_ack_i(wbs5_ack_i),
-        .wbs5_ack_i(1'b0),
+        .wbs5_ack_i(wbs5_ack_i),
         .wbs5_err_i('0),
         .wbs5_rty_i('0),
         .wbs5_cyc_o(wbs5_cyc_o),
@@ -1462,7 +1460,7 @@ module tanlabs
     xpm_cdc_async_rst #(
         .DEST_SYNC_FF(4),  // DECIMAL; range: 2-10
         .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
-        .RST_ACTIVE_HIGH(0)  // DECIMAL; 0=active low reset, 1=active high reset
+        .RST_ACTIVE_HIGH(1)  // DECIMAL; 0=active low reset, 1=active high reset
     ) xpm_cdc_async_rst_inst_vga (
         .dest_arst(vga_rst), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
         // clock domain. This output is registered. NOTE: Signal asserts asynchronously
@@ -1545,6 +1543,66 @@ module tanlabs
         // to UART pins
         .uart_txd_o(txd),
         .uart_rxd_i(rxd)
+    );
+
+
+    /* =========== Router MMIO =========== */
+    wire                              wb_mmio_cyc_o;
+    wire                              wb_mmio_stb_o;
+    wire                              wb_mmio_ack_i;
+    wire  [  WISHBONE_ADDR_WIDTH-1:0] wb_mmio_adr_o;
+    wire  [  WISHBONE_DATA_WIDTH-1:0] wb_mmio_dat_o;
+    wire  [  WISHBONE_DATA_WIDTH-1:0] wb_mmio_dat_i;
+    wire  [WISHBONE_DATA_WIDTH/8-1:0] wb_mmio_sel_o;
+    wire                              wb_mmio_we_o;
+
+    wishbone_cdc_handshake #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) u_wishbone_cdc_handshake_mmio (
+        .src_clk (core_clk),
+        .src_rst (reset_core),
+        .dest_clk(eth_clk),
+        .dest_rst(reset_eth),
+        .wb_cyc_i(wbs5_cyc_o),
+        .wb_stb_i(wbs5_stb_o),
+        .wb_ack_o(wbs5_ack_i),
+        .wb_adr_i(wbs5_adr_o),
+        .wb_dat_i(wbs5_dat_o),
+        .wb_dat_o(wbs5_dat_i),
+        .wb_sel_i(wbs5_sel_o),
+        .wb_we_i (wbs5_we_o),
+
+        .dest_wb_cyc_o(wb_mmio_cyc_o),
+        .dest_wb_stb_o(wb_mmio_stb_o),
+        .dest_wb_ack_i(wb_mmio_ack_i),
+        .dest_wb_adr_o(wb_mmio_adr_o),
+        .dest_wb_dat_o(wb_mmio_dat_o),
+        .dest_wb_dat_i(wb_mmio_dat_i),
+        .dest_wb_sel_o(wb_mmio_sel_o),
+        .dest_wb_we_o (wb_mmio_we_o)
+    );
+
+    packet_counter #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) u_packet_counter (
+        .clk     (eth_clk),
+        .rst     (reset_eth),
+
+        .wb_cyc_i(wb_mmio_cyc_o),
+        .wb_stb_i(wb_mmio_stb_o),
+        .wb_ack_o(wb_mmio_ack_i),
+        .wb_adr_i(wb_mmio_adr_o),
+        .wb_dat_i(wb_mmio_dat_o),
+        .wb_dat_o(wb_mmio_dat_i),
+        .wb_sel_i(wb_mmio_sel_o),
+        .wb_we_i (wb_mmio_we_o),
+
+        .eth_tx8_ready({eth_tx8_ready[4],eth_tx8_ready[3],eth_tx8_ready[2],eth_tx8_ready[1],eth_tx8_ready[0]}),
+        .eth_tx8_valid({eth_tx8_valid[4],eth_tx8_valid[3],eth_tx8_valid[2],eth_tx8_valid[1],eth_tx8_valid[0]}),
+        .eth_rx8_ready({debug_ingress_interconnect_ready[4],debug_ingress_interconnect_ready[3],debug_ingress_interconnect_ready[2],debug_ingress_interconnect_ready[1],debug_ingress_interconnect_ready[0]}),
+        .eth_rx8_valid({eth_rx8_valid[4],eth_rx8_valid[3],eth_rx8_valid[2],eth_rx8_valid[1],eth_rx8_valid[0]})
     );
 
 endmodule

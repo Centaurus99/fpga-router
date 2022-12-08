@@ -110,12 +110,12 @@ module tb
         .SIM(FAST_BEHAV)
     )
     dut(
-        .RST(reset),
+        .reset_btn(reset),
 
         .gtrefclk_p(clk_125M),
         .gtrefclk_n(~clk_125M),
 
-        .led(),
+        .leds(),
 
         .sfp_rx_los(4'd0),
         .sfp_rx_p(sfp_tb2dut_p),

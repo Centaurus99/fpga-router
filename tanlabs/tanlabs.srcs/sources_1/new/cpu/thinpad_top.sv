@@ -696,7 +696,7 @@ module thinpad_top #(
     xpm_cdc_async_rst #(
         .DEST_SYNC_FF(4),  // DECIMAL; range: 2-10
         .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
-        .RST_ACTIVE_HIGH(0)  // DECIMAL; 0=active low reset, 1=active high reset
+        .RST_ACTIVE_HIGH(1)  // DECIMAL; 0=active low reset, 1=active high reset
     ) xpm_cdc_async_rst_inst_vga (
         .dest_arst(vga_rst), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
         // clock domain. This output is registered. NOTE: Signal asserts asynchronously
