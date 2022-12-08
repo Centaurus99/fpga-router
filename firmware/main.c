@@ -39,7 +39,7 @@ void draw_speed() {
     char tmp[10];
     for (int p = 0; p < 2; ++p) {
         for (int i = 0; i < 4; ++i) {
-            sprintf(tmp, "%4d.%02d", forward_speed[1][i]/100, forward_speed[1][i] % 100);
+            sprintf(tmp, "%4d.%02d", forward_speed[p][i]/100, forward_speed[p][i] % 100);
             for (int j = 0; j < 7; ++j) {
                 update_pos(2 - p, 52 + 18 + 10 * i + j, tmp[j], p ? VGA_YELLOW : VGA_BLUE);
             }
