@@ -20,7 +20,7 @@ module vga #(
     input wire cpu_clk,  // CPU 时钟
     input wire cpu_rst,  // 重置 WISHBONE 的状态
     input wire vga_clk,  // VGA 时钟
-    input wire vga_rst,  // 将 VGA 扫描位置重置至 1X1，目前与 CPU 的 RESET 绑定，之后可能可以有变化
+    input wire vga_rst,  // 将 VGA 扫描位置重置至 1X1
 
     // wishbone slave interface
     input  wire                    wb_cyc_i,

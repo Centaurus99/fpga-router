@@ -1456,25 +1456,11 @@ module tanlabs
     // VGA 模块
     // 目前支持显示 800 x 600 的图像
     // 跨时钟域复位信号
-    wire vga_rst;
-    xpm_cdc_async_rst #(
-        .DEST_SYNC_FF(4),  // DECIMAL; range: 2-10
-        .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
-        .RST_ACTIVE_HIGH(1)  // DECIMAL; 0=active low reset, 1=active high reset
-    ) xpm_cdc_async_rst_inst_vga (
-        .dest_arst(vga_rst), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
-        // clock domain. This output is registered. NOTE: Signal asserts asynchronously
-        // but deasserts synchronously to dest_clk. Width of the reset signal is at least
-        // (DEST_SYNC_FF*dest_clk) period.
-
-        .dest_clk(clk_50M),  // 1-bit input: Destination clock.
-        .src_arst(sys_rst)   // 1-bit input: Source asynchronous reset signal.
-    );
     vga vga (
         .cpu_clk(sys_clk),
         .cpu_rst(sys_rst),
         .vga_clk(clk_50M),
-        .vga_rst(vga_rst),
+        .vga_rst(reset_btn),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs4_cyc_o),
