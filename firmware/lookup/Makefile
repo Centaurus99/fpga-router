@@ -1,12 +1,12 @@
 CXX ?= g++
-CXXFLAGS ?= --std=c++11
-LDFLAGS ?=
+CXXFLAGS ?= --std=c++11 -g
+LDFLAGS ?= -g
 
 .PHONY: all clean grade
 all: lookup
 
 clean:
-	rm -f *.o lookup std
+	rm -f *.o lookup lookup_bf lookup_rv32i 
 
 grade: lookup lookup_bf
 	python3 grade.py
@@ -28,11 +28,9 @@ forsim: lookup lookup_bf
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-lookup: main.o lookup.o common.o memhelper.o
+lookup: main.o lookup.o memhelper.o debug.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
-lookup_bf: lookup_bf.o main.o common.o
+lookup_bf: lookup_bf.o main.o
 	$(CXX) $^ -o $@ $(LDFLAGS) 
 
-std: std.o main.o common.o
-	$(CXX) $^ -o $@ $(LDFLAGS) 
