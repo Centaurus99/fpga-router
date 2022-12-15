@@ -112,12 +112,14 @@ module branch_target_buffer #(
             pc_w_reg <= 0;
             next_pc_w_reg <= 0;
             we_reg <= 0;
+            jump_reg <= 0;
         end else begin
             // next_pc_r <= next_pc_r_comb;
             if (we_reg) begin
                 we_reg <= 0;
                 tail[w_idx] <= new_tail;
-            end else if (we) begin // 打一拍 避免时序问题
+            end
+            if (we) begin // 打一拍 避免时序问题
                 pc_w_reg <= pc_w;
                 next_pc_w_reg <= next_pc_w;
                 jump_reg <= jump;

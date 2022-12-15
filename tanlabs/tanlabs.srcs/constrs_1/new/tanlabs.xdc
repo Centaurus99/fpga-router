@@ -372,6 +372,3 @@ set_property IOSTANDARD LVCMOS33 [get_ports sfp_scl]
 
 set_property CFGBVS VCCO [current_design]
 set_property CONFIG_VOLTAGE 3.3 [current_design]
-
-connect_debug_port u_ila_0/probe2 [get_nets [list {dp_tx_dest[0]} {dp_tx_dest[1]} {dp_tx_dest[2]}]]
-

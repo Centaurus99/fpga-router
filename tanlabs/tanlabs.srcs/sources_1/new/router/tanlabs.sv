@@ -92,6 +92,10 @@ module tanlabs
     output wire       video_de      // 行数据有效信号，用于区分消隐区
 
 );
+    wire [15:0] gpio_leds;
+    wire [15:0] flash_leds;
+    assign leds = gpio_leds | flash_leds;
+
     wire [15:0] leds_debug;
     wire [ 7:0] dpy0_debug;
     wire [ 7:0] dpy1_debug;
@@ -171,6 +175,7 @@ module tanlabs
         .dest_clk(core_clk),    // 1-bit input: Destination clock.
         .src_arst(reset_eth)     // 1-bit input: Source asynchronous reset signal.
     );
+    wire wait_flash;
     wire reset_core_without_bufg;
     wire reset_core;
     reset_sync reset_sync_reset_core(
@@ -181,7 +186,7 @@ module tanlabs
 
     BUFG BUFG_inst_core (
         .O(reset_core), // 1-bit output: Clock output
-        .I(reset_core_without_bufg)  // 1-bit input: Clock input
+        .I(reset_core_without_bufg | wait_flash)  // 1-bit input: Clock input
     );
 
     wire [7:0] eth_tx8_data [0:4];
@@ -1124,6 +1129,18 @@ module tanlabs
     logic [ 3:0] wbm_sel_o;
     logic        wbm_we_o;
 
+    wire         wbm_flash_cyc_o;
+    wire         wbm_flash_stb_o;
+    wire         wbm_flash_ack_i;
+    wire  [31:0] wbm_flash_adr_o;
+    wire  [31:0] wbm_flash_dat_o;
+    wire  [31:0] wbm_flash_dat_i;
+    wire  [ 3:0] wbm_flash_sel_o;
+    wire         wbm_flash_we_o;
+
+    assign wbm_flash_ack_i = wbm_ack_i;
+    assign wbm_flash_dat_i = wbm_dat_i;
+
     wb_arbiter_2 #(
         .DATA_WIDTH  (32),
         .ADDR_WIDTH  (32),
@@ -1237,16 +1254,16 @@ module tanlabs
         .rst(sys_rst),
 
         // Master interface (to CPU master)
-        .wbm_adr_i(wbm_adr_o),
-        .wbm_dat_i(wbm_dat_o),
+        .wbm_adr_i(wbm_adr_o | wbm_flash_adr_o),
+        .wbm_dat_i(wbm_dat_o | wbm_flash_dat_o),
         .wbm_dat_o(wbm_dat_i),
-        .wbm_we_i (wbm_we_o),
-        .wbm_sel_i(wbm_sel_o),
-        .wbm_stb_i(wbm_stb_o),
+        .wbm_we_i (wbm_we_o | wbm_flash_we_o),
+        .wbm_sel_i(wbm_sel_o | wbm_flash_sel_o),
+        .wbm_stb_i(wbm_stb_o | wbm_flash_stb_o),
         .wbm_ack_o(wbm_ack_i),
         .wbm_err_o(),
         .wbm_rty_o(),
-        .wbm_cyc_i(wbm_cyc_o),
+        .wbm_cyc_i(wbm_cyc_o | wbm_flash_cyc_o),
 
         // Slave interface 0 (to BaseRAM controller)
         // Address range: 0x8000_0000 ~ 0x803F_FFFF
@@ -1386,7 +1403,7 @@ module tanlabs
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_base (
         .clk_i(sys_clk),
-        .rst_i(sys_rst),
+        .rst_i(reset_core_without_bufg),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs0_cyc_o),
@@ -1413,7 +1430,7 @@ module tanlabs
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_ext (
         .clk_i(sys_clk),
-        .rst_i(sys_rst),
+        .rst_i(reset_core_without_bufg),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs1_cyc_o),
@@ -1503,7 +1520,7 @@ module tanlabs
         // GPIO
         .touch_btn(touch_btn),
         .dip_sw   (dip_sw),
-        .leds     (leds),
+        .leds     (gpio_leds),
         .dpy0     (dpy0),
         .dpy1     (dpy1)
     );
@@ -1531,6 +1548,71 @@ module tanlabs
         .uart_rxd_i(rxd)
     );
 
+
+    /* =========== Load Flash begin =========== */
+
+    wire        wbm_flash_read_cyc_o;
+    wire        wbm_flash_read_stb_o;
+    wire        wbm_flash_read_ack_i;
+    wire [31:0] wbm_flash_read_adr_o;
+    wire [31:0] wbm_flash_read_dat_o;
+    wire [31:0] wbm_flash_read_dat_i;
+    wire [ 3:0] wbm_flash_read_sel_o;
+    wire        wbm_flash_read_we_o;
+
+    // Flash模块
+    flash flash (
+        .clk       (sys_clk),
+        .rst       (reset_core_without_bufg),
+        .full_reset(1'b0),
+
+        // Wishbone slave (to MUX)
+        .wb_cyc_i(wbm_flash_read_cyc_o),
+        .wb_stb_i(wbm_flash_read_stb_o),
+        .wb_ack_o(wbm_flash_read_ack_i),
+        .wb_adr_i(wbm_flash_read_adr_o),
+        .wb_dat_i(wbm_flash_read_dat_o),
+        .wb_dat_o(wbm_flash_read_dat_i),
+        .wb_sel_i(wbm_flash_read_sel_o),
+        .wb_we_i (wbm_flash_read_we_o),
+
+        // Flash
+        .flash_a     (flash_a),
+        .flash_d     (flash_d),
+        .flash_rp_n  (flash_rp_n),
+        .flash_vpen  (flash_vpen),
+        .flash_ce_n  (flash_ce_n),
+        .flash_oe_n  (flash_oe_n),
+        .flash_we_n  (flash_we_n),
+        .flash_byte_n(flash_byte_n)
+    );
+
+    load_flash u_load_flash (
+        .clk(sys_clk),
+        .rst(reset_core_without_bufg),
+
+        .push_btn  (push_btn),
+        .leds      (flash_leds),
+        .wait_flash(wait_flash),
+
+        .wbm_sram_cyc_o(wbm_flash_cyc_o),
+        .wbm_sram_stb_o(wbm_flash_stb_o),
+        .wbm_sram_ack_i(wbm_flash_ack_i),
+        .wbm_sram_adr_o(wbm_flash_adr_o),
+        .wbm_sram_dat_o(wbm_flash_dat_o),
+        .wbm_sram_dat_i(wbm_flash_dat_i),
+        .wbm_sram_sel_o(wbm_flash_sel_o),
+        .wbm_sram_we_o (wbm_flash_we_o),
+
+        .wbm_flash_read_cyc_o(wbm_flash_read_cyc_o),
+        .wbm_flash_read_stb_o(wbm_flash_read_stb_o),
+        .wbm_flash_read_ack_i(wbm_flash_read_ack_i),
+        .wbm_flash_read_adr_o(wbm_flash_read_adr_o),
+        .wbm_flash_read_dat_o(wbm_flash_read_dat_o),
+        .wbm_flash_read_dat_i(wbm_flash_read_dat_i),
+        .wbm_flash_read_sel_o(wbm_flash_read_sel_o),
+        .wbm_flash_read_we_o (wbm_flash_read_we_o)
+    );
 
     /* =========== Router MMIO =========== */
     wire                              wb_mmio_cyc_o;
