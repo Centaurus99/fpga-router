@@ -114,11 +114,13 @@ module tanlabs
     wire gtref_clk;  // 125MHz for the PHY/MAC IP core
     wire ref_clk;  // 200MHz for the PHY/MAC IP core
     wire core_clk;  // README: This is for CPU and other components. You can change the frequency
+    wire vga_clk;  // 40MHz for the VGA
     // by re-customizing the following IP core.
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
         .clk_out2(core_clk),
+        .clk_out3()
         .reset(1'b0),
         .locked(locked),
         .clk_in1(gtref_clk)
@@ -1476,7 +1478,7 @@ module tanlabs
     vga vga (
         .cpu_clk(sys_clk),
         .cpu_rst(sys_rst),
-        .vga_clk(clk_50M),
+        .vga_clk(vga_clk),
         .vga_rst(reset_btn),
 
         // Wishbone slave (to MUX)
