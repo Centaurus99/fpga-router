@@ -30,16 +30,19 @@ output_file.write('char char_bitmap[95][14] = {\n')
 for charlist in read_word:
     for char in charlist:
         crop = graph.crop((left, top, left + 7, top + 14))
-        if(char == '0'):
+        if(char == 'N'):
             crop.save('charmap_crop.png')
         curline = '\t{'
         for j in range(crop.size[1]):
             cur_num = '0b'
             for i in range(crop.size[0]):
-                if(crop.getpixel((i, j))[0] > 128):
-                    cur_num += '1'
+                if(j != crop.size[1] - 1):
+                    if(crop.getpixel((i, j))[0] > 128):
+                        cur_num += '1'
+                    else:
+                        cur_num += '0'
                 else:
-                    cur_num += '0'
+                    cur_num += '1'
             curline += cur_num
             if(j == crop.size[1] - 1):
                 curline += '},\n'
