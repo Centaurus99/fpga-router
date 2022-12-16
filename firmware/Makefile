@@ -22,14 +22,19 @@ endif
 
 -include Makefile.config
 
-override EN_UART16550 ?= n
+override EN_UART16550 ?= y
 ifeq ($(EN_UART16550), y)
 	CFLAGS += -DENABLE_UART16550
 endif
 
-override USE_BRAM ?= n
+override USE_BRAM ?= y
 ifeq ($(USE_BRAM), y)
 	CFLAGS += -DUSE_BRAM
+endif
+
+override DISABLE_TIMER ?= n
+ifeq ($(DISABLE_TIMER), y)
+	CFLAGS += -DDISABLE_TIMER
 endif
 
 HEADERS=$(wildcard include/*.h)

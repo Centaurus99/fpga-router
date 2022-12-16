@@ -32,7 +32,9 @@ void timer() {
 
 char _getchar() {
     while (1) {
+#ifndef DISABLE_TIMER
         timer();
+#endif
         int d = GPIO_DATA;
         if (!(d & 0xff000000)) {
             return gpio_decode(d);
