@@ -100,13 +100,13 @@ module thinpad_top #(
     /* =========== Demo code begin =========== */
 
     // PLL 分频示例
-    logic locked, clk_10M, clk_20M;
+    logic locked, clk_10M, clk_40M;
     pll_example clock_gen (
         // Clock in ports
         .clk_in1 (clk_50M),    // 外部时钟输入
         // Clock out ports
         .clk_out1(clk_10M),    // 时钟输出 1，频率在 IP 配置界面中设置
-        .clk_out2(clk_20M),    // 时钟输出 2，频率在 IP 配置界面中设置
+        .clk_out2(clk_40M),    // 时钟输出 2，频率在 IP 配置界面中设置
         // Status and control signals
         .reset   (reset_btn),  // PLL 复位输入
         .locked  (locked)      // PLL 锁定指示输出，"1"表示时钟稳定，
@@ -710,7 +710,7 @@ module thinpad_top #(
     vga vga (
         .cpu_clk(sys_clk),
         .cpu_rst(sys_rst),
-        .vga_clk(clk_50M),
+        .vga_clk(clk_40M),
         .vga_rst(reset_btn),
 
         // Wishbone slave (to MUX)
