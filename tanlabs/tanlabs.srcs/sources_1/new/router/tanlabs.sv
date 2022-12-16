@@ -120,7 +120,7 @@ module tanlabs
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
         .clk_out2(core_clk),
-        .clk_out3()
+        .clk_out3(vga_clk),
         .reset(1'b0),
         .locked(locked),
         .clk_in1(gtref_clk)
