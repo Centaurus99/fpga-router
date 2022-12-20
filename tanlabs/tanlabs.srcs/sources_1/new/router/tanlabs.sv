@@ -3,11 +3,12 @@
 /* Tsinghua Advanced Networking Labs */
 
 module tanlabs #(
-    parameter SIM = 0,
+    parameter ENABLE_VGA = 0,  // 启用 VGA (占用显存)
+    parameter SIM = 0,  // 仿真模式
+    parameter SYS_CLK_FREQ = 90_000_000,  // CPU 时钟频率
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
-    parameter WISHBONE_ADDR_WIDTH = 32,
-    parameter SYS_CLK_FREQ = 90_000_000
+    parameter WISHBONE_ADDR_WIDTH = 32
 ) (
     input wire gtrefclk_p,
     input wire gtrefclk_n,
@@ -1441,32 +1442,38 @@ module tanlabs #(
     // Slave 4: VGA
     // VGA 模块
     // 目前支持显示 800 x 600 的图像
-    // 跨时钟域复位信号
-    vga vga (
-        .cpu_clk(sys_clk),
-        .cpu_rst(sys_rst),
-        .vga_clk(vga_clk),
-        .vga_rst(reset_btn),
+    generate
+        if (ENABLE_VGA) begin
+            vga vga (
+                .cpu_clk(sys_clk),
+                .cpu_rst(sys_rst),
+                .vga_clk(vga_clk),
+                .vga_rst(reset_btn),
 
-        // Wishbone slave (to MUX)
-        .wb_cyc_i(wbs4_cyc_o),
-        .wb_stb_i(wbs4_stb_o),
-        .wb_ack_o(wbs4_ack_i),
-        .wb_adr_i(wbs4_adr_o),
-        .wb_dat_i(wbs4_dat_o),
-        .wb_dat_o(wbs4_dat_i),
-        .wb_sel_i(wbs4_sel_o),
-        .wb_we_i (wbs4_we_o),
+                // Wishbone slave (to MUX)
+                .wb_cyc_i(wbs4_cyc_o),
+                .wb_stb_i(wbs4_stb_o),
+                .wb_ack_o(wbs4_ack_i),
+                .wb_adr_i(wbs4_adr_o),
+                .wb_dat_i(wbs4_dat_o),
+                .wb_dat_o(wbs4_dat_i),
+                .wb_sel_i(wbs4_sel_o),
+                .wb_we_i (wbs4_we_o),
 
-        // VGA Output
-        .video_red  (video_red),
-        .video_green(video_green),
-        .video_blue (video_blue),
-        .video_hsync(video_hsync),
-        .video_vsync(video_vsync),
-        .video_clk  (video_clk),
-        .video_de   (video_de)
-    );
+                // VGA Output
+                .video_red  (video_red),
+                .video_green(video_green),
+                .video_blue (video_blue),
+                .video_hsync(video_hsync),
+                .video_vsync(video_vsync),
+                .video_clk  (video_clk),
+                .video_de   (video_de)
+            );
+        end else begin
+            assign wbs4_ack_i = 1'b0;
+            assign wbs4_dat_i = 32'h00000000;
+        end
+    endgenerate
 
     // Slave 5: Router MMIO
     // 见下方的 Router MMIO 部分

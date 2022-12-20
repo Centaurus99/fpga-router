@@ -27,6 +27,11 @@ ifeq ($(EN_UART16550), y)
 	CFLAGS += -DENABLE_UART16550
 endif
 
+override EN_VGA ?= n
+ifeq ($(EN_VGA), y)
+	CFLAGS += -DENABLE_VGA
+endif
+
 override USE_BRAM ?= y
 ifeq ($(USE_BRAM), y)
 	CFLAGS += -DUSE_BRAM
