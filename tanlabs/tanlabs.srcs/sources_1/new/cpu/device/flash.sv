@@ -46,6 +46,7 @@ module flash #(
     logic [20:0] past_operating_page; // 如果第一位为一，说明所有形况都需要 WAITING
 
     assign flash_byte_n = 1'b1;  // 长期开16bit模式
+    assign flash_vpen   = 1'b1;  // 长期不写保护
 
     typedef enum {
         READ,
