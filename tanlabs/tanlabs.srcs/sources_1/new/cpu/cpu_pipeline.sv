@@ -3,7 +3,8 @@
 
 module cpu_pipeline #(
     parameter ENABLE_BRANCH_PREDICT = 1,
-    parameter ENABLE_IF_CACHE       = 1
+    parameter ENABLE_IF_CACHE       = 1,
+    parameter ENABLE_PAGING         = 0
 ) (
     input wire clk,
     input wire rst,
@@ -223,62 +224,86 @@ module cpu_pipeline #(
     /* =========== 异常 & 中断 end =========== */
 
     /* =========== 页表 start =========== */
-    paging_controller IF_paging_controller (
-        .clk(clk),
-        .rst(rst),
+    generate
+        if (ENABLE_PAGING) begin
+            paging_controller IF_paging_controller (
+                .clk(clk),
+                .rst(rst),
 
-        .satp_r(satp_r),
-        .SUM_r (SUM_r),
+                .satp_r(satp_r),
+                .SUM_r (SUM_r),
 
-        .wbs_cyc_i(if_wb_cyc_o),
-        .wbs_stb_i(if_wb_stb_o),
-        .wbs_ack_o(if_wb_ack_i),
-        .wbs_err_o(if_wb_err_i),
-        .wbs_adr_i(if_wb_adr_o),
-        .wbs_dat_i(if_wb_dat_o),
-        .wbs_dat_o(if_wb_dat_i),
-        .wbs_sel_i(if_wb_sel_o),
-        .wbs_we_i (if_wb_we_o),
-        .wbs_IF   (1'b1),
-        .wbs_PMODE(PMODE),
+                .wbs_cyc_i(if_wb_cyc_o),
+                .wbs_stb_i(if_wb_stb_o),
+                .wbs_ack_o(if_wb_ack_i),
+                .wbs_err_o(if_wb_err_i),
+                .wbs_adr_i(if_wb_adr_o),
+                .wbs_dat_i(if_wb_dat_o),
+                .wbs_dat_o(if_wb_dat_i),
+                .wbs_sel_i(if_wb_sel_o),
+                .wbs_we_i (if_wb_we_o),
+                .wbs_IF   (1'b1),
+                .wbs_PMODE(PMODE),
 
-        .wbm_cyc_o(wbm0_cyc_o),
-        .wbm_stb_o(wbm0_stb_o),
-        .wbm_ack_i(wbm0_ack_i),
-        .wbm_adr_o(wbm0_adr_o),
-        .wbm_dat_o(wbm0_dat_o),
-        .wbm_dat_i(wbm0_dat_i),
-        .wbm_sel_o(wbm0_sel_o),
-        .wbm_we_o (wbm0_we_o)
-    );
-    paging_controller MEM_paging_controller (
-        .clk(clk),
-        .rst(rst),
+                .wbm_cyc_o(wbm0_cyc_o),
+                .wbm_stb_o(wbm0_stb_o),
+                .wbm_ack_i(wbm0_ack_i),
+                .wbm_adr_o(wbm0_adr_o),
+                .wbm_dat_o(wbm0_dat_o),
+                .wbm_dat_i(wbm0_dat_i),
+                .wbm_sel_o(wbm0_sel_o),
+                .wbm_we_o (wbm0_we_o)
+            );
+            paging_controller MEM_paging_controller (
+                .clk(clk),
+                .rst(rst),
 
-        .satp_r(satp_r),
-        .SUM_r (SUM_r),
+                .satp_r(satp_r),
+                .SUM_r (SUM_r),
 
-        .wbs_cyc_i(mem_wb_cyc_o),
-        .wbs_stb_i(mem_wb_stb_o),
-        .wbs_ack_o(mem_wb_ack_i),
-        .wbs_err_o(mem_wb_err_i),
-        .wbs_adr_i(mem_wb_adr_o),
-        .wbs_dat_i(mem_wb_dat_o),
-        .wbs_dat_o(mem_wb_dat_i),
-        .wbs_sel_i(mem_wb_sel_o),
-        .wbs_we_i (mem_wb_we_o),
-        .wbs_IF   (1'b0),
-        .wbs_PMODE(exe_mem.PMODE),
+                .wbs_cyc_i(mem_wb_cyc_o),
+                .wbs_stb_i(mem_wb_stb_o),
+                .wbs_ack_o(mem_wb_ack_i),
+                .wbs_err_o(mem_wb_err_i),
+                .wbs_adr_i(mem_wb_adr_o),
+                .wbs_dat_i(mem_wb_dat_o),
+                .wbs_dat_o(mem_wb_dat_i),
+                .wbs_sel_i(mem_wb_sel_o),
+                .wbs_we_i (mem_wb_we_o),
+                .wbs_IF   (1'b0),
+                .wbs_PMODE(exe_mem.PMODE),
 
-        .wbm_cyc_o(wbm1_cyc_o),
-        .wbm_stb_o(wbm1_stb_o),
-        .wbm_ack_i(wbm1_ack_i),
-        .wbm_adr_o(wbm1_adr_o),
-        .wbm_dat_o(wbm1_dat_o),
-        .wbm_dat_i(wbm1_dat_i),
-        .wbm_sel_o(wbm1_sel_o),
-        .wbm_we_o (wbm1_we_o)
-    );
+                .wbm_cyc_o(wbm1_cyc_o),
+                .wbm_stb_o(wbm1_stb_o),
+                .wbm_ack_i(wbm1_ack_i),
+                .wbm_adr_o(wbm1_adr_o),
+                .wbm_dat_o(wbm1_dat_o),
+                .wbm_dat_i(wbm1_dat_i),
+                .wbm_sel_o(wbm1_sel_o),
+                .wbm_we_o (wbm1_we_o)
+            );
+        end else begin
+            assign wbm0_cyc_o   = if_wb_cyc_o;
+            assign wbm0_stb_o   = if_wb_stb_o;
+            assign if_wb_ack_i  = wbm0_ack_i;
+            assign if_wb_err_i  = 1'b0;
+            assign wbm0_adr_o   = if_wb_adr_o;
+            assign wbm0_dat_o   = if_wb_dat_o;
+            assign if_wb_dat_i  = wbm0_dat_i;
+            assign wbm0_sel_o   = if_wb_sel_o;
+            assign wbm0_we_o    = if_wb_we_o;
+
+            assign wbm1_cyc_o   = mem_wb_cyc_o;
+            assign wbm1_stb_o   = mem_wb_stb_o;
+            assign mem_wb_ack_i = wbm1_ack_i;
+            assign mem_wb_err_i = 1'b0;
+            assign wbm1_adr_o   = mem_wb_adr_o;
+            assign wbm1_dat_o   = mem_wb_dat_o;
+            assign mem_wb_dat_i = wbm1_dat_i;
+            assign wbm1_sel_o   = mem_wb_sel_o;
+            assign wbm1_we_o    = mem_wb_we_o;
+        end
+    endgenerate
     /* =========== 页表 end =========== */
 
     /* =========== IF start =========== */
