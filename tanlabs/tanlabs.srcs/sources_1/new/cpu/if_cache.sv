@@ -138,7 +138,7 @@ module if_cache #(
             wbs_adr_o  <= 0;
             wbs_stb_o  <= 0;
             tail       <= '{default: '0};
-            fenced     <= '{default: '0};
+            fenced     <= '{default: '1};
             fencei_reg <= 1'b0;
         end else begin
             if (fencei) begin

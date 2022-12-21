@@ -23,7 +23,7 @@ module register_file (
         end
     end
 
-    assign rdata_a = (we && waddr == raddr_a) ? wdata : regs[raddr_a];
-    assign rdata_b = (we && waddr == raddr_b) ? wdata : regs[raddr_b];
+    assign rdata_a = (we && waddr == raddr_a && raddr_a != 0) ? wdata : regs[raddr_a];
+    assign rdata_b = (we && waddr == raddr_b && raddr_b != 0) ? wdata : regs[raddr_b];
 
 endmodule
