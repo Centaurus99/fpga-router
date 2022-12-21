@@ -17,9 +17,3 @@ void _putchar(char ch)
     while (!(UART_LSR & COM_LSR_THRE));
     UART_THR = ch;
 }
-
-char _getchar_uart()
-{
-    while (!(UART_LSR & COM_LSR_DR));
-    return UART_THR;
-}

@@ -4,31 +4,6 @@
 #include <stdlib.h>
 #include <vector>
 
-in6_addr operator &(const in6_addr &a, const in6_addr &b) {
-  in6_addr ret;
-  for (int i = 0; i < 16; i++) {
-    ret.s6_addr[i] = a.s6_addr[i] & b.s6_addr[i];
-  }
-  return ret;
-}
-
-bool operator == (const in6_addr &a, const in6_addr &b) {
-  for (int i = 0; i < 16; i++) {
-    if (a.s6_addr[i] != b.s6_addr[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-short ntohs(short x) {
-  return ((x & 0xff) << 8) | ((x & 0xff00) >> 8);
-}
-
-int htonl(int x) {
-  return ((x & 0xff) << 24) | ((x & 0xff00) << 8) | ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24);
-}
-
 std::vector<RoutingTableEntry> routing_table;
 
 void update(bool insert, const RoutingTableEntry entry) {
