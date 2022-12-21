@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps `default_nettype none
 
-`include "../../sources_1/new/router/frame_datapath.vh"
+`include "../../sources_1/new/frame_datapath.vh"
 
 module tb_checksum #(
     parameter PACKET_LENGTH = 88,

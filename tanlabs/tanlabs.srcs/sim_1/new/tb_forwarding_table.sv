@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-`include "../../sources_1/new/router/forwarding_table.vh"
+`include "../../sources_1/new/forwarding_table.vh"
 
 module tb_forwarding_table #(
     // Wishbone 总线参数

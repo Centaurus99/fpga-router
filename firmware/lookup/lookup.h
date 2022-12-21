@@ -1,56 +1,48 @@
 #ifndef __LOOKUP_H__
 #define __LOOKUP_H__
 
-#include "stdbool.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <arpa/inet.h>
+#include "common.h"
 
-#define NODE_COUNT_PER_STAGE  1024
-#define LEAF_COUNT  1024
-#define ENTRY_COUNT  64
-#define STAGE_HEIGHT  4
-#define STRIDE  4
-#define STAGE_COUNT  9
-// FIXME stage_count should be 8
 
-#define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
-#define LEAF_ADDRESS  0x50000000
-#define NEXT_HOP_ADDRESS  0x51000000
+const int NODE_COUNT_PER_STAGE = 1024;
+const int LEAF_COUNT = 1024;
+const int ENTRY_COUNT = 64;
 
-int popcnt(int x);
+const int STAGE_HEIGHT = 4;
+const int STRIDE = 4;
+const int STAGE_COUNT = 128 / STRIDE / STAGE_HEIGHT;
 
-#define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
-#define NODEINDEX(v)    ((v) >> STRIDE)
-#define VEC_CLEAR(v, i) ((v) &= ~((u32)1 << (i)))
-#define VEC_BT(v, i)    ((v) & (u32)1 << (i))
-#define VEC_SET(v, i)   ((v) |= (u32)1 << (i))
-// #define popcnt(v)               __builtin_popcountll(v)
-// #define popcnt(v) (v)
-#define POPCNT(v)       popcnt(v)
-#define ZEROCNT(v)      popcnt(~(v))
-#define POPCNT_LS(v, i) popcnt((v) & (((u32)2 << (i)) - 1))
-#define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u32)2 << (i)) - 1))
+const int NODE_ADDRESS[8] = {
+    0x40000000,
+    0x41000000,
+    0x42000000,
+    0x43000000,
+    0x44000000,
+    0x45000000,
+    0x46000000,
+    0x47000000
+};
+const int LEAF_ADDRESS = 0x50000000;
+const int NEXT_HOP_ADDRESS = 0x51000000;
 
-#define NOW nodes((dep) / STRIDE / STAGE_HEIGHT)[nid]
-#define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef uint8_t u8;
+typedef __uint128_t u128;
+typedef uint32_t leaf_t;  // fixme: change to u8
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-// typedef __uint128_t u128;
-typedef unsigned int leaf_t; // fixme: change to u8
-
-/* IPv6 address */
-typedef struct
-{
-    union
-    {
-        u8 __u6_addr8[16];
-        u16 __u6_addr16[8];
-        u32 __u6_addr32[4];
-    } __in6_u;
-#define s6_addr __in6_u.__u6_addr8
-#define s6_addr16 __in6_u.__u6_addr16
-#define s6_addr32 __in6_u.__u6_addr32
-} in6_addr;
+// /* IPv6 address */
+// typedef struct {
+//     union {
+// 	uint8_t	__u6_addr8[16];
+// 	uint16_t __u6_addr16[8];
+// 	uint32_t __u6_addr32[4];
+//     } __in6_u;
+// #define s6_addr			__in6_u.__u6_addr8
+// } in6_addr;
 
 /*
   表示路由表的一项。
@@ -59,23 +51,22 @@ typedef struct
   你可以在全局变量中把路由表以一定的数据结构格式保存下来。
 */
 
-typedef struct
-{
+typedef struct {
     u32 ip[4];
     u32 port;
     u32 route_type;
-    u32 padding[2];
 } NextHopEntry;
 
-typedef struct
-{
-    in6_addr addr;     // 匹配的 IPv6 地址前缀
-    u32 len;      // 前缀长度
-    u32 if_index; // 出端口编号
-    in6_addr nexthop;  // 下一跳的 IPv6 地址
-    u32 route_type;
-    // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
+typedef struct {
+  in6_addr addr;     // 匹配的 IPv6 地址前缀
+  uint32_t len;      // 前缀长度
+  uint32_t if_index; // 出端口编号
+  in6_addr nexthop;  // 下一跳的 IPv6 地址
+  uint32_t route_type;
+  // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
+
+
 
 // // 真正的存储用的结构体
 // typedef struct {
@@ -88,8 +79,7 @@ typedef struct
 
 // 为了处理时方便会先转成这个结构体 有改动的话再转回去
 // 现在结构体内也会对齐 所以可以都用uint32
-typedef struct
-{
+typedef struct {
     u32 vec;
     u32 leaf_vec;
     u32 child_base;
@@ -113,7 +103,7 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @return 查到则返回 true ，没查到则返回 false
  */
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type);
+bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type);
 
 /**
  * @brief 转换 mask 为前缀长度
@@ -128,8 +118,6 @@ int mask_to_len(const in6_addr mask);
  * @return len 合法则返回对应的 mask，不合法则返回 0
  */
 in6_addr len_to_mask(int len);
-
-// void print_ip(const in6_addr addr);
 
 void print(u32 id, int dep);
 

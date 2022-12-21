@@ -12,53 +12,15 @@ set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]
 
 create_clock -period 8.000 -name gtref_clk -waveform {0.000 4.000} [get_nets gtref_clk]
 
-# SRAM delay for 100MHz clock and 3 cycles read/write
-# input setup delay = 10ns(read) - 10ns(clock period) - (-2.5ns)(output delay) + 2.0ns(pcb route time)
-set_input_delay -clock clk_out2_clk_wiz_0 -max 4.500 [get_ports {base_ram_data[*]}]
-set_input_delay -clock clk_out2_clk_wiz_0 -max 4.500 [get_ports {ext_ram_data[*]}]
-# input hold time 2.5ns
-set_input_delay -clock clk_out2_clk_wiz_0 -min 2.500 [get_ports {base_ram_data[*]}]
-set_input_delay -clock clk_out2_clk_wiz_0 -min 2.500 [get_ports {ext_ram_data[*]}]
-
-# 10ns + 2.5ns for output setup and 2.5ns for we_n hold
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports base_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports base_ram_oe_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports ext_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports ext_ram_oe_n]
-# we_n signal should be covered with other signal
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.500 [get_ports base_ram_we_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.500 [get_ports ext_ram_we_n]
-
-# 2.9ns for output hold and 5ns + 2.9ns we_n setup
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports base_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports base_ram_oe_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports ext_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports ext_ram_oe_n]
-# we_n signal should be covered with other signal
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.900 [get_ports base_ram_we_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.900 [get_ports ext_ram_we_n]
-
 # Reset Button (BTN6)
-set_property PACKAGE_PIN F22 [get_ports reset_btn]
-set_property IOSTANDARD LVCMOS33 [get_ports reset_btn]
-set_false_path -from [get_ports reset_btn]
+set_property PACKAGE_PIN F22 [get_ports RST]
+set_property IOSTANDARD LVCMOS33 [get_ports RST]
+set_false_path -from [get_ports RST]
 
 # Clock Button (BTN5)
-set_property PACKAGE_PIN H19 [get_ports push_btn]
-set_property IOSTANDARD LVCMOS33 [get_ports push_btn]
-set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets push_btn_IBUF]
+set_property PACKAGE_PIN H19 [get_ports BTN]
+set_property IOSTANDARD LVCMOS33 [get_ports BTN]
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets BTN_IBUF]
 
 # Buttons
 set_property -dict {PACKAGE_PIN J19 IOSTANDARD LVCMOS33} [get_ports touch_btn[0]] ;#BTN1
@@ -92,23 +54,23 @@ set_property -dict {PACKAGE_PIN R16 IOSTANDARD LVCMOS33} [get_ports video_vsync]
 set_property -dict {PACKAGE_PIN J20 IOSTANDARD LVCMOS33} [get_ports video_de]
 
 # LEDs
-set_property PACKAGE_PIN A17 [get_ports {leds[0]}]
-set_property PACKAGE_PIN G16 [get_ports {leds[1]}]
-set_property PACKAGE_PIN E16 [get_ports {leds[2]}]
-set_property PACKAGE_PIN H17 [get_ports {leds[3]}]
-set_property PACKAGE_PIN G17 [get_ports {leds[4]}]
-set_property PACKAGE_PIN F18 [get_ports {leds[5]}]
-set_property PACKAGE_PIN F19 [get_ports {leds[6]}]
-set_property PACKAGE_PIN F20 [get_ports {leds[7]}]
-set_property PACKAGE_PIN C17 [get_ports {leds[8]}]
-set_property PACKAGE_PIN F17 [get_ports {leds[9]}]
-set_property PACKAGE_PIN B17 [get_ports {leds[10]}]
-set_property PACKAGE_PIN D19 [get_ports {leds[11]}]
-set_property PACKAGE_PIN A18 [get_ports {leds[12]}]
-set_property PACKAGE_PIN A19 [get_ports {leds[13]}]
-set_property PACKAGE_PIN E17 [get_ports {leds[14]}]
-set_property PACKAGE_PIN E18 [get_ports {leds[15]}]
-set_property IOSTANDARD LVCMOS33 [get_ports {leds[*]}]
+set_property PACKAGE_PIN A17 [get_ports {led[0]}]
+set_property PACKAGE_PIN G16 [get_ports {led[1]}]
+set_property PACKAGE_PIN E16 [get_ports {led[2]}]
+set_property PACKAGE_PIN H17 [get_ports {led[3]}]
+set_property PACKAGE_PIN G17 [get_ports {led[4]}]
+set_property PACKAGE_PIN F18 [get_ports {led[5]}]
+set_property PACKAGE_PIN F19 [get_ports {led[6]}]
+set_property PACKAGE_PIN F20 [get_ports {led[7]}]
+set_property PACKAGE_PIN C17 [get_ports {led[8]}]
+set_property PACKAGE_PIN F17 [get_ports {led[9]}]
+set_property PACKAGE_PIN B17 [get_ports {led[10]}]
+set_property PACKAGE_PIN D19 [get_ports {led[11]}]
+set_property PACKAGE_PIN A18 [get_ports {led[12]}]
+set_property PACKAGE_PIN A19 [get_ports {led[13]}]
+set_property PACKAGE_PIN E17 [get_ports {led[14]}]
+set_property PACKAGE_PIN E18 [get_ports {led[15]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {led[*]}]
 
 # DPY0
 set_property -dict {PACKAGE_PIN D16 IOSTANDARD LVCMOS33} [get_ports {dpy0[0]}]
@@ -372,3 +334,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports sfp_scl]
 
 set_property CFGBVS VCCO [current_design]
 set_property CONFIG_VOLTAGE 3.3 [current_design]
+
+connect_debug_port u_ila_0/probe2 [get_nets [list {dp_tx_dest[0]} {dp_tx_dest[1]} {dp_tx_dest[2]}]]
+
