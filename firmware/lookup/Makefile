@@ -6,7 +6,7 @@ LDFLAGS ?= -g
 all: lookup
 
 clean:
-	rm -f *.o lookup lookup_bf lookup_rv32i 
+	rm -f *.o lookup lookup_bf
 
 grade: lookup lookup_bf
 	python3 grade.py
