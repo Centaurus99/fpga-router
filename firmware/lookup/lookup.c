@@ -77,8 +77,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     int child_stage = STAGE(dep + STRIDE);
 
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
-    if (!child->vec && child->leaf_vec == 114514) {
-        assert(0);
+    if (!child->vec && child->leaf_vec == 1) {
         if (!now->vec) {
             now->child_base = child->leaf_base;
             VEC_SET(now->tag, 8);
@@ -98,7 +97,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
             }
             now->child_base = new_base;
             VEC_SET(now->vec, idx);
-            leaf_free(child->leaf_base, 1);
+            leaf_free(child->leaf_base, 1); // TODO: 这里可以优化
             return;
         }
     }
@@ -173,6 +172,7 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
     int p = POPCNT_LS(now->leaf_vec, pfx);
     if (p <= 1) {
         leaf_free(now->leaf_base, 1);
+        ++(now->leaf_base);
     } else {
         p = now->leaf_base + p - 1;  // 要删掉的叶子
         for (u32 i = pfx + 1; i < (1<<STRIDE); ++i) {
