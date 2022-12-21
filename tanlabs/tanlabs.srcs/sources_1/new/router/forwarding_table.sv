@@ -589,6 +589,9 @@ module forwarding_table #(
                     s_leaf_next_hop_addr <= leaf_out.next_hop_addr;
                     s_leaf_state         <= ST_INIT;
                 end
+                default: begin
+                    s_leaf_state <= ST_INIT;
+                end
             endcase
         end
     end
@@ -637,6 +640,9 @@ module forwarding_table #(
                     end
                     s_next_hop_reg.beat.meta.dest <= next_hop_out.port;
                     s_next_hop_state              <= ST_INIT;
+                end
+                default: begin
+                    s_next_hop_state <= ST_INIT;
                 end
             endcase
         end

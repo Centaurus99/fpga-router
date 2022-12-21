@@ -202,6 +202,9 @@ module vga #(
                         read.hdata <= read.hdata + 4;
                     end
                 end
+                default: begin
+                    reader_state <= SCAN_ST_IDLE;
+                end
             endcase
         end
     end
@@ -229,6 +232,9 @@ module vga #(
                 end
                 SCAN_ST_3: begin
                     color         <= color_block.pixel1;
+                    scanner_state <= SCAN_ST_0;
+                end
+                default: begin
                     scanner_state <= SCAN_ST_0;
                 end
             endcase

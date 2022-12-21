@@ -420,6 +420,7 @@ module cpu_pipeline_id (
                                     3'b111: begin // CSRRCI
                                         out.rf_we <= 1;
                                     end
+                                    default: ;
                                 endcase
                             end
                             default: begin // 未知指令
