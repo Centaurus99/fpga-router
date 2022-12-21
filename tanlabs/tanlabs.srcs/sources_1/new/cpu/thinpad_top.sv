@@ -1,7 +1,7 @@
 `default_nettype none
 
 module thinpad_top #(
-    parameter SYS_CLK_FREQ = 90_000_000
+    parameter SYS_CLK_FREQ = 100_000_000
 ) (
     input wire clk_50M,     // 50MHz 时钟输入
     input wire clk_11M0592, // 11.0592MHz 时钟输入（备用，可不用）
@@ -52,25 +52,25 @@ module thinpad_top #(
     output wire flash_we_n,  // Flash 写使能信号，低有效
     output wire flash_byte_n, // Flash 8bit 模式选择，低有效。在使用 flash 的 16 位模式时请设为 1
 
-    // // USB 控制器信号，参考 SL811 芯片手册
-    // output wire sl811_a0,
-    // // inout  wire [7:0] sl811_d,     // USB 数据线与网络控制器的 dm9k_sd[7:0] 共享
-    // output wire sl811_wr_n,
-    // output wire sl811_rd_n,
-    // output wire sl811_cs_n,
-    // output wire sl811_rst_n,
-    // output wire sl811_dack_n,
-    // input  wire sl811_intrq,
-    // input  wire sl811_drq_n,
+    // USB 控制器信号，参考 SL811 芯片手册
+    output wire sl811_a0,
+    // inout  wire [7:0] sl811_d,     // USB 数据线与网络控制器的 dm9k_sd[7:0] 共享
+    output wire sl811_wr_n,
+    output wire sl811_rd_n,
+    output wire sl811_cs_n,
+    output wire sl811_rst_n,
+    output wire sl811_dack_n,
+    input  wire sl811_intrq,
+    input  wire sl811_drq_n,
 
-    // // 网络控制器信号，参考 DM9000A 芯片手册
-    // output wire        dm9k_cmd,
-    // inout  wire [15:0] dm9k_sd,
-    // output wire        dm9k_iow_n,
-    // output wire        dm9k_ior_n,
-    // output wire        dm9k_cs_n,
-    // output wire        dm9k_pwrst_n,
-    // input  wire        dm9k_int,
+    // 网络控制器信号，参考 DM9000A 芯片手册
+    output wire        dm9k_cmd,
+    inout  wire [15:0] dm9k_sd,
+    output wire        dm9k_iow_n,
+    output wire        dm9k_ior_n,
+    output wire        dm9k_cs_n,
+    output wire        dm9k_pwrst_n,
+    input  wire        dm9k_int,
 
     // Signal for TB
     // synthesis translate_off
@@ -93,6 +93,9 @@ module thinpad_top #(
     output wire       video_de      // 行数据有效信号，用于区分消隐区
 
 );
+    wire [15:0] gpio_leds;
+    wire [15:0] flash_leds;
+    assign leds = gpio_leds | flash_leds;
 
     /* =========== Demo code begin =========== */
 
@@ -220,12 +223,12 @@ module thinpad_top #(
     //     .TxD_data (ext_uart_tx)      // 待发送的数据
     // );
 
-    // // 图像输出演示，分辨率 800x600@75Hz，像素时钟为 50MHz
-
     /* =========== Demo code end =========== */
+
     logic sys_clk;
     assign sys_clk = clk_10M;
 
+    wire wait_flash;
     wire sys_rst_without_bufg;
     wire sys_rst;
     // 异步复位同步释放
@@ -236,8 +239,8 @@ module thinpad_top #(
     );
     // 使用 BUFG 优化 reset 信号布线
     BUFG BUFG_inst_eth (
-        .O(sys_rst),              // 1-bit output: Clock output
-        .I(sys_rst_without_bufg)  // 1-bit input: Clock input
+        .O(sys_rst),                           // 1-bit output: Clock output
+        .I(sys_rst_without_bufg | wait_flash)  // 1-bit input: Clock input
     );
 
     // 本实验不使用 CPLD 串口，禁用防止总线冲突
@@ -356,6 +359,18 @@ module thinpad_top #(
     logic [ 3:0] wbm_sel_o;
     logic        wbm_we_o;
 
+    wire         wbm_flash_cyc_o;
+    wire         wbm_flash_stb_o;
+    wire         wbm_flash_ack_i;
+    wire  [31:0] wbm_flash_adr_o;
+    wire  [31:0] wbm_flash_dat_o;
+    wire  [31:0] wbm_flash_dat_i;
+    wire  [ 3:0] wbm_flash_sel_o;
+    wire         wbm_flash_we_o;
+
+    assign wbm_flash_ack_i = wbm_ack_i;
+    assign wbm_flash_dat_i = wbm_dat_i;
+
     wb_arbiter_2 #(
         .DATA_WIDTH  (32),
         .ADDR_WIDTH  (32),
@@ -469,16 +484,16 @@ module thinpad_top #(
         .rst(sys_rst),
 
         // Master interface (to CPU master)
-        .wbm_adr_i(wbm_adr_o),
-        .wbm_dat_i(wbm_dat_o),
+        .wbm_adr_i(wbm_adr_o | wbm_flash_adr_o),
+        .wbm_dat_i(wbm_dat_o | wbm_flash_dat_o),
         .wbm_dat_o(wbm_dat_i),
-        .wbm_we_i (wbm_we_o),
-        .wbm_sel_i(wbm_sel_o),
-        .wbm_stb_i(wbm_stb_o),
+        .wbm_we_i (wbm_we_o | wbm_flash_we_o),
+        .wbm_sel_i(wbm_sel_o | wbm_flash_sel_o),
+        .wbm_stb_i(wbm_stb_o | wbm_flash_stb_o),
         .wbm_ack_o(wbm_ack_i),
         .wbm_err_o(),
         .wbm_rty_o(),
-        .wbm_cyc_i(wbm_cyc_o),
+        .wbm_cyc_i(wbm_cyc_o | wbm_flash_cyc_o),
 
         // Slave interface 0 (to BaseRAM controller)
         // Address range: 0x8000_0000 ~ 0x803F_FFFF
@@ -562,10 +577,10 @@ module thinpad_top #(
         .wbs4_rty_i('0),
         .wbs4_cyc_o(wbs4_cyc_o),
 
-        // Slave interface 5 (to Flash)
-        // Address range: 0x9000_0000 ~ 0x907F_FFFF
-        .wbs5_addr    (32'h9000_0000),
-        .wbs5_addr_msk(32'hFF80_0000),
+        // Slave interface 5 (to Router MMIO)
+        // Address range: 0xA000_0000 ~ 0xA000_003F
+        .wbs5_addr    (32'hA000_0000),
+        .wbs5_addr_msk(32'hFFFF_FFC0),
 
         .wbs5_adr_o(wbs5_adr_o),
         // .wbs5_dat_i(wbs5_dat_i),
@@ -622,7 +637,7 @@ module thinpad_top #(
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_base (
         .clk_i(sys_clk),
-        .rst_i(sys_rst),
+        .rst_i(sys_rst_without_bufg),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs0_cyc_o),
@@ -649,7 +664,7 @@ module thinpad_top #(
         .SRAM_DATA_WIDTH(32)
     ) sram_controller_ext (
         .clk_i(sys_clk),
-        .rst_i(sys_rst),
+        .rst_i(sys_rst_without_bufg),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs1_cyc_o),
@@ -692,25 +707,11 @@ module thinpad_top #(
     // VGA 模块
     // 目前支持显示 800 x 600 的图像
     // 跨时钟域复位信号
-    wire vga_rst;
-    xpm_cdc_async_rst #(
-        .DEST_SYNC_FF(4),  // DECIMAL; range: 2-10
-        .INIT_SYNC_FF(0),     // DECIMAL; 0=disable simulation init values, 1=enable simulation init values
-        .RST_ACTIVE_HIGH(0)  // DECIMAL; 0=active low reset, 1=active high reset
-    ) xpm_cdc_async_rst_inst_vga (
-        .dest_arst(vga_rst), // 1-bit output: src_arst asynchronous reset signal synchronized to destination
-        // clock domain. This output is registered. NOTE: Signal asserts asynchronously
-        // but deasserts synchronously to dest_clk. Width of the reset signal is at least
-        // (DEST_SYNC_FF*dest_clk) period.
-
-        .dest_clk(clk_50M),  // 1-bit input: Destination clock.
-        .src_arst(sys_rst)   // 1-bit input: Source asynchronous reset signal.
-    );
     vga vga (
         .cpu_clk(sys_clk),
         .cpu_rst(sys_rst),
         .vga_clk(clk_50M),
-        .vga_rst(vga_rst),
+        .vga_rst(reset_btn),
 
         // Wishbone slave (to MUX)
         .wb_cyc_i(wbs3_cyc_o),
@@ -733,7 +734,9 @@ module thinpad_top #(
     );
 
     // GPIO模块
-    gpio gpio(
+    gpio #(
+        .CLK_FREQ(SYS_CLK_FREQ)
+    ) gpio (
 
         .clk(sys_clk),
         .rst(sys_rst),
@@ -751,7 +754,7 @@ module thinpad_top #(
         // GPIO
         .touch_btn(touch_btn),
         .dip_sw   (dip_sw),
-        .leds     (leds),
+        .leds     (gpio_leds),
         .dpy0     (dpy0),
         .dpy1     (dpy1)
     );
@@ -777,6 +780,72 @@ module thinpad_top #(
         // to UART pins
         .uart_txd_o(txd),
         .uart_rxd_i(rxd)
+    );
+
+
+    /* =========== Load Flash begin =========== */
+
+    wire        wbm_flash_read_cyc_o;
+    wire        wbm_flash_read_stb_o;
+    wire        wbm_flash_read_ack_i;
+    wire [31:0] wbm_flash_read_adr_o;
+    wire [31:0] wbm_flash_read_dat_o;
+    wire [31:0] wbm_flash_read_dat_i;
+    wire [ 3:0] wbm_flash_read_sel_o;
+    wire        wbm_flash_read_we_o;
+
+    // Flash模块
+    flash flash (
+        .clk       (sys_clk),
+        .rst       (sys_rst_without_bufg),
+        .full_reset(1'b0),
+
+        // Wishbone slave (to MUX)
+        .wb_cyc_i(wbm_flash_read_cyc_o),
+        .wb_stb_i(wbm_flash_read_stb_o),
+        .wb_ack_o(wbm_flash_read_ack_i),
+        .wb_adr_i(wbm_flash_read_adr_o),
+        .wb_dat_i(wbm_flash_read_dat_o),
+        .wb_dat_o(wbm_flash_read_dat_i),
+        .wb_sel_i(wbm_flash_read_sel_o),
+        .wb_we_i (wbm_flash_read_we_o),
+
+        // Flash
+        .flash_a     (flash_a),
+        .flash_d     (flash_d),
+        .flash_rp_n  (flash_rp_n),
+        .flash_vpen  (flash_vpen),
+        .flash_ce_n  (flash_ce_n),
+        .flash_oe_n  (flash_oe_n),
+        .flash_we_n  (flash_we_n),
+        .flash_byte_n(flash_byte_n)
+    );
+
+    load_flash u_load_flash (
+        .clk(sys_clk),
+        .rst(sys_rst_without_bufg),
+
+        .push_btn  (push_btn),
+        .leds      (flash_leds),
+        .wait_flash(wait_flash),
+
+        .wbm_sram_cyc_o(wbm_flash_cyc_o),
+        .wbm_sram_stb_o(wbm_flash_stb_o),
+        .wbm_sram_ack_i(wbm_flash_ack_i),
+        .wbm_sram_adr_o(wbm_flash_adr_o),
+        .wbm_sram_dat_o(wbm_flash_dat_o),
+        .wbm_sram_dat_i(wbm_flash_dat_i),
+        .wbm_sram_sel_o(wbm_flash_sel_o),
+        .wbm_sram_we_o (wbm_flash_we_o),
+
+        .wbm_flash_read_cyc_o(wbm_flash_read_cyc_o),
+        .wbm_flash_read_stb_o(wbm_flash_read_stb_o),
+        .wbm_flash_read_ack_i(wbm_flash_read_ack_i),
+        .wbm_flash_read_adr_o(wbm_flash_read_adr_o),
+        .wbm_flash_read_dat_o(wbm_flash_read_dat_o),
+        .wbm_flash_read_dat_i(wbm_flash_read_dat_i),
+        .wbm_flash_read_sel_o(wbm_flash_read_sel_o),
+        .wbm_flash_read_we_o (wbm_flash_read_we_o)
     );
 
 endmodule

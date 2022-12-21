@@ -5,13 +5,13 @@
 module vga #(
     parameter WIDTH = 12,  // WIDTH: bits in register hdata & vdata
     parameter HSIZE = 800,  // HSIZE: horizontal size of visible field 
-    parameter HFP = 856,  // HFP: horizontal front of pulse
-    parameter HSP = 976,  // HSP: horizontal stop of pulse
-    parameter HMAX = 1040,  // HMAX: horizontal max size of value
+    parameter HFP = 840,  // HFP: horizontal front of pulse
+    parameter HSP = 968,  // HSP: horizontal stop of pulse
+    parameter HMAX = 1056,  // HMAX: horizontal max size of value
     parameter VSIZE = 600,  // VSIZE: vertical size of visible field 
-    parameter VFP = 637,  // VFP: vertical front of pulse
-    parameter VSP = 643,  // VSP: vertical stop of pulse
-    parameter VMAX = 666,  // VMAX: vertical max size of value
+    parameter VFP = 601,  // VFP: vertical front of pulse
+    parameter VSP = 605,  // VSP: vertical stop of pulse
+    parameter VMAX = 628,  // VMAX: vertical max size of value
     parameter HSPP = 1,  // HSPP: horizontal synchro pulse polarity (0 - negative, 1 - positive)
     parameter VSPP = 1,  // VSPP: vertical synchro pulse polarity (0 - negative, 1 - positive)
     parameter DATA_WIDTH = 32,  // DATA_WIDTH: wishbone data width
@@ -202,6 +202,9 @@ module vga #(
                         read.hdata <= read.hdata + 4;
                     end
                 end
+                default: begin
+                    reader_state <= SCAN_ST_IDLE;
+                end
             endcase
         end
     end
@@ -229,6 +232,9 @@ module vga #(
                 end
                 SCAN_ST_3: begin
                     color         <= color_block.pixel1;
+                    scanner_state <= SCAN_ST_0;
+                end
+                default: begin
                     scanner_state <= SCAN_ST_0;
                 end
             endcase

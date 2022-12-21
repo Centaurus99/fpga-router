@@ -15,7 +15,7 @@ module cpu_pipeline_id (
     input wire flush_i,   // 当前流水线需要 flush
     output wire flush_o,  // 请求当前和之前的流水线 flush
     output reg [31:0] flush_pc_o,  // flush 后的 PC
-    output wire flush_branch_o,  // branch 的 flush 单独给出, 优化时序
+    output reg flush_branch_o,  // branch 的 flush 单独给出, 优化时序
     output reg [31:0] flush_branch_pc_o,  // branch 的 PC 单独给出, 优化时序
 
     output reg [4:0] rf_raddr_a_o,
@@ -51,7 +51,7 @@ module cpu_pipeline_id (
     input wire[4:0]  exe_rd,
     input wire[31:0] exe_alu_y,
 
-    output wire [31:0] btb_pc_w,
+    output reg [31:0] btb_pc_w,
     output reg [31:0] btb_next_pc_w,
     output reg btb_jump,
     output reg btb_we,
@@ -119,39 +119,45 @@ module cpu_pipeline_id (
     always_comb begin
         btb_jump = 0;
         btb_next_pc_w = in.next_pc;
-        case (`opcode(in))
-            7'b1101111: begin 
-                btb_jump = 1;
-                btb_next_pc_w = in.pc + `imm_j(in);
-            end
-            7'b1100111: begin
-                btb_jump = 1;
-                btb_next_pc_w = rs1_data + `imm_i(in);
-            end
-            7'b1100011: begin
-                case (`funct3(in))
-                    3'b000: btb_jump = (rs1_data == rs2_data); // BEQ
-                    3'b001: btb_jump = (rs1_data != rs2_data); // BNE
-                    3'b100: btb_jump = ($signed(rs1_data) < $signed(rs2_data)); // BLT
-                    3'b101: btb_jump = ($signed(rs1_data) >= $signed(rs2_data)); // BGE
-                    3'b110: btb_jump = (rs1_data < rs2_data); // BLTU
-                    3'b111: btb_jump = (rs1_data >= rs2_data); // BGEU
-                endcase
-                btb_next_pc_w = in.pc + `imm_b(in);
-            end
-        endcase
+        btb_we = 0;
+        btb_pc_w = 0;
+        if (out_ready & in.valid & ~stall & ~flush) begin
+            btb_pc_w = in.pc;
+            case (`opcode(in))
+                7'b1101111: begin 
+                    btb_we = 1;
+                    btb_jump = 1;
+                    btb_next_pc_w = in.pc + `imm_j(in);
+                end
+                7'b1100111: begin
+                    btb_we = 1;
+                    btb_jump = 1;
+                    btb_next_pc_w = rs1_data + `imm_i(in);
+                end
+                7'b1100011: begin
+                    btb_we = 1;
+                    case (`funct3(in))
+                        3'b000: btb_jump = (rs1_data == rs2_data); // BEQ
+                        3'b001: btb_jump = (rs1_data != rs2_data); // BNE
+                        3'b100: btb_jump = ($signed(rs1_data) < $signed(rs2_data)); // BLT
+                        3'b101: btb_jump = ($signed(rs1_data) >= $signed(rs2_data)); // BGE
+                        3'b110: btb_jump = (rs1_data < rs2_data); // BLTU
+                        3'b111: btb_jump = (rs1_data >= rs2_data); // BGEU
+                    endcase
+                    btb_next_pc_w = in.pc + `imm_b(in);
+                end
+            endcase
+        end
     end
 
-    assign flush_branch_o = (btb_we && flush_branch_pc_o != out.next_pc);
     assign flush_o = flush_branch_o || trap_in || trap_out || fencei;
-    assign btb_pc_w = out.pc;
 
     always_ff @(posedge clk) begin
         if (rst) begin
             out <= 0;
-            btb_we <= 0;
             flush_pc_o <= 0;
             flush_branch_pc_o <= 0;
+            flush_branch_o <= 0;
             trap_in <= 1'b0;
             trap_out <= 1'b0;
             trap_type <= 1'b0;
@@ -160,7 +166,7 @@ module cpu_pipeline_id (
             tval_w <= '{default: '0};
             fencei <= 1'b0;
         end else begin
-            btb_we <= 0;
+            flush_branch_o <= 0;
             trap_in <= 1'b0;
             trap_out <= 1'b0;
             trap_type <= 1'b0;
@@ -210,7 +216,7 @@ module cpu_pipeline_id (
                             7'b1101111: begin // JAL: x[rd] = pc + 4 and pc += offset
                                 out.inst_type <= J_TYPE;
                                 flush_branch_pc_o <= btb_next_pc_w;
-                                btb_we <= 1;
+                                flush_branch_o <= btb_next_pc_w != in.next_pc;
                                 out.alu_a <= in.pc;
                                 out.alu_op <= 4'b0000;
                                 out.alu_b <= 32'h0000_0004;
@@ -219,7 +225,7 @@ module cpu_pipeline_id (
                             7'b1100111: begin // JALR: x[rd] = pc + 4 and pc = x[rs1] + offset
                                 out.inst_type <= I_TYPE;
                                 flush_branch_pc_o <= btb_next_pc_w;
-                                btb_we <= 1;
+                                flush_branch_o <= btb_next_pc_w != in.next_pc;
                                 out.alu_a <= in.pc;
                                 out.alu_op <= 4'b0000;
                                 out.alu_b <= 32'h0000_0004;
@@ -317,8 +323,8 @@ module cpu_pipeline_id (
                             end
                             7'b1100011: begin
                                 out.inst_type <= B_TYPE;
-                                btb_we <= 1;
                                 flush_branch_pc_o <= btb_jump ? btb_next_pc_w : (in.pc + 4);
+                                flush_branch_o <= (btb_jump ? btb_next_pc_w : (in.pc + 4)) != in.next_pc;
                             end
                             7'b0001111: begin  // FENCE / FENCE.I
                                 out.inst_type <= I_TYPE;
@@ -414,6 +420,7 @@ module cpu_pipeline_id (
                                     3'b111: begin // CSRRCI
                                         out.rf_we <= 1;
                                     end
+                                    default: ;
                                 endcase
                             end
                             default: begin // 未知指令

@@ -13,15 +13,15 @@ module neighbor_cache #(
     input wire [127:0] in_v6_w,
     input wire [127:0] in_v6_r,
     input wire [ 47:0] in_mac,
-    input wire   [1:0] in_id_w,
-    input wire   [1:0] in_id_r,
+    input wire [  1:0] in_id_w,
+    input wire [  1:0] in_id_r,
 
     output reg  [47:0] out_mac,
     output reg         found,
     output wire        ready     // 当前可以写
 );
 
-    reg [ADDR_WIDTH - 1:0] addra;
+    reg  [ADDR_WIDTH - 1:0] addra;
     wire [ADDR_WIDTH - 1:0] addrb;
     logic [DATA_WIDTH - 1:0] dina, douta[3:0], doutb[3:0];
     // logic bram_en;
@@ -148,7 +148,7 @@ module neighbor_cache #(
             end
             ST_READ_RAM_1: nxt = ST_READ_RAM_2;
             ST_READ_RAM_2: nxt = ST_WRITE_RAM;
-            ST_WRITE_RAM: nxt = ST_INIT;
+            ST_WRITE_RAM:  nxt = ST_INIT;
 
         endcase
     end
@@ -156,9 +156,9 @@ module neighbor_cache #(
     always_ff @(posedge clk) begin
         case (current)
             ST_INIT: begin
-                wea <= '{default: 0};
+                wea   <= '{default: 0};
                 addra <= {in_id_w, hash_w};
-                dina <= {in_mac, in_v6_w};
+                dina  <= {in_mac, in_v6_w};
             end
             ST_WRITE_RAM: begin
                 case (match_w)
@@ -176,7 +176,7 @@ module neighbor_cache #(
                     end
                 endcase
             end
-
+            default: ;
         endcase
     end
 
