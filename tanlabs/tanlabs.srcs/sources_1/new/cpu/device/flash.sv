@@ -123,6 +123,7 @@ module flash #(
                                 state             <= ST_WRITE;
                             end
                         end
+                        default: ;
                     endcase
                 end
                 ST_IDLE: begin
@@ -182,6 +183,7 @@ module flash #(
                                 end
                             end
                         end
+                        default: ;
                     endcase
                 end
                 ST_WRITE: begin
@@ -203,7 +205,11 @@ module flash #(
                                 state          <= ST_IDLE;
                             end
                         end
+                        default: ;
                     endcase
+                end
+                default: begin
+                    state <= ST_WAITING;
                 end
             endcase
         end
