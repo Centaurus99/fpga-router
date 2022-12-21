@@ -1,7 +1,6 @@
 .DS_Store
 *.o
 *.elf
-*.bin
 *.asm
 *.coe
 *.prm

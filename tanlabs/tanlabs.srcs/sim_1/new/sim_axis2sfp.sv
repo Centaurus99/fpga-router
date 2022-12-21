@@ -42,7 +42,7 @@ module sim_axis2sfp
 
     clk_wiz_0 clk_wiz_0_i(
         .ref_clk_out(ref_clk),
-        .core_clk_out(),
+        .clk_out2(),
         .reset(1'b0),
         .locked(locked),
         .clk_in1(gtref_clk)
