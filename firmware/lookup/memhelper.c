@@ -1,11 +1,13 @@
 #include "memhelper.h"
 #include <assert.h>
-// #include <stdio.h>
+#include <stdio.h>
 
 int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1};
 bool node_used[STAGE_COUNT][NODE_COUNT_PER_STAGE] = {{1}};
 int leaf_top = 1;
 bool leaf_used[LEAF_COUNT];
+
+int node_blk_cnt[STAGE_COUNT][17], leaf_blk_cnt[17];
 
 int node_malloc(int stage, int len) {
     // printf("NODE MALLOC %d %d: %d\n", stage, len, node_tops[stage]);
@@ -14,6 +16,8 @@ int node_malloc(int stage, int len) {
     for (int i=node_tops[stage]-len; i<node_tops[stage]; ++i) {
         node_used[stage][i] = true;
     }
+    node_blk_cnt[stage][len]++;
+    printf("N %d %d +\n", stage, len);
 
     return node_tops[stage] - len;
 }
@@ -23,6 +27,8 @@ void node_free(int stage, int begin, int len) {
     for (int i=begin; i<begin+len; ++i) {
         node_used[stage][i] = false;
     }
+    node_blk_cnt[stage][len]--;
+    printf("N %d %d -\n", stage, len);
 }
 
 bool is_node_used(int stage, int id) {
@@ -35,6 +41,8 @@ int leaf_malloc(int len) {
     for (int i=leaf_top-len; i<leaf_top; ++i) {
         leaf_used[i] = true;
     }
+    leaf_blk_cnt[len]++;
+    printf("L %d +\n", len);
     return leaf_top - len;
 }
 
@@ -42,6 +50,8 @@ void leaf_free(int begin, int len) {
     for (int i=begin; i<begin+len; ++i) {
         leaf_used[i] = false;
     }
+    leaf_blk_cnt[len]--;
+    printf("L %d -\n", len);
 }
 
 bool is_leaf_used(int id) {

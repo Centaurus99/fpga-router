@@ -93,6 +93,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
                     ++np, ++op;
                 }
             }
+            leaf_free(now->child_base, cnt);
             now->child_base = new_base;
             VEC_SET(now->vec, idx);
             leaf_free(child->leaf_base, 1); // TODO: 这里可以优化
@@ -280,7 +281,7 @@ void update(bool insert, const RoutingTableEntry entry) {
     } else {
         remove_entry(0, node_root, entry.addr, entry.len);
     }
-    print(node_root, 0);
+    // print(node_root, 0);
 }
 
 bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {

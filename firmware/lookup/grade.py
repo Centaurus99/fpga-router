@@ -98,7 +98,15 @@ def gen_input(in_file, N, query_after_update_complete=0):
                 f.write(f'Q {to_u32s(ip)}\n')
                 query_after_update_complete -= 1
 
-                    
+def gen_ionly_input(in_file, N):
+    random.shuffle(entrys)
+    with open(in_file, 'w') as f:
+        for l in open('data/direct_route.txt', 'r'):
+            f.write(l)
+        f.write('\n')
+        for i in range(N):
+            e = entrys[i]
+            f.write(f'I {to_u32s(e[0])} {e[1]} {e[3]} {to_u32s(e[2])} 2\n')
 
 def run(exe, in_file, out_file):
     p = subprocess.Popen(['./{}'.format(exe)], stdout=open(out_file, 'w'), stdin=open(in_file, 'r'))
@@ -107,9 +115,9 @@ def run(exe, in_file, out_file):
 
 if __name__ == '__main__':
 
-    if os.isatty(1):
-        print('Removing all output files')
-    os.system('rm -f data/{}_output*.txt'.format(prefix))
+    # if os.isatty(1):
+    #     print('Removing all output files')
+    # os.system('rm -f data/{}_output*.txt'.format(prefix))
 
     # print("Running examples:")
     # grade = 0
@@ -136,10 +144,14 @@ if __name__ == '__main__':
 
     entrys = [line.strip().split(' ') for line in open('fib_shuffled.txt', 'r').readlines() if line.strip()]
 
-    
+
+
     if len(sys.argv) > 1:
         if (sys.argv[1] == 'gen_forsim'):
             gen_input("data/forsim_input.txt", 10, 20)
+            sys.exit(0)
+        elif sys.argv[1] == 'gen_ionly':
+            gen_ionly_input('data/I_only_input.txt'.format(prefix), int(sys.argv[2]))
             sys.exit(0)
     
     print("对拍：")
