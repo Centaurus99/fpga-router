@@ -101,9 +101,9 @@ def gen_input(in_file, N, query_after_update_complete=0):
 def gen_ionly_input(in_file, N):
     random.shuffle(entrys)
     with open(in_file, 'w') as f:
-        for l in open('data/direct_route.txt', 'r'):
-            f.write(l)
-        f.write('\n')
+        # for l in open('data/direct_route.txt', 'r'):
+        #     f.write(l)
+        # f.write('\n')
         for i in range(N):
             e = entrys[i]
             f.write(f'I {to_u32s(e[0])} {e[1]} {e[3]} {to_u32s(e[2])} 2\n')

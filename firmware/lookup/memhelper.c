@@ -16,18 +16,15 @@ int node_malloc(int stage, int len) {
     for (int i=node_tops[stage]-len; i<node_tops[stage]; ++i) {
         node_used[stage][i] = true;
     }
-    node_blk_cnt[stage][len]++;
     printf("N %d %d +\n", stage, len);
 
     return node_tops[stage] - len;
 }
 
 void node_free(int stage, int begin, int len) {
-    // printf("NODE FREE %d %d %d\n", stage, begin, len);
     for (int i=begin; i<begin+len; ++i) {
         node_used[stage][i] = false;
     }
-    node_blk_cnt[stage][len]--;
     printf("N %d %d -\n", stage, len);
 }
 
@@ -41,7 +38,6 @@ int leaf_malloc(int len) {
     for (int i=leaf_top-len; i<leaf_top; ++i) {
         leaf_used[i] = true;
     }
-    leaf_blk_cnt[len]++;
     printf("L %d +\n", len);
     return leaf_top - len;
 }
@@ -50,7 +46,6 @@ void leaf_free(int begin, int len) {
     for (int i=begin; i<begin+len; ++i) {
         leaf_used[i] = false;
     }
-    leaf_blk_cnt[len]--;
     printf("L %d -\n", len);
 }
 

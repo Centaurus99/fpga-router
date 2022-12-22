@@ -12,6 +12,7 @@
         "printf.h": "c",
         "gpio.h": "c",
         "uart.h": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "stdbool.h": "c"
     }
 }

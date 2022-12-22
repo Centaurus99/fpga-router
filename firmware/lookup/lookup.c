@@ -1,6 +1,7 @@
 #include "lookup.h"
 #include "memhelper.h"
 #include <stdio.h>
+#include <assert.h>
 
 #ifndef ENABLE_BITMANIP
 int popcnt(u32 x) {
@@ -77,6 +78,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
     if (!child->vec && child->leaf_vec == 2) {
         if (!now->vec) {//printf("LIN!");
+            assert(!VEC_BT(now->tag, 7));
             now->child_base = child->leaf_base;
             VEC_SET(now->tag, 7);
             VEC_SET(now->vec, idx);
@@ -121,6 +123,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     } else if (!now->vec) { // 如果now还没有子节点
         now->child_base = node_malloc(child_stage, 1);
         nodes(child_stage)[now->child_base] = *child;
+        
     } else {
         // TODO: 改成每次空间乘以2
         int cnt = POPCNT(now->vec);
@@ -136,6 +139,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
         }
         node_free(child_stage, now->child_base, cnt);
         now->child_base = new_base;
+        
     }
     VEC_SET(now->vec, idx);
 }
@@ -218,7 +222,7 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
         }
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
-        // printf("INSERT %d %x\n", dep,idx);
+        printf("INSERT %d %x\n", dep,idx);
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
@@ -226,15 +230,17 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
                 return;
             }
             int child_stage = STAGE(dep + STRIDE);
+            // if(child_stage ==3 )printf("~~%d %d\n",dep,idx);
             if (VEC_BT(now->tag, 7) && dep + STRIDE != len) { // 需要把LIN取消掉
                 int cnt = POPCNT(now->vec);
-                int new_base = node_malloc(child_stage, cnt + 1);
+                int new_base = node_malloc(child_stage, cnt);
                 for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
                     if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
                         nodes(child_stage)[np].tag = 0;
                         nodes(child_stage)[np].vec = 0;
                         nodes(child_stage)[np].leaf_vec = 2;
                         nodes(child_stage)[np].leaf_base = op;
+                        nodes(child_stage)[np].child_base = 0;
                         ++np, ++op;
                     }
                 }
@@ -246,6 +252,8 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
         } else {
             TrieNode *child = &stk[dep/STRIDE + 1];
             child->vec = child->leaf_vec = 0;
+            child->child_base = 0;
+            child->leaf_base = 0;
             child->tag = 0;
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
             _insert_node(dep, now, idx, child);
@@ -281,7 +289,6 @@ void update(bool insert, const RoutingTableEntry entry) {
     } else {
         remove_entry(0, node_root, entry.addr, entry.len);
     }
-    // print(node_root, 0);
 }
 
 bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
