@@ -1207,7 +1207,16 @@ module tanlabs #(
     logic [ 3:0] wbs7_sel_o;
     logic        wbs7_we_o;
 
-    wb_mux_8 wb_mux (
+    logic        wbs8_cyc_o;
+    logic        wbs8_stb_o;
+    logic        wbs8_ack_i;
+    logic [31:0] wbs8_adr_o;
+    logic [31:0] wbs8_dat_o;
+    logic [31:0] wbs8_dat_i;
+    logic [ 3:0] wbs8_sel_o;
+    logic        wbs8_we_o;
+
+    wb_mux_9 wb_mux (
         .clk(sys_clk),
         .rst(sys_rst),
 
@@ -1255,10 +1264,10 @@ module tanlabs #(
         .wbs1_rty_i('0),
         .wbs1_cyc_o(wbs1_cyc_o),
 
-        // Slave interface 2 (to MMIO Register)
-        // Address range: 0x0000_0000 ~ 0x0FFF_FFFF
-        .wbs2_addr    (32'h0000_0000),
-        .wbs2_addr_msk(32'hF000_0000),
+        // Slave interface 2 (to Router RAM)
+        // Address range: 0x4000_0000 ~ 0x5FFF_FFFF
+        .wbs2_addr    (32'h4000_0000),
+        .wbs2_addr_msk(32'hE000_0000),
 
         .wbs2_adr_o(wbs2_adr_o),
         .wbs2_dat_i(wbs2_dat_i),
@@ -1271,10 +1280,10 @@ module tanlabs #(
         .wbs2_rty_i('0),
         .wbs2_cyc_o(wbs2_cyc_o),
 
-        // Slave interface 3 (to Router RAM)
-        // Address range: 0x4000_0000 ~ 0x5FFF_FFFF
-        .wbs3_addr    (32'h4000_0000),
-        .wbs3_addr_msk(32'hE000_0000),
+        // Slave interface 3 (to Router DMA)
+        // Address range: 0x6800_0000 ~ 0x6FFF_FFFF
+        .wbs3_addr    (32'h6800_0000),
+        .wbs3_addr_msk(32'hF800_0000),
 
         .wbs3_adr_o(wbs3_adr_o),
         .wbs3_dat_i(wbs3_dat_i),
@@ -1287,10 +1296,10 @@ module tanlabs #(
         .wbs3_rty_i('0),
         .wbs3_cyc_o(wbs3_cyc_o),
 
-        // Slave interface 4 (to VGA RAM)
-        // Address range: 0x3000_0000 ~ 0x30FF_FFFF
-        .wbs4_addr    (32'h3000_0000),
-        .wbs4_addr_msk(32'hFF00_0000),
+        // Slave interface 4 (to Router MMIO)
+        // Address range: 0x6000_0000 ~ 0x67FF_FFFF
+        .wbs4_addr    (32'h6000_0000),
+        .wbs4_addr_msk(32'hF800_0000),
 
         .wbs4_adr_o(wbs4_adr_o),
         .wbs4_dat_i(wbs4_dat_i),
@@ -1303,10 +1312,10 @@ module tanlabs #(
         .wbs4_rty_i('0),
         .wbs4_cyc_o(wbs4_cyc_o),
 
-        // Slave interface 5 (to Router MMIO)
-        // Address range: 0xA000_0000 ~ 0xA000_003F
-        .wbs5_addr    (32'hA000_0000),
-        .wbs5_addr_msk(32'hFFFF_FFC0),
+        // Slave interface 5 (to VGA RAM)
+        // Address range: 0x3000_0000 ~ 0x30FF_FFFF
+        .wbs5_addr    (32'h3000_0000),
+        .wbs5_addr_msk(32'hFF00_0000),
 
         .wbs5_adr_o(wbs5_adr_o),
         .wbs5_dat_i(wbs5_dat_i),
@@ -1349,7 +1358,23 @@ module tanlabs #(
         .wbs7_ack_i(wbs7_ack_i),
         .wbs7_err_i('0),
         .wbs7_rty_i('0),
-        .wbs7_cyc_o(wbs7_cyc_o)
+        .wbs7_cyc_o(wbs7_cyc_o),
+
+        // Slave interface 8 (to MMIO Register)
+        // Address range: 0x0000_0000 ~ 0x0FFF_FFFF
+        .wbs8_addr    (32'h0000_0000),
+        .wbs8_addr_msk(32'hF000_0000),
+
+        .wbs8_adr_o(wbs8_adr_o),
+        .wbs8_dat_i(wbs8_dat_i),
+        .wbs8_dat_o(wbs8_dat_o),
+        .wbs8_we_o (wbs8_we_o),
+        .wbs8_sel_o(wbs8_sel_o),
+        .wbs8_stb_o(wbs8_stb_o),
+        .wbs8_ack_i(wbs8_ack_i),
+        .wbs8_err_i('0),
+        .wbs8_rty_i('0),
+        .wbs8_cyc_o(wbs8_cyc_o)
     );
 
     /* =========== Wishbone Slaves =========== */
@@ -1409,37 +1434,23 @@ module tanlabs #(
         .sram_be_n(ext_ram_be_n)
     );
 
-    // Slave 2: MMIO MTIME
-    mmio_mtime #(
-        .CLK_FREQ(SYS_CLK_FREQ)
-    ) u_mmio_mtime (
-        .clk(sys_clk),
-        .rst(sys_rst),
+    // Slave 2: Router RAM
+    assign wb_router_cyc_i = wbs2_cyc_o;
+    assign wb_router_stb_i = wbs2_stb_o;
+    assign wbs2_ack_i      = wb_router_ack_o;
+    assign wb_router_adr_i = wbs2_adr_o;
+    assign wb_router_dat_i = wbs2_dat_o;
+    assign wbs2_dat_i      = wb_router_dat_o;
+    assign wb_router_sel_i = wbs2_sel_o;
+    assign wb_router_we_i  = wbs2_we_o;
 
-        .wb_cyc_i(wbs2_cyc_o),
-        .wb_stb_i(wbs2_stb_o),
-        .wb_ack_o(wbs2_ack_i),
-        .wb_adr_i(wbs2_adr_o),
-        .wb_dat_i(wbs2_dat_o),
-        .wb_dat_o(wbs2_dat_i),
-        .wb_sel_i(wbs2_sel_o),
-        .wb_we_i (wbs2_we_o),
+    // Slave 3: Router DMA
+    // 见下方的 Router DMA 部分
 
-        .mtime_o    (mtime),
-        .mtime_int_o(mtime_int)
-    );
+    // Slave 4: Router MMIO
+    // 见下方的 Router MMIO 部分
 
-    // Slave 3: Router RAM
-    assign wb_router_cyc_i = wbs3_cyc_o;
-    assign wb_router_stb_i = wbs3_stb_o;
-    assign wbs3_ack_i      = wb_router_ack_o;
-    assign wb_router_adr_i = wbs3_adr_o;
-    assign wb_router_dat_i = wbs3_dat_o;
-    assign wbs3_dat_i      = wb_router_dat_o;
-    assign wb_router_sel_i = wbs3_sel_o;
-    assign wb_router_we_i  = wbs3_we_o;
-
-    // Slave 4: VGA
+    // Slave 5: VGA
     // VGA 模块
     // 目前支持显示 800 x 600 的图像
     generate
@@ -1451,14 +1462,14 @@ module tanlabs #(
                 .vga_rst(reset_btn),
 
                 // Wishbone slave (to MUX)
-                .wb_cyc_i(wbs4_cyc_o),
-                .wb_stb_i(wbs4_stb_o),
-                .wb_ack_o(wbs4_ack_i),
-                .wb_adr_i(wbs4_adr_o),
-                .wb_dat_i(wbs4_dat_o),
-                .wb_dat_o(wbs4_dat_i),
-                .wb_sel_i(wbs4_sel_o),
-                .wb_we_i (wbs4_we_o),
+                .wb_cyc_i(wbs5_cyc_o),
+                .wb_stb_i(wbs5_stb_o),
+                .wb_ack_o(wbs5_ack_i),
+                .wb_adr_i(wbs5_adr_o),
+                .wb_dat_i(wbs5_dat_o),
+                .wb_dat_o(wbs5_dat_i),
+                .wb_sel_i(wbs5_sel_o),
+                .wb_we_i (wbs5_we_o),
 
                 // VGA Output
                 .video_red  (video_red),
@@ -1470,13 +1481,10 @@ module tanlabs #(
                 .video_de   (video_de)
             );
         end else begin
-            assign wbs4_ack_i = 1'b0;
-            assign wbs4_dat_i = 32'h00000000;
+            assign wbs5_ack_i = 1'b0;
+            assign wbs5_dat_i = 32'h00000000;
         end
     endgenerate
-
-    // Slave 5: Router MMIO
-    // 见下方的 Router MMIO 部分
 
     // Slave 6: GPIO
     // GPIO模块
@@ -1529,6 +1537,26 @@ module tanlabs #(
         .uart_rxd_i(rxd)
     );
 
+    // Slave 8: MMIO MTIME
+    mmio_mtime #(
+        .CLK_FREQ(SYS_CLK_FREQ)
+    ) u_mmio_mtime (
+        .clk(sys_clk),
+        .rst(sys_rst),
+
+        .wb_cyc_i(wbs8_cyc_o),
+        .wb_stb_i(wbs8_stb_o),
+        .wb_ack_o(wbs8_ack_i),
+        .wb_adr_i(wbs8_adr_o),
+        .wb_dat_i(wbs8_dat_o),
+        .wb_dat_o(wbs8_dat_i),
+        .wb_sel_i(wbs8_sel_o),
+        .wb_we_i (wbs8_we_o),
+
+        .mtime_o    (mtime),
+        .mtime_int_o(mtime_int)
+    );
+
     /* =========== Router MMIO =========== */
     wire                             wb_mmio_cyc_o;
     wire                             wb_mmio_stb_o;
@@ -1547,14 +1575,14 @@ module tanlabs #(
         .src_rst (reset_core),
         .dest_clk(eth_clk),
         .dest_rst(reset_eth),
-        .wb_cyc_i(wbs5_cyc_o),
-        .wb_stb_i(wbs5_stb_o),
-        .wb_ack_o(wbs5_ack_i),
-        .wb_adr_i(wbs5_adr_o),
-        .wb_dat_i(wbs5_dat_o),
-        .wb_dat_o(wbs5_dat_i),
-        .wb_sel_i(wbs5_sel_o),
-        .wb_we_i (wbs5_we_o),
+        .wb_cyc_i(wbs4_cyc_o),
+        .wb_stb_i(wbs4_stb_o),
+        .wb_ack_o(wbs4_ack_i),
+        .wb_adr_i(wbs4_adr_o),
+        .wb_dat_i(wbs4_dat_o),
+        .wb_dat_o(wbs4_dat_i),
+        .wb_sel_i(wbs4_sel_o),
+        .wb_we_i (wbs4_we_o),
 
         .dest_wb_cyc_o(wb_mmio_cyc_o),
         .dest_wb_stb_o(wb_mmio_stb_o),
@@ -1566,10 +1594,10 @@ module tanlabs #(
         .dest_wb_we_o (wb_mmio_we_o)
     );
 
-    packet_counter #(
+    router_mmio #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
-    ) u_packet_counter (
+    ) u_router_mmio (
         .clk(eth_clk),
         .rst(reset_eth),
 

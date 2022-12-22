@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps `default_nettype none
 
-module packet_counter #(
+module router_mmio #(
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
     parameter WISHBONE_ADDR_WIDTH = 32
@@ -21,30 +21,24 @@ module packet_counter #(
     // 网络接口信号
     input wire eth_tx8_ready[4:0],
     input wire eth_tx8_valid[4:0],
-
     input wire eth_rx8_ready[4:0],
     input wire eth_rx8_valid[4:0]
 
 );
-    reg  [31:0] tx_counter[4:0];
-    reg  [31:0] rx_counter[4:0];
-
-    wire        request;
-    reg  [31:0] read_data [4:0];
-
-    assign request = wb_cyc_i && wb_stb_i && wb_adr_i[31:8] == 24'hA00000 && wb_adr_i[7:6] == 2'b00;
-    assign wb_dat_o = read_data[0] | read_data[1] | read_data[2] | read_data[3] | read_data[4];
-
-    always_ff @(posedge clk) begin
-        if (rst) begin
-            wb_ack_o <= 1'b0;
-        end else begin
-            wb_ack_o <= 1'b0;
-            if (request) begin
-                wb_ack_o <= 1'b1;
-            end
+    // 根据 sel 获取 mask
+    reg [WISHBONE_DATA_WIDTH-1:0] data_mask;
+    always_comb begin
+        for (int i = 0; i < WISHBONE_DATA_WIDTH / 8; i = i + 1) begin
+            data_mask[i*8+:8] = wb_sel_i[i] ? 8'hff : 8'h00;
         end
     end
+
+    wire request;
+    assign request = wb_cyc_i && wb_stb_i;
+
+    // 网络端口统计
+    reg [31:0] tx_counter[4:0];
+    reg [31:0] rx_counter[4:0];
 
     generate
         for (genvar i = 0; i <= 4; ++i) begin
@@ -52,7 +46,6 @@ module packet_counter #(
                 if (rst) begin
                     tx_counter[i] <= '0;
                     rx_counter[i] <= '0;
-                    read_data[i]  <= '0;
                 end else begin
                     if (eth_tx8_valid[i] && eth_tx8_ready[i]) begin
                         tx_counter[i] <= tx_counter[i] + 1;
@@ -60,26 +53,38 @@ module packet_counter #(
                     if (eth_rx8_valid[i] && eth_rx8_ready[i]) begin
                         rx_counter[i] <= rx_counter[i] + 1;
                     end
-
-                    read_data[i] <= '0;
-                    if (request && wb_adr_i[5:4] == i && !wb_ack_o) begin
-                        case (wb_adr_i[3:0])
-                            4'h0: begin
-                                read_data[i]  <= tx_counter[i];
-                                tx_counter[i] <= '0;
-                            end
-                            4'h4: begin
-                                read_data[i]  <= rx_counter[i];
-                                rx_counter[i] <= '0;
-                            end
-                            default: begin
-                                read_data[i] <= '0;
-                            end
-                        endcase
-                    end
                 end
             end
         end
     endgenerate
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            wb_dat_o <= '0;
+            wb_ack_o <= 1'b0;
+        end else begin
+            wb_ack_o <= 1'b0;
+            if (request) begin
+                case (wb_adr_i[31:24])
+                    8'h60: begin
+                        if (wb_adr_i[23:8] == 16'h0000 && wb_adr_i[7:6] == 2'b00) begin
+                            case (wb_adr_i[3:0])
+                                4'h0: begin
+                                    wb_dat_o <= tx_counter[wb_adr_i[5:4]];
+                                    wb_ack_o <= 1'b1;
+                                end
+                                4'h4: begin
+                                    wb_dat_o <= rx_counter[wb_adr_i[5:4]];
+                                    wb_ack_o <= 1'b1;
+                                end
+                                default: ;
+                            endcase
+                        end
+                    end
+                    default: ;
+                endcase
+            end
+        end
+    end
 
 endmodule
