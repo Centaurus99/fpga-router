@@ -169,6 +169,9 @@ module gpio #(
                                 dpy1_reg <= wb_dat_i[7:0];
                             end
                         end
+                        default: begin
+                            state <= ST_IDLE;
+                        end
                     endcase
                 end
                 ST_UPDATE_POINTER: begin
@@ -177,6 +180,9 @@ module gpio #(
                     wb_dat_o <= buffer_data_o;
                     is_read  <= 1'b0;
                     state    <= ST_IDLE;
+                end
+                default: begin
+                    state <= ST_IDLE;
                 end
             endcase
         end else begin

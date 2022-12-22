@@ -106,6 +106,9 @@ module load_flash (
                         end
                     end
                 end
+                default: begin
+                    flash_crontrol_state <= ST_IDLE;
+                end
             endcase
         end
     end

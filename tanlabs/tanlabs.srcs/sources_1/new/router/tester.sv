@@ -194,6 +194,9 @@ module tester #(
                 ST_DONE: begin
                     state_write <= ST_DONE;
                 end
+                default: begin
+                    state_write <= ST_DONE;
+                end
             endcase
         end
     end

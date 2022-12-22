@@ -110,6 +110,9 @@ module tb_forwarding_table #(
                 ST_DONE: begin
                     state_write <= ST_DONE;
                 end
+                default: begin
+                    state_write <= ST_DONE;
+                end
             endcase
         end
     end
@@ -154,6 +157,9 @@ module tb_forwarding_table #(
                                 state_send <= ST_DONE;
                                 #1000;
                                 $finish;
+                            end
+                            default: begin
+                                state_send <= ST_DONE;
                             end
                         endcase
                     end
@@ -261,6 +267,9 @@ module tb_forwarding_table #(
                                 state_send <= ST_DONE;
                                 #1000;
                                 $finish;
+                            end
+                            default: begin
+                                state_send <= ST_DONE;
                             end
                         endcase
                     end
