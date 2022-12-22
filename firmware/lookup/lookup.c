@@ -2,8 +2,6 @@
 #include "memhelper.h"
 #include <printf.h>
 
-#include<assert.h>
-
 #ifndef ENABLE_BITMANIP
 int popcnt(int x) {
     int cnt = 0;
