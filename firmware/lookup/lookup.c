@@ -38,9 +38,9 @@ TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 leaf_t leafs[LEAF_COUNT];
 NextHopEntry next_hops[ENTRY_COUNT];
 #else
-#define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
-#define leafs ((volatile leaf_t *)LEAF_ADDRESS)
-#define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
+#define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
+#define leafs ((leaf_t *)LEAF_ADDRESS)
+#define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
 leaf_t entry_count;
 int node_root;
