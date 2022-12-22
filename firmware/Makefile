@@ -10,7 +10,7 @@ CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-s
          -Iinclude $(DEFINES) -march=rv32i -mabi=ilp32 -DRV32 -g
 LDFLAGS = -z separate-code -g
 
-LOOKUP=lookup/lookup.o lookup/memhelper.o
+LOOKUP=lookup/lookup.o lookup/memhelper.o lookup/debug.o
 
 override EN_BITMANIP ?= n
 ifeq ($(EN_BITMANIP), y)

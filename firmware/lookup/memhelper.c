@@ -1,5 +1,5 @@
 #include "memhelper.h"
-// #include <assert.h>
+#include <assert.h>
 // #include <stdio.h>
 
 int node_tops[STAGE_COUNT] = {1, 1, 1, 1, 1, 1, 1, 1};
@@ -10,7 +10,7 @@ bool leaf_used[LEAF_COUNT];
 int node_malloc(int stage, int len) {
     // printf("NODE MALLOC %d %d: %d\n", stage, len, node_tops[stage]);
     node_tops[stage] += len;
-    // assert(node_tops[stage] <= NODE_COUNT_PER_STAGE);
+    assert(node_tops[stage] <= NODE_COUNT_PER_STAGE);
     for (int i=node_tops[stage]-len; i<node_tops[stage]; ++i) {
         node_used[stage][i] = true;
     }
@@ -31,7 +31,7 @@ bool is_node_used(int stage, int id) {
 
 int leaf_malloc(int len) {
     leaf_top += len;
-    // assert(leaf_top <= LEAF_COUNT);
+    assert(leaf_top <= LEAF_COUNT);
     for (int i=leaf_top-len; i<leaf_top; ++i) {
         leaf_used[i] = true;
     }

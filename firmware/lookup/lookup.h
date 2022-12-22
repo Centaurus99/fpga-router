@@ -14,7 +14,6 @@
 #define LEAF_ADDRESS  0x50000000
 #define NEXT_HOP_ADDRESS  0x51000000
 
-int popcnt(int x);
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
 #define NODEINDEX(v)    ((v) >> STRIDE)
@@ -35,6 +34,7 @@ typedef unsigned int u32;
 // typedef __uint128_t u128;
 typedef u8 leaf_t;
 
+int popcnt(u32 x);
 /* IPv6 address */
 typedef struct
 {

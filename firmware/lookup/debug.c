@@ -1,29 +1,37 @@
 #include "lookup.h"
 #include "memhelper.h"
+// #include <printf.h>
 #include <stdio.h>
-#include <assert.h>
+// #include <assert.h>
 
-#define nodes(i) _nodes[i]
-
+#ifndef USE_BRAM
 extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+#define nodes(i) _nodes[i]
 extern leaf_t leafs[LEAF_COUNT];
 extern NextHopEntry next_hops[ENTRY_COUNT];
+#else
+#define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
+#define leafs ((volatile leaf_t *)LEAF_ADDRESS)
+#define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
+#endif
+
 extern leaf_t entry_count;
 extern int node_root;
 
-void print_ip(in6_addr ip) {
-    for (int i = 0; i < 4; ++ i) {
-        printf("%08x ", ip.s6_addr32[i]);
-    }
-}
+// void print_ip(in6_addr ip) {
+//     for (int i = 0; i < 4; ++ i) {
+//         printf("%08x ", ip.s6_addr32[i]);
+//     }
+// }
 
 void print(u32 nid, int dep) {
     // TrieNode now = u8s_to_u32s(NOW);
     if (!dep) printf("PRINTING TREE:\n");
     for (int i = 0;i<dep/STRIDE;++i) printf("  ");
-    printf("%x-%x: %x %x %x %x\n", STAGE(dep), nid, NOW.vec, NOW.leaf_vec, NOW.child_base, NOW.leaf_base);
-    for (int i = 0; i < POPCNT(NOW.vec); ++i)
-        print(NOW.child_base + i, dep + STRIDE);
+    printf("%x-%x: %x %x %x %x %x\n", STAGE(dep), nid, NOW.vec, NOW.leaf_vec, NOW.child_base, NOW.tag, NOW.leaf_base);
+    if (!VEC_BT(NOW.tag, 7))
+        for (int i = 0; i < POPCNT(NOW.vec); ++i)
+            print(NOW.child_base + i, dep + STRIDE);
     if (!dep) printf("#################################\n");
 }
 
@@ -34,12 +42,12 @@ void print(u32 nid, int dep) {
 //     }
 // }
 
-inline void _write_u32s(FILE *f, u32 addr, u32 *ptr, int len) {
-    for (int i = 0; i < len; ++i) {
-        if (*(ptr + i) != 0)
-            fprintf(f, "%08X %08X\n", addr+i*4, *(ptr+i));
-    }
-}
+// inline void _write_u32s(FILE *f, u32 addr, u32 *ptr, int len) {
+//     for (int i = 0; i < len; ++i) {
+//         if (*(ptr + i) != 0)
+//             fprintf(f, "%08X %08X\n", addr+i*4, *(ptr+i));
+//     }
+// }
 
 // void export_mem() {
 //     print(node_root, 0);

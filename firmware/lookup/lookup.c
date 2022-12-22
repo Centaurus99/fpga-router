@@ -1,9 +1,9 @@
 #include "lookup.h"
 #include "memhelper.h"
-#include <printf.h>
+#include <stdio.h>
 
 #ifndef ENABLE_BITMANIP
-int popcnt(int x) {
+int popcnt(u32 x) {
     int cnt = 0;
     while (x) {
         if (x & 1) cnt++;
@@ -12,7 +12,7 @@ int popcnt(int x) {
     return cnt;
 }
 #else
-extern int popcnt(int x);
+extern int popcnt(u32 x);
 #endif
 
 static inline u32 INDEX (in6_addr addr, int s, int n) {
@@ -75,13 +75,13 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     int child_stage = STAGE(dep + STRIDE);
 
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
-    if (!child->vec && child->leaf_vec == 1) {
-        if (!now->vec) {
+    if (!child->vec && child->leaf_vec == 2) {
+        if (!now->vec) {//printf("LIN!");
             now->child_base = child->leaf_base;
-            VEC_SET(now->tag, 8);
+            VEC_SET(now->tag, 7);
             VEC_SET(now->vec, idx);
             return;
-        } else if (VEC_BT(now->tag, 8)) {
+        } else if (VEC_BT(now->tag, 7)) {
             int cnt = POPCNT(now->vec);
             int new_base = leaf_malloc(cnt + 1);
             for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
@@ -100,7 +100,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
         }
     }
     // 需要把LIN优化取消并且顺便把要插的插进来
-    if (VEC_BT(now->tag, 8)) {
+    if (VEC_BT(now->tag, 7)) {
         int cnt = POPCNT(now->vec);
         int new_base = node_malloc(child_stage, cnt + 1);
         for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
@@ -110,13 +110,13 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
             } else if (VEC_BT(now->vec, i)) {
                 nodes(child_stage)[np].tag = 0;
                 nodes(child_stage)[np].vec = 0;
-                nodes(child_stage)[np].leaf_vec = 1;
+                nodes(child_stage)[np].leaf_vec = 2;
                 nodes(child_stage)[np].leaf_base = op;
                 ++np, ++op;
             }
         }
         now->child_base = new_base;
-        VEC_CLEAR(now->tag, 8);
+        VEC_CLEAR(now->tag, 7);
     } else if (!now->vec) { // 如果now还没有子节点
         now->child_base = node_malloc(child_stage, 1);
         nodes(child_stage)[now->child_base] = *child;
@@ -188,7 +188,7 @@ void _remove_lin(int dep, TrieNode *now, u32 idx) {
     int p = POPCNT_LS(now->vec, idx);
     if (p <= 1) {
         leaf_free(now->child_base, 1);
-        VEC_CLEAR(now->tag, 8);  // LIN子节点都删没了 tag也要清掉
+        ++(now->child_base);
     } else {
         p = now->child_base + p - 1;  // 要删掉的LIN子节点
         for (u32 i = idx + 1; i < (1<<STRIDE); ++i) {
@@ -200,6 +200,8 @@ void _remove_lin(int dep, TrieNode *now, u32 idx) {
         leaf_free(p, 1);
     }
     VEC_CLEAR(now->vec, idx);
+    if (!now->vec)
+        VEC_CLEAR(now->tag, 7);  // LIN子节点都删没了 tag也要清掉
 }
 
 
@@ -218,25 +220,25 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
         // printf("INSERT %d %x\n", dep,idx);
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
-            if (VEC_BT(now->tag, 8) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
+            if (VEC_BT(now->tag, 7) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
                 leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1] = entry_id;
                 return;
             }
             int child_stage = STAGE(dep + STRIDE);
-            if (VEC_BT(now->tag, 8) && dep + STRIDE != len) { // 需要把LIN取消掉
+            if (VEC_BT(now->tag, 7) && dep + STRIDE != len) { // 需要把LIN取消掉
                 int cnt = POPCNT(now->vec);
                 int new_base = node_malloc(child_stage, cnt + 1);
                 for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
                     if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
                         nodes(child_stage)[np].tag = 0;
                         nodes(child_stage)[np].vec = 0;
-                        nodes(child_stage)[np].leaf_vec = 1;
+                        nodes(child_stage)[np].leaf_vec = 2;
                         nodes(child_stage)[np].leaf_base = op;
                         ++np, ++op;
                     }
                 }
                 now->child_base = new_base;
-                VEC_CLEAR(now->tag, 8);
+                VEC_CLEAR(now->tag, 7);
             }
             TrieNode *child = &nodes(child_stage)[now->child_base + POPCNT_LS(now->vec, idx) - 1];
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
@@ -262,7 +264,7 @@ void remove_entry(int dep, int nid, in6_addr addr, int len) {
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
         if (VEC_BT(now->vec, idx)) {
-            if (VEC_BT(now->tag, 8)) { // 要删的是在LIN优化里的
+            if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
                 if (dep + STRIDE == len) _remove_lin(dep, now, idx);
             } else {
                 remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
@@ -278,6 +280,7 @@ void update(bool insert, const RoutingTableEntry entry) {
     } else {
         remove_entry(0, node_root, entry.addr, entry.len);
     }
+    // print(node_root, 0);
 }
 
 bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
@@ -295,8 +298,9 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *ro
         }
         // 跳下一层
         if (VEC_BT(now->vec, idx)) {
-            if (VEC_BT(now->tag, 8)) {
+            if (VEC_BT(now->tag, 7)) {
                 leaf = leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
+                break;
             } else {
                 now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
             }
@@ -356,7 +360,11 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
                 } else {
                     ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
                 }
-                _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+                if (VEC_BT(now->tag, 7)) {
+                    _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+                } else {
+                    _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+                }
             }
         }
     } else {
@@ -381,9 +389,25 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             } else {
                 ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
             }
-            _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+            if (VEC_BT(now->tag, 7)) {
+                _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+            } else {
+                _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+            }
         }
     }
 
 }
 
+void test() {
+    nodes(0)[2] = nodes(0)[1];
+    printf("1 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    VEC_SET(nodes(0)[2].tag, 7);
+    VEC_SET(nodes(0)[2].child_base, 5);
+    printf("2 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    VEC_CLEAR(nodes(0)[2].tag, 7);
+    nodes(0)[2].child_base = node_malloc(0,1);
+    printf("3 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    nodes(0)[2].tag = 0;
+    nodes(0)[2].child_base = 0;
+}
