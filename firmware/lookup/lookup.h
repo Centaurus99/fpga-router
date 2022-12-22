@@ -32,7 +32,7 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 // typedef __uint128_t u128;
-typedef u8 leaf_t;
+typedef u32 leaf_t;
 
 int popcnt(u32 x);
 /* IPv6 address */
