@@ -8,22 +8,18 @@
 #define ENTRY_COUNT  64
 #define STAGE_HEIGHT  4
 #define STRIDE  4
-#define STAGE_COUNT  9
-// FIXME stage_count should be 8
+#define STAGE_COUNT  8
 
 #define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
 #define LEAF_ADDRESS  0x50000000
 #define NEXT_HOP_ADDRESS  0x51000000
 
-int popcnt(int x);
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
 #define NODEINDEX(v)    ((v) >> STRIDE)
 #define VEC_CLEAR(v, i) ((v) &= ~((u32)1 << (i)))
 #define VEC_BT(v, i)    ((v) & (u32)1 << (i))
 #define VEC_SET(v, i)   ((v) |= (u32)1 << (i))
-// #define popcnt(v)               __builtin_popcountll(v)
-// #define popcnt(v) (v)
 #define POPCNT(v)       popcnt(v)
 #define ZEROCNT(v)      popcnt(~(v))
 #define POPCNT_LS(v, i) popcnt((v) & (((u32)2 << (i)) - 1))
@@ -36,8 +32,9 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 // typedef __uint128_t u128;
-typedef unsigned int leaf_t; // fixme: change to u8
+typedef u32 leaf_t;
 
+int popcnt(u32 x);
 /* IPv6 address */
 typedef struct
 {
@@ -77,23 +74,14 @@ typedef struct
     // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
 
-// // 真正的存储用的结构体
-// typedef struct {
-//     u8 vec[2];
-//     u8 leaf_vec[2];
-//     u8 child_base[3];
-//     u8 leaf_base[2];
-//     u8 padding[7];  //对齐到16位，实际不会访问到这个 TODO: use __align
-// } _TrieNode;
-
-// 为了处理时方便会先转成这个结构体 有改动的话再转回去
-// 现在结构体内也会对齐 所以可以都用uint32
+// 现在结构体内也会对齐 所以可以都用u32
 typedef struct
 {
     u32 vec;
     u32 leaf_vec;
-    u32 child_base;
-    u32 leaf_base;
+    u16 child_base;
+    u16 tag; // 低8位可用，第8位表示leaf-in-node优化
+    u32 leaf_base; // 16位可用
 } TrieNode;
 
 /**
