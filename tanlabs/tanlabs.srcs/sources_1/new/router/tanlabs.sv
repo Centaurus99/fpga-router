@@ -1533,7 +1533,7 @@ module tanlabs #(
         .mtime_int_o(mtime_int)
     );
 
-    /* =========== Router MMIO =========== */
+    /* =========== Router MMIO & DMA =========== */
     wire                             wb_mmio_cyc_o;
     wire                             wb_mmio_stb_o;
     wire                             wb_mmio_ack_i;
@@ -1542,6 +1542,17 @@ module tanlabs #(
     wire [  WISHBONE_DATA_WIDTH-1:0] wb_mmio_dat_i;
     wire [WISHBONE_DATA_WIDTH/8-1:0] wb_mmio_sel_o;
     wire                             wb_mmio_we_o;
+
+    // DMA 控制寄存器
+    wire                             dma_cpu_lock;
+    wire                             dma_router_lock;
+    wire                             dma_wait_cpu;
+    wire                             dma_wait_router;
+
+    wire                             dma_router_request;
+    wire                             dma_router_request_fin;
+    wire                             dma_router_sent_fin;
+    wire                             dma_router_read_fin;
 
     wishbone_cdc_handshake #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
@@ -1605,7 +1616,47 @@ module tanlabs #(
 
         .mac     (mac),
         .local_ip(local_ip),
-        .gua_ip  (gua_ip)
+        .gua_ip  (gua_ip),
+
+        .dma_cpu_lock_o   (dma_cpu_lock),
+        .dma_router_lock_o(dma_router_lock),
+        .dma_wait_cpu_o   (dma_wait_cpu),
+        .dma_wait_router_o(dma_wait_router),
+
+        .dma_router_request_i    (dma_router_request),
+        .dma_router_request_fin_i(dma_router_request_fin),
+        .dma_router_sent_fin_i   (dma_router_sent_fin),
+        .dma_router_read_fin_i   (dma_router_read_fin)
+    );
+
+    router_dma #(
+        .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+    ) u_router_dma (
+        .cpu_clk  (core_clk),
+        .cpu_reset(reset_core),
+
+        .wb_cyc_i(wbs3_cyc_o),
+        .wb_stb_i(wbs3_stb_o),
+        .wb_ack_o(wbs3_ack_i),
+        .wb_adr_i(wbs3_adr_o),
+        .wb_dat_i(wbs3_dat_o),
+        .wb_dat_o(wbs3_dat_i),
+        .wb_sel_i(wbs3_sel_o),
+        .wb_we_i (wbs3_we_o),
+
+        .eth_clk  (eth_clk),
+        .eth_reset(reset_eth),
+
+        .dma_cpu_lock_i   (dma_cpu_lock),
+        .dma_router_lock_i(dma_router_lock),
+        .dma_wait_cpu_i   (dma_wait_cpu),
+        .dma_wait_router_i(dma_wait_router),
+
+        .dma_router_request_o    (dma_router_request),
+        .dma_router_request_fin_o(dma_router_request_fin),
+        .dma_router_sent_fin_o   (dma_router_sent_fin),
+        .dma_router_read_fin_o   (dma_router_read_fin)
     );
 
     /* =========== Load Flash =========== */

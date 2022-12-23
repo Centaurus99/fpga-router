@@ -27,7 +27,19 @@ module router_mmio #(
     // 网络接口配置
     output reg [ 47:0] mac     [3:0],
     output reg [127:0] local_ip[3:0],
-    output reg [127:0] gua_ip  [3:0]
+    output reg [127:0] gua_ip  [3:0],
+
+    // DMA 状态与控制寄存器
+    output reg dma_cpu_lock_o,
+    output reg dma_router_lock_o,
+    output reg dma_wait_cpu_o,
+    output reg dma_wait_router_o,
+
+    // 路由器写入 DMA 寄存器请求
+    input wire dma_router_request_i,
+    input wire dma_router_request_fin_i,
+    input wire dma_router_sent_fin_i,
+    input wire dma_router_read_fin_i
 
 );
     // 根据 sel 获取 mask
@@ -97,24 +109,27 @@ module router_mmio #(
                 local_ip[i] <= preset_local_ip[i];
                 gua_ip[i]   <= 128'h0;
             end
+            dma_cpu_lock_o    <= 1'b0;
+            dma_router_lock_o <= 1'b0;
+            dma_wait_cpu_o    <= 1'b0;
+            dma_wait_router_o <= 1'b0;
         end else begin
             wb_dat_o <= '0;
             wb_ack_o <= 1'b0;
-            if (request & !wb_ack_o) begin
+            if (request && !wb_ack_o) begin
+                wb_ack_o <= 1'b1;
                 case (wb_adr_i[31:24])
                     8'h60: begin
-                        if (wb_adr_i[23:12] == 12'h0000 && wb_adr_i[11:10] == 2'b00) begin
-                            wb_ack_o <= 1'b1;
+                        if (wb_adr_i[23:12] == 12'h000 && wb_adr_i[11:10] == 2'b00) begin
                             case (wb_adr_i[7:2])
                                 6'b0000_00: wb_dat_o <= tx_counter[port_num] & data_mask;
                                 6'b0000_01: wb_dat_o <= rx_counter[port_num] & data_mask;
-                                default: wb_ack_o <= 1'b0;
+                                default: ;
                             endcase
                         end
                     end
                     8'h61: begin
-                        if (wb_adr_i[23:12] == 12'h0000 && wb_adr_i[11:10] == 2'b00) begin
-                            wb_ack_o <= 1'b1;
+                        if (wb_adr_i[23:12] == 12'h000 && wb_adr_i[11:10] == 2'b00) begin
                             case (wb_adr_i[7:4])
                                 4'h0: begin
                                     if (wb_adr_i[3] == 1'b0) begin
@@ -159,14 +174,48 @@ module router_mmio #(
                                         wb_dat_o <= gua_ip[port_num][{wb_adr_i[3:2], 5'b00000}+:32] & data_mask;
                                     end
                                 end
-                                default: wb_ack_o <= 1'b0;
+                                default: ;
                             endcase
                         end
                     end
                     8'h62: begin
+                        if (wb_adr_i[23:0] == 24'h000000) begin
+                            if (wb_we_i) begin
+                                if (!wb_dat_i[0]) begin
+                                    dma_cpu_lock_o <= 1'b0;
+                                end else if (!dma_router_lock_o && !dma_router_request_i) begin
+                                    dma_cpu_lock_o <= 1'b1;
+                                end
+                                if (wb_dat_i[2]) begin
+                                    dma_wait_cpu_o <= 1'b0;
+                                end
+                                if (wb_dat_i[3]) begin
+                                    dma_wait_router_o <= 1'b1;
+                                end
+                            end else begin
+                                wb_dat_o <= {
+                                    dma_wait_router_o,
+                                    dma_wait_cpu_o,
+                                    dma_router_lock_o,
+                                    dma_cpu_lock_o
+                                };
+                            end
+                        end
                     end
                     default: ;
                 endcase
+            end
+            if (dma_router_request_i && !dma_cpu_lock_o) begin
+                dma_router_lock_o <= 1'b1;
+            end
+            if (dma_router_request_fin_i) begin
+                dma_router_lock_o <= 1'b0;
+            end
+            if (dma_router_sent_fin_i) begin
+                dma_wait_cpu_o <= 1'b1;
+            end
+            if (dma_router_read_fin_i) begin
+                dma_wait_router_o <= 1'b0;
             end
         end
     end
