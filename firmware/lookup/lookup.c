@@ -353,7 +353,6 @@ void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, int leaf) {
 }
 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
-// TODO: 支持LIN优化
 void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip) {
     if (dep > 128) return;
     TrieNode *now = &NOW;

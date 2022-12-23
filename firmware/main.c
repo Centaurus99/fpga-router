@@ -217,6 +217,20 @@ bool operate_c() {
     return 1;
 }
 
+bool operate_q() {
+    if (!_getip(&addr)) {
+        sprintf(info, "Invalid IP addr; Usage: q [addr]");
+        return 0;
+    }
+    if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
+        printip(&nexthop, ipbuffer);
+        sprintf(info, "Found %s %d %d", ipbuffer, if_index, route_type);
+    } else {
+        sprintf(info, "Not found");
+    }
+    return 1;
+}
+
 void init_direct_route() {
     RoutingTableEntry entry;
     entry.addr.s6_addr32[0] = 0x06aa0e2a;
@@ -273,8 +287,8 @@ void start(int argc, char *argv[]) {
         header = 0;
         op = _getnonspace();
         if (op == 'e') { // exit
-            printf("Exited\n");
-            break;
+            sprintf(info, "We will not exit!");
+            // break;
         }
         else if (op == 'a') { // add
             error = !operate_a();
@@ -284,12 +298,17 @@ void start(int argc, char *argv[]) {
         }
         else if (op == 'c') { // check
             error = !operate_c();
-        } else {
+        }
+        else if (op == 'q') { // query
+            error = !operate_q();
+        } 
+        else {
             error = 1;
             sprintf(info, "Invalid Operation");
         }
+        
 
-        printf("%s\r\n", info);
+        printf("%s\n", info);
         display();
     }
 }
