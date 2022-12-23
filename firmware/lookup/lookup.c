@@ -78,7 +78,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
     if (!child->vec && child->leaf_vec == 2) {
         if (!now->vec) {//printf("LIN!");
-            assert(!VEC_BT(now->tag, 7));
+            // assert(!VEC_BT(now->tag, 7));
             now->child_base = child->leaf_base;
             VEC_SET(now->tag, 7);
             VEC_SET(now->vec, idx);
@@ -222,7 +222,7 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
         }
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
-        printf("INSERT %d %x\n", dep,idx);
+        // printf("INSERT %d %x\n", dep,idx);
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
@@ -343,8 +343,6 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
     if (dep > 128) return;
     TrieNode *now = &NOW;
     // 在当前层匹配所有的前缀
-    // printf("~~~%d %d %d\n", dep, nid, *count);
-    // for (int i = 0; i < 10; ++i);
     if (checking_all) {
         for (int pfx = 1; pfx < (1<<(STRIDE)); ++pfx) {
             if (!VEC_BT(now->leaf_vec, pfx)) continue;

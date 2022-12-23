@@ -79,5 +79,5 @@ def main(N):
             
 
 if __name__ == '__main__':
-    N = 50000
+    N = 10000
     main(N)
