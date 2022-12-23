@@ -764,44 +764,19 @@ module tanlabs #(
         .m_ready(dp_rx_ready)
     );
 
-    wire [    DATA_WIDTH - 1:0] dp_tx_data;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_keep;
-    wire                        dp_tx_last;
-    wire [DATA_WIDTH / 8 - 1:0] dp_tx_user;
-    wire [      ID_WIDTH - 1:0] dp_tx_dest;
-    wire                        dp_tx_valid;
+    wire [         DATA_WIDTH - 1:0] dp_tx_data;
+    wire [     DATA_WIDTH / 8 - 1:0] dp_tx_keep;
+    wire                             dp_tx_last;
+    wire [     DATA_WIDTH / 8 - 1:0] dp_tx_user;
+    wire [           ID_WIDTH - 1:0] dp_tx_dest;
+    wire                             dp_tx_valid;
 
-    wire [                47:0] mac         [3:0];
-    wire [               127:0] ip          [3:0];
+    // MMIO 端口配置, 见下面的 Router MMIO
+    wire [                     47:0] mac             [3:0];
+    wire [                    127:0] local_ip        [3:0];
+    wire [                    127:0] gua_ip          [3:0];
 
-    // FIXME: 硬编码 MAC 地址, 用于硬件调试
-    wire [                47:0] preset_mac  [3:0];
-    assign preset_mac[0] = {<<8{48'h8C_1F_64_69_10_30}};
-    assign preset_mac[1] = {<<8{48'h8C_1F_64_69_10_31}};
-    assign preset_mac[2] = {<<8{48'h8C_1F_64_69_10_32}};
-    assign preset_mac[3] = {<<8{48'h8C_1F_64_69_10_33}};
-
-    wire [127:0] ip_eui64_comb[3:0];
-    generate
-        for (i = 0; i < 4; i = i + 1) begin
-            eui64 eui64_i (
-                .mac(preset_mac[i]),
-                .ip (ip_eui64_comb[i])
-            );
-            config_address config_address_i (
-                .clk  (eth_clk),
-                .reset(reset_eth),
-
-                .we_mac (1'b1),
-                .we_ip  (1'b1),
-                .mac_in (preset_mac[i]),
-                .ip_in  (ip_eui64_comb[i]),
-                .mac_reg(mac[i]),
-                .ip_reg (ip[i])
-            );
-        end
-    endgenerate
-
+    // Router Slave
     wire                             wb_router_cyc_i;
     wire                             wb_router_stb_i;
     wire                             wb_router_ack_o;
@@ -821,8 +796,9 @@ module tanlabs #(
         .eth_clk(eth_clk),
         .reset  (reset_eth),
 
-        .mac(mac),
-        .ip (ip),
+        .mac     (mac),
+        .local_ip(local_ip),
+        .gua_ip  (gua_ip),
 
         .s_data (dp_rx_data),
         .s_keep (dp_rx_keep),
@@ -1625,7 +1601,11 @@ module tanlabs #(
         }),
         .eth_rx8_valid({
             eth_rx8_valid[4], eth_rx8_valid[3], eth_rx8_valid[2], eth_rx8_valid[1], eth_rx8_valid[0]
-        })
+        }),
+
+        .mac     (mac),
+        .local_ip(local_ip),
+        .gua_ip  (gua_ip)
     );
 
     /* =========== Load Flash =========== */

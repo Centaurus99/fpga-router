@@ -12,8 +12,9 @@ module frame_datapath #(
     input wire eth_clk,
     input wire reset,
 
-    input wire [ 47:0] mac[3:0],
-    input wire [127:0] ip [3:0],
+    input wire [ 47:0] mac     [3:0],
+    input wire [127:0] local_ip[3:0],
+    input wire [127:0] gua_ip  [3:0],
 
     input  wire [    DATA_WIDTH - 1:0] s_data,
     input  wire [DATA_WIDTH / 8 - 1:0] s_keep,
@@ -108,13 +109,12 @@ module frame_datapath #(
     // README: Your code here.
     // See the guide to figure out what you need to do with frames.
 
-
-    // 生成包入口 ip[in.meta.id] 对应的组播地址
+    // 生成包入口 local_ip[in.meta.id] 对应的组播地址
     wire [127:0] in_multicast_ip;
     wire [ 47:0] in_multicast_mac;
     wire [ 47:0] broadcast_mac;
     unicast_to_multicast unicast_to_multicast_i (
-        .ip_in  (ip[in.meta.id]),
+        .ip_in  (local_ip[in.meta.id]),
         .ip_out (in_multicast_ip),
         .mac_out(in_multicast_mac)
     );
@@ -140,6 +140,16 @@ module frame_datapath #(
         end
     end
 
+    reg s1_is_gua;
+    always_comb begin
+        s1_is_gua = 1'b0;
+        for (int i = 0; i < 4; i++) begin
+            if (s1.data.ip6.dst == gua_ip[i]) begin
+                s1_is_gua = 1'b1;
+            end
+        end
+    end
+
     // 判断接收还是转发
     frame_beat s2;
     wire       s2_ready;
@@ -150,8 +160,8 @@ module frame_datapath #(
         end else if (s2_ready) begin
             s2 <= s1;
             if (`should_handle(s1)) begin
-                // IPv6 目的地址为对应网口可接收地址, 需要接收
-                if ((s1.data.ip6.dst == ip[s1.meta.id] || s1.data.ip6.dst == in_multicast_ip)) begin
+                if ((s1.data.ip6.dst == local_ip[s1.meta.id] || s1.data.ip6.dst == in_multicast_ip)) begin
+                    // IPv6 目的地址为对应网口可接收地址, 需要接收
                     // 需要接收的包不需要转发逻辑处理
                     s2.meta.dont_touch <= 1'b1;
 
@@ -165,8 +175,12 @@ module frame_datapath #(
                         s2.meta.dest <= ID_CPU;
                     end
 
-                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
+                end else if (s1_is_gua) begin
+                    // IPv6 目的地址为对应任意网口的 GUA 地址, 转给软件处理
+                    s2.meta.dest <= ID_CPU;
+
                 end else begin
+                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
                     if (s1.data.ip6.hop_limit <= 1) begin
                         // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
                         s2.meta.drop <= 1;
@@ -310,8 +324,8 @@ module frame_datapath #(
         .eth_clk(eth_clk),
         .reset  (reset),
 
-        .mac(mac),
-        .ip (ip),
+        .mac     (mac),
+        .local_ip(local_ip),
 
         .nc_we     (nc_we),
         .nc_in_v6_w(nc_in_v6_w),

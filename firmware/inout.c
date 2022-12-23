@@ -20,7 +20,7 @@ void timer() {
     else if (now - last > 10000000) {
         for (int p = 0; p < 2; p++) {
             for (int i = 0; i < 4; i++) {
-                unsigned int cnt = *(volatile unsigned int *)(0x60000000 + 0x010 * i + 0x04 * p);
+                unsigned int cnt = *(volatile unsigned int *)(0x60000000 + 0x100 * i + 0x04 * p);
                 forward_speed[p][i] = (1000ll * cnt) / (now-last);
                 // forward_speed[p][i] = (now - last) / 10;
             }
