@@ -34,7 +34,13 @@ static inline u32 INDEX (in6_addr addr, int s, int n) {
 }
 
 #ifndef USE_BRAM
+
+#ifdef TRIVIAL_MALLOC
 TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+#else
+TrieNode *_nodes[STAGE_COUNT];
+#endif
+
 #define nodes(i) _nodes[i]
 leaf_t leafs[LEAF_COUNT];
 NextHopEntry next_hops[ENTRY_COUNT];
@@ -174,7 +180,7 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
     // printf("~REMOVE LEAF: %x, %x\n", now, pfx);
     int p = POPCNT_LS(now->leaf_vec, pfx);
     if (p <= 1) {
-        leaf_free(now->leaf_base, 1);
+        // leaf_free(now->leaf_base, 1);
         ++(now->leaf_base);
     } else {
         p = now->leaf_base + p - 1;  // 要删掉的叶子
@@ -184,7 +190,8 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
                 ++p;
             }
         }
-        leaf_free(p, 1); // 把原来的最后一个位置free掉
+        // HACK: 删除的时候不再free一个了
+        // leaf_free(p, 1); // 把原来的最后一个位置free掉
     }
     VEC_CLEAR(now->leaf_vec, pfx);
 }
@@ -192,7 +199,7 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
 void _remove_lin(int dep, TrieNode *now, u32 idx) {
     int p = POPCNT_LS(now->vec, idx);
     if (p <= 1) {
-        leaf_free(now->child_base, 1);
+        // leaf_free(now->child_base, 1);
         ++(now->child_base);
     } else {
         p = now->child_base + p - 1;  // 要删掉的LIN子节点
@@ -202,7 +209,7 @@ void _remove_lin(int dep, TrieNode *now, u32 idx) {
                 ++p;
             }
         }
-        leaf_free(p, 1);
+        // leaf_free(p, 1);
     }
     VEC_CLEAR(now->vec, idx);
     if (!now->vec)

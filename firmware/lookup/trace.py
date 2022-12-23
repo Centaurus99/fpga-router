@@ -23,11 +23,51 @@ def init():
     
     os.system(f'python grade.py gen_ionly {N}')
     os.system('./lookup < data/I_only_input.txt > data/I_only_trace.txt')
-    
 
-def main(N):
+def export():
+    node_cnt = 0
+    blk_cnt = 0
+    for i in range(8):
+        nmax[i][0] = 0
+        for j in range(1, 17):
+            nmax[i][j] = int((nmax[i][j]+5)*1.2)
+            nmax[i][0] += nmax[i][j]*j
+            blk_cnt += nmax[i][j]
+        x = int((1024 - (nmax[i][0] % 1024)) // 16)
+        nmax[i][0] += x * 16
+        nmax[i][j] += x
+        blk_cnt += x
+
+        node_cnt += nmax[i][0]
+    for i in range(1, 17):
+        lmax[i] = int((lmax[i]+10)*1.2)
+        lmax[0] += lmax[i]*i
+        blk_cnt += lmax[i]
+    x = int((1024 - (lmax[0] % 1024)) // 16)
+    lmax[0] += x * 16
+    lmax[16] += x
+    blk_cnt += x
+    with open('blk_cnt.txt', 'w') as f:
+        f.write('int node_blk_cnt[8][17] = {\n')
+        for i in range(8):
+            f.write('\t{')
+            for j in range(17):
+                f.write((f'{nmax[i][j]}'+' '*10)[:5] + (',' if j<16 else '}'))
+            f.write(',\n'if i<7 else '};\n')
+
+        f.write('int leaf_blk_cnt[17] = \n\t{')
+        for j in range(17):
+            f.write((f'{lmax[j]}'+' '*10)[:5] + (',' if j<16 else '}'))
+        f.write(';\n')
+        f.write('#ifndef USE_BRAM\n')
+        f.write(f'TrieNode node_pool[{node_cnt}];\n')
+        f.write('extern TrieNode *_nodes[8];\n')
+        f.write('#endif\n')
+        f.write(f'int blk_pool[{blk_cnt}];')
+
+def main(N, M):
     global lsum, lsummax
-    for x in range(10):
+    for x in range(M):
         init()
         with open('data/I_only_trace.txt', 'r') as f:
             for line in f:
@@ -68,16 +108,19 @@ def main(N):
     for i in range(8):
         print(i, end='\t')
         for j in range(1, 17):
-            print((f'{nave[i][j]//10}/{nmax[i][j]}'+' '*12)[:12], end=' ')
+            print((f'{nave[i][j]//M}/{nmax[i][j]}'+' '*12)[:12], end=' ')
         print((f'{nsummax[i]}'+' '*12)[:12], end=' ')
         print()
     print('Leaf', end='\t')
     for i in range(1, 17):
-        print((f'{lave[i]//10}/{lmax[i]}'+' '*12)[:12], end=' ')
+        print((f'{lave[i]//M}/{lmax[i]}'+' '*12)[:12], end=' ')
     print((f'{lsummax}'+' '*12)[:12], end=' ')
     print()
-            
 
+    export()
+            
+import sys
 if __name__ == '__main__':
-    N = 10000
-    main(N)
+    N = int(sys.argv[1]) if len(sys.argv) > 1 else 10000
+    main(int(sys.argv[1]) if len(sys.argv) > 1 else 10000,
+        int(sys.argv[2]) if len(sys.argv) > 2 else 10)

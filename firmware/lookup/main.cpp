@@ -1,4 +1,5 @@
 #include "lookup.h"
+#include "memhelper.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,6 +9,8 @@ char buffer[1024];
 
 int main(int argc, char *argv[])
 {
+    memhelper_init();
+
     u32 len, if_index, route_type;
     in6_addr addr, nexthop;
     char addr_buffer[128];

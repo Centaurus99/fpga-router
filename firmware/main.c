@@ -1,4 +1,5 @@
 #include "lookup/lookup.h"
+#include "lookup/memhelper.h"
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
@@ -262,7 +263,7 @@ void start(int argc, char *argv[]) {
     }
     init_uart();
 
-    test();
+    memhelper_init();
     init_direct_route();
     display();
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
