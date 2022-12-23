@@ -22,15 +22,15 @@ def init():
     lsum = 0
     
     os.system(f'python grade.py gen_ionly {N}')
-    os.system('./lookup < data/I_only_input.txt > data/I_only_trace.txt')
+    os.system('./lookup_trivialmem < data/I_only_input.txt > data/I_only_trace.txt')
 
-def export():
+def export(ratio=1.0):
     node_cnt = 0
     blk_cnt = 0
     for i in range(8):
         nmax[i][0] = 0
         for j in range(1, 17):
-            nmax[i][j] = int((nmax[i][j]+5)*1.2)
+            nmax[i][j] = int((nmax[i][j]+5)*ratio)
             nmax[i][0] += nmax[i][j]*j
             blk_cnt += nmax[i][j]
         x = int((1024 - (nmax[i][0] % 1024)) // 16)
@@ -40,7 +40,7 @@ def export():
 
         node_cnt += nmax[i][0]
     for i in range(1, 17):
-        lmax[i] = int((lmax[i]+10)*1.2)
+        lmax[i] = int((lmax[i]+10)*ratio)
         lmax[0] += lmax[i]*i
         blk_cnt += lmax[i]
     x = int((1024 - (lmax[0] % 1024)) // 16)

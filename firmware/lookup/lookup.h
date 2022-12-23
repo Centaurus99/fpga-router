@@ -5,7 +5,7 @@
 
 #define NODE_COUNT_PER_STAGE  65535
 #define LEAF_COUNT  65535
-#define ENTRY_COUNT  640
+#define ENTRY_COUNT  6400
 #define STAGE_HEIGHT  4
 #define STRIDE  4
 #define STAGE_COUNT  8
