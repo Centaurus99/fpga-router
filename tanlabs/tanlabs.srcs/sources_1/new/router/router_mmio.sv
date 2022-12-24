@@ -37,7 +37,6 @@ module router_mmio #(
 
     // 路由器写入 DMA 寄存器请求
     input wire dma_router_request_i,
-    input wire dma_router_request_fin_i,
     input wire dma_router_sent_fin_i,
     input wire dma_router_read_fin_i
 
@@ -181,15 +180,14 @@ module router_mmio #(
                     8'h62: begin
                         if (wb_adr_i[23:0] == 24'h000000) begin
                             if (wb_we_i) begin
-                                if (!wb_dat_i[0]) begin
-                                    dma_cpu_lock_o <= 1'b0;
-                                end else if (!dma_router_lock_o && !dma_router_request_i) begin
+                                if (wb_dat_i[0] && !dma_router_lock_o && !dma_router_request_i) begin
                                     dma_cpu_lock_o <= 1'b1;
                                 end
                                 if (wb_dat_i[2]) begin
                                     dma_wait_cpu_o <= 1'b0;
                                 end
                                 if (wb_dat_i[3]) begin
+                                    dma_cpu_lock_o    <= 1'b0;
                                     dma_wait_router_o <= 1'b1;
                                 end
                             end else begin
@@ -208,11 +206,9 @@ module router_mmio #(
             if (dma_router_request_i && !dma_cpu_lock_o) begin
                 dma_router_lock_o <= 1'b1;
             end
-            if (dma_router_request_fin_i) begin
-                dma_router_lock_o <= 1'b0;
-            end
             if (dma_router_sent_fin_i) begin
-                dma_wait_cpu_o <= 1'b1;
+                dma_router_lock_o <= 1'b0;
+                dma_wait_cpu_o    <= 1'b1;
             end
             if (dma_router_read_fin_i) begin
                 dma_wait_router_o <= 1'b0;

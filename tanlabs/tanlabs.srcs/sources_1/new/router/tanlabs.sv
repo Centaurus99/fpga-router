@@ -1538,7 +1538,6 @@ module tanlabs #(
     wire                             dma_wait_router;
 
     wire                             dma_router_request;
-    wire                             dma_router_request_fin;
     wire                             dma_router_sent_fin;
     wire                             dma_router_read_fin;
 
@@ -1611,10 +1610,9 @@ module tanlabs #(
         .dma_wait_cpu_o   (dma_wait_cpu),
         .dma_wait_router_o(dma_wait_router),
 
-        .dma_router_request_i    (dma_router_request),
-        .dma_router_request_fin_i(dma_router_request_fin),
-        .dma_router_sent_fin_i   (dma_router_sent_fin),
-        .dma_router_read_fin_i   (dma_router_read_fin)
+        .dma_router_request_i (dma_router_request),
+        .dma_router_sent_fin_i(dma_router_sent_fin),
+        .dma_router_read_fin_i(dma_router_read_fin)
     );
 
     router_dma #(
@@ -1641,10 +1639,9 @@ module tanlabs #(
         .dma_wait_cpu_i   (dma_wait_cpu),
         .dma_wait_router_i(dma_wait_router),
 
-        .dma_router_request_o    (dma_router_request),
-        .dma_router_request_fin_o(dma_router_request_fin),
-        .dma_router_sent_fin_o   (dma_router_sent_fin),
-        .dma_router_read_fin_o   (dma_router_read_fin),
+        .dma_router_request_o (dma_router_request),
+        .dma_router_sent_fin_o(dma_router_sent_fin),
+        .dma_router_read_fin_o(dma_router_read_fin),
 
         .rx8_data (internal_rx_data),
         .rx8_last (internal_rx_last),
