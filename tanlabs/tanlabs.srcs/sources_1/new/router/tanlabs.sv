@@ -542,26 +542,15 @@ module tanlabs #(
                 .S03_AXIS_TID    (3'd3),
                 .S03_AXIS_TUSER  (eth_tx8_user[3]),
 
-                // FIXME: 暂时将 CPU 收到的包发给 axis_receiver
-                // .S04_AXIS_ACLK(eth_clk),
-                // .S04_AXIS_ARESETN(~reset_eth),
-                // .S04_AXIS_TVALID(1'b0),
-                // .S04_AXIS_TREADY(),
-                // .S04_AXIS_TDATA(0),
-                // .S04_AXIS_TKEEP(1'b1),
-                // .S04_AXIS_TLAST(1'b0),
-                // .S04_AXIS_TID(3'd4),
-                // .S04_AXIS_TUSER(1'b0),
-
                 .S04_AXIS_ACLK   (eth_clk),
                 .S04_AXIS_ARESETN(~reset_eth),
-                .S04_AXIS_TVALID (eth_tx8_valid[4]),
-                .S04_AXIS_TREADY (eth_tx8_ready[4]),
-                .S04_AXIS_TDATA  (eth_tx8_data[4]),
+                .S04_AXIS_TVALID (1'b0),
+                .S04_AXIS_TREADY (),
+                .S04_AXIS_TDATA  (0),
                 .S04_AXIS_TKEEP  (1'b1),
-                .S04_AXIS_TLAST  (eth_tx8_last[4]),
+                .S04_AXIS_TLAST  (1'b0),
                 .S04_AXIS_TID    (3'd4),
-                .S04_AXIS_TUSER  (eth_tx8_user[4]),
+                .S04_AXIS_TUSER  (1'b0),
 
                 .M00_AXIS_ACLK   (eth_clk),
                 .M00_AXIS_ARESETN(~reset_eth),
@@ -615,19 +604,18 @@ module tanlabs #(
     wire internal_rx_user = eth_tx8_user[4];
     wire internal_rx_valid = eth_tx8_valid[4];
     wire internal_rx_ready;
-    // FIXME: 暂时将 CPU 发来的包发给 axis_receiver
-    // assign eth_tx8_ready[4] = internal_rx_ready;
+    assign eth_tx8_ready[4] = internal_rx_ready;
 
     // README: internal_tx_* and internal_rx_* are left for internal use.
     // You can connect them with your CPU to transfer frames between the router part and the CPU part,
     // and you may need to write some logic to receive from internal_rx_*, store data to some memory,
     // read data from some memory, and send to internal_tx_*.
     // You can also transfer frames in other ways.
-    assign internal_tx_data  = 0;
-    assign internal_tx_last  = 0;
-    assign internal_tx_user  = 0;
-    assign internal_tx_valid = 0;
-    assign internal_rx_ready = 0;
+    // assign internal_tx_data  = 0;
+    // assign internal_tx_last  = 0;
+    // assign internal_tx_user  = 0;
+    // assign internal_tx_valid = 0;
+    // assign internal_rx_ready = 0;
 
     wire [7:0] out_led;
     led_delayer led_delayer_i (
@@ -1656,7 +1644,19 @@ module tanlabs #(
         .dma_router_request_o    (dma_router_request),
         .dma_router_request_fin_o(dma_router_request_fin),
         .dma_router_sent_fin_o   (dma_router_sent_fin),
-        .dma_router_read_fin_o   (dma_router_read_fin)
+        .dma_router_read_fin_o   (dma_router_read_fin),
+
+        .rx8_data (internal_rx_data),
+        .rx8_last (internal_rx_last),
+        .rx8_user (internal_rx_user),
+        .rx8_valid(internal_rx_valid),
+        .rx8_ready(internal_rx_ready),
+
+        .tx8_data (internal_tx_data),
+        .tx8_last (internal_tx_last),
+        .tx8_user (internal_tx_user),
+        .tx8_valid(internal_tx_valid),
+        .tx8_ready(1'b1)
     );
 
     /* =========== Load Flash =========== */
