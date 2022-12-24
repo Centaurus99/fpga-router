@@ -10,7 +10,7 @@
 #define DMA_CTRL (*(volatile uint8_t *)(DMA_CTRL_ADDR + 0))
 #define DMA_LEN (*(volatile uint32_t *)(DMA_BASE_ADDR + 0))
 
-#define DMA_PTR ((volatile uint32_t *)(DMA_BASE_ADDR + 4))
+#define DMA_PTR ((volatile uint8_t *)(DMA_BASE_ADDR + 4))
 
 // DMA 控制寄存器的定义
 #define DMA_REG_WAIT_ROUTER 0x08 /* 等待 Router 读取 */
@@ -42,5 +42,10 @@ bool dma_read_need();
  * 告知读取完成, 将拉低 [等待 CPU 读取] 标志位
  */
 void dma_read_finish();
+
+/**
+ * DMA 串口交互程序, 用于测试
+ */
+void dma_demo();
 
 #endif

@@ -1,4 +1,5 @@
 #include "lookup/lookup.h"
+#include <dma.h>
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
@@ -283,6 +284,11 @@ void start(int argc, char *argv[]) {
         }
         else if (op == 'c') { // check
             error = !operate_c();
+        } 
+        else if (op == 'f') { // DMA Demo
+            error = 0;
+            sprintf(info, "---- DMA DEMO ----");
+            dma_demo();
         } else {
             error = 1;
             sprintf(info, "Invalid Operation");
