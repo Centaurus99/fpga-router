@@ -66,11 +66,12 @@ void dma_demo() {
                     ch = _getchar_uart();
                 }
 
-                printf(".\r\n");
-                printf("DMA Check: len = %d data = ", DMA_LEN);
-                for (int i = 0; i < DMA_LEN; i++) {
-                    printf("%02x ", DMA_PTR[i]);
-                }
+                // 检验写入是否正确
+                // printf(".\r\n");
+                // printf("DMA Check: len = %d data = ", DMA_LEN);
+                // for (int i = 0; i < DMA_LEN; i++) {
+                //     printf("%02x ", DMA_PTR[i]);
+                // }
                 printf(".\r\n");
                 dma_send_finish(); // 写完后, 告知发送完成
                 ch = 0;
