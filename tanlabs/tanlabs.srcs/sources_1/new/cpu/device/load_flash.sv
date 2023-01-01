@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps `default_nettype none
 
-module load_flash (
+module load_flash #(
+    parameter END_ADDR = 24'h7ffffc  // 结束地址, 按照 4 字节对齐
+) (
     input wire clk,
     input wire rst,
 
@@ -76,7 +78,11 @@ module load_flash (
                     end
                 end
                 ST_READ: begin
-                    leds[base_addr[22:19]^4'b1111] <= 1'b1;
+                    if (END_ADDR == 24'h3ffffc) begin  // 特判只烧写 BaseRAM 的情况
+                        leds[base_addr[21:18]^4'b1111] <= 1'b1;
+                    end else begin
+                        leds[base_addr[22:19]^4'b1111] <= 1'b1;
+                    end
                     if (wbm_flash_read_ack_i) begin
                         wbm_flash_read_stb_o <= 1'b0;
                         wbm_sram_stb_o       <= 1'b1;
@@ -94,7 +100,7 @@ module load_flash (
                         wbm_sram_dat_o <= 32'h00000000;
                         wbm_sram_sel_o <= 4'b0000;
                         wbm_sram_we_o  <= 1'b0;
-                        if (base_addr == 24'h7ffffc) begin
+                        if (base_addr == END_ADDR) begin
                             base_addr            <= 24'h000000;
                             leds                 <= 16'h0000;
                             wait_flash           <= 1'b0;

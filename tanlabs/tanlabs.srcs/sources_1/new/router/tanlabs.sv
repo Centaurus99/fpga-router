@@ -1751,7 +1751,9 @@ module tanlabs #(
         .flash_byte_n(flash_byte_n)
     );
 
-    load_flash u_load_flash (
+    load_flash #(
+        .END_ADDR(EXT_RAM_FOR_LEAF ? 24'h3ffffc : 24'h7ffffc)
+    ) u_load_flash (
         .clk(sys_clk),
         .rst(reset_core_without_bufg),
 
