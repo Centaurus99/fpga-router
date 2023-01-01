@@ -3,7 +3,7 @@
 
 #include "lookup.h"
 
-#define TRIVIAL_MALLOC
+// #define TRIVIAL_MALLOC
 
 int node_malloc(int stage, int len);
 

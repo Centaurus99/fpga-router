@@ -3,8 +3,8 @@
 
 #include "stdbool.h"
 
-#define NODE_COUNT_PER_STAGE  65535
-#define LEAF_COUNT  65535
+#define NODE_COUNT_PER_STAGE  655350
+#define LEAF_COUNT  655350
 #define ENTRY_COUNT  640
 #define STAGE_HEIGHT  4
 #define STRIDE  4
@@ -79,7 +79,7 @@ typedef struct
 {
     u32 vec;
     u32 leaf_vec;
-    u32 child_base; // should be 16
+    u16 child_base; // should be 16
     u16 tag; // 低8位可用，第8位表示leaf-in-node优化
     u32 leaf_base; // 16位可用
 } TrieNode;

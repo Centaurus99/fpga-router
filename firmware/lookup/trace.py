@@ -22,7 +22,7 @@ def init():
     lsum = 0
     
     os.system(f'python grade.py gen_ionly {N}')
-    os.system('./lookup_trivialmem < data/I_only_input.txt > data/I_only_trace.txt')
+    os.system('./lookup < data/I_only_input.txt > data/I_only_trace.txt')
 
 def export(ratio=1.0):
     node_cnt = 0
@@ -48,6 +48,7 @@ def export(ratio=1.0):
     lmax[16] += x
     blk_cnt += x
     with open('blk_cnt.txt', 'w') as f:
+        f.write(f'// {N} insertions, {M} times, {ratio}x size\n')
         f.write('int node_blk_cnt[8][17] = {\n')
         for i in range(8):
             f.write('\t{')
@@ -65,7 +66,7 @@ def export(ratio=1.0):
         f.write('#endif\n')
         f.write(f'int blk_pool[{blk_cnt}];')
 
-def main(N, M):
+def main(N, M, R):
     global lsum, lsummax
     for x in range(M):
         init()
@@ -117,10 +118,13 @@ def main(N, M):
     print((f'{lsummax}'+' '*12)[:12], end=' ')
     print()
 
-    export()
+    export(R)
             
 import sys
 if __name__ == '__main__':
     N = int(sys.argv[1]) if len(sys.argv) > 1 else 10000
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else 10000,
-        int(sys.argv[2]) if len(sys.argv) > 2 else 10)
+    M = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+    R = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
+    os.system('make clean')
+    os.system('make TRACE=y')
+    main(N, M, R)
