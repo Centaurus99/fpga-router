@@ -1,9 +1,9 @@
 #include "lookup.h"
 #include "memhelper.h"
-#include <printf.h>
+#include <stdio.h>
 
 #ifndef ENABLE_BITMANIP
-int popcnt(int x) {
+int popcnt(u32 x) {
     int cnt = 0;
     while (x) {
         if (x & 1) cnt++;
@@ -12,7 +12,7 @@ int popcnt(int x) {
     return cnt;
 }
 #else
-extern int popcnt(int x);
+extern int popcnt(u32 x);
 #endif
 
 static inline u32 INDEX (in6_addr addr, int s, int n) {
@@ -38,14 +38,12 @@ TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 leaf_t leafs[LEAF_COUNT];
 NextHopEntry next_hops[ENTRY_COUNT];
 #else
-#define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
-#define leafs ((volatile leaf_t *)LEAF_ADDRESS)
-#define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
+#define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
+#define leafs ((leaf_t *)LEAF_ADDRESS)
+#define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
 leaf_t entry_count;
 int node_root;
-
-// RoutingTableEntry routing_table[ENTRY_COUNT]; // TODO: 删掉
 
 TrieNode stk[33];
 
@@ -56,12 +54,6 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
             next_hops[i].ip[1] == entry.nexthop.s6_addr32[1] && 
             next_hops[i].ip[2] == entry.nexthop.s6_addr32[2] && 
             next_hops[i].ip[3] == entry.nexthop.s6_addr32[3] &&
-            // // FIXME: 正式路由表里不应该判断addr和len相不相同！
-            // routing_table[i].addr.s6_addr32[0] == entry.addr.s6_addr32[0] && 
-            // routing_table[i].addr.s6_addr32[1] == entry.addr.s6_addr32[1] && 
-            // routing_table[i].addr.s6_addr32[2] == entry.addr.s6_addr32[2] && 
-            // routing_table[i].addr.s6_addr32[3] == entry.addr.s6_addr32[3] &&
-            // routing_table[i].len == entry.len &&
             next_hops[i].route_type == entry.route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
@@ -83,34 +75,49 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     int child_stage = STAGE(dep + STRIDE);
 
     // 如果child没有内部子节点且只有一个*的叶子节点，判断是否能做leaf-in-node优化
-    // if (!child->child_base && child->leaf_vec == 1) {
-    //     if (!now->child_base) {
-    //         now->child_base = child->leaf_base;
-    //         VEC_SET(now->child_base, 24);
-    //         VEC_SET(now->vec, idx);
-    //         return;
-    //     } else if (VEC_BT(now->child_base, 24)) {
-    //         int cnt = POPCNT(now->vec);
-    //         int new_base = leaf_malloc(cnt + 1);
-    //         for (u32 i = 0, op = now->child_base & 0x7fffff, np = new_base; i < (1<<STRIDE); ++i) {
-    //             if (i == idx) {
-    //                 leafs[np] = leafs[child->leaf_base];
-    //                 leaf_free(child->leaf_base, 1);
-    //                 ++np;
-    //             } else if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
-    //                 leafs[np] = leafs[op];
-    //                 ++np, ++op;
-    //             }
-    //         }
-    //         now->child_base = new_base;
-    //         VEC_SET(now->child_base, 24);
-    //         VEC_SET(now->vec, idx);
-    //         return;
-    //     }
-    // }
-    if (VEC_BT(now->child_base, 24)) { // TODO: 需要把之前做的leaf-in-node优化都下放
-        
-    } else if (!now->child_base) { // 如果now还没有子节点
+    if (!child->vec && child->leaf_vec == 2) {
+        if (!now->vec) {//printf("LIN!");
+            now->child_base = child->leaf_base;
+            VEC_SET(now->tag, 7);
+            VEC_SET(now->vec, idx);
+            return;
+        } else if (VEC_BT(now->tag, 7)) {
+            int cnt = POPCNT(now->vec);
+            int new_base = leaf_malloc(cnt + 1);
+            for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+                if (i == idx) {
+                    leafs[np] = leafs[child->leaf_base];
+                    ++np;
+                } else if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
+                    leafs[np] = leafs[op];
+                    ++np, ++op;
+                }
+            }
+            now->child_base = new_base;
+            VEC_SET(now->vec, idx);
+            leaf_free(child->leaf_base, 1); // TODO: 这里可以优化
+            return;
+        }
+    }
+    // 需要把LIN优化取消并且顺便把要插的插进来
+    if (VEC_BT(now->tag, 7)) {
+        int cnt = POPCNT(now->vec);
+        int new_base = node_malloc(child_stage, cnt + 1);
+        for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+            if (i == idx) {
+                nodes(child_stage)[np] = *child;
+                ++np;
+            } else if (VEC_BT(now->vec, i)) {
+                nodes(child_stage)[np].tag = 0;
+                nodes(child_stage)[np].vec = 0;
+                nodes(child_stage)[np].leaf_vec = 2;
+                nodes(child_stage)[np].leaf_base = op;
+                ++np, ++op;
+            }
+        }
+        now->child_base = new_base;
+        VEC_CLEAR(now->tag, 7);
+    } else if (!now->vec) { // 如果now还没有子节点
         now->child_base = node_malloc(child_stage, 1);
         nodes(child_stage)[now->child_base] = *child;
     } else {
@@ -130,7 +137,6 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
         now->child_base = new_base;
     }
     VEC_SET(now->vec, idx);
-    // NOW = u32s_to_u8s(*now);
 }
 
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
@@ -156,7 +162,6 @@ void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id) {
         now->leaf_base = new_base;
     }
     VEC_SET(now->leaf_vec, pfx);
-    // NOW = u32s_to_u8s(*now);
 }
 
 // 移除now的pfx位置的叶子（保证存在）然后把后面的往前挪
@@ -174,10 +179,29 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
                 ++p;
             }
         }
-        leaf_free(p, 1);
+        leaf_free(p, 1); // 把原来的最后一个位置free掉
     }
     VEC_CLEAR(now->leaf_vec, pfx);
-    // NOW = u32s_to_u8s(*now);
+}
+
+void _remove_lin(int dep, TrieNode *now, u32 idx) {
+    int p = POPCNT_LS(now->vec, idx);
+    if (p <= 1) {
+        leaf_free(now->child_base, 1);
+        ++(now->child_base);
+    } else {
+        p = now->child_base + p - 1;  // 要删掉的LIN子节点
+        for (u32 i = idx + 1; i < (1<<STRIDE); ++i) {
+            if (VEC_BT(now->vec, i)) {
+                leafs[p] = leafs[p+1];
+                ++p;
+            }
+        }
+        leaf_free(p, 1);
+    }
+    VEC_CLEAR(now->vec, idx);
+    if (!now->vec)
+        VEC_CLEAR(now->tag, 7);  // LIN子节点都删没了 tag也要清掉
 }
 
 
@@ -194,16 +218,34 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
         // printf("INSERT %d %x\n", dep,idx);
-        // TODO: 如果now做了leaf-in-node优化，判断是否要把孩子下放
-        if (VEC_BT(now->child_base, 24) && len != dep + STRIDE) {
-            int cnt = popcnt(now->vec);
-        }
+        // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
-            TrieNode *child = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
+            if (VEC_BT(now->tag, 7) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
+                leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1] = entry_id;
+                return;
+            }
+            int child_stage = STAGE(dep + STRIDE);
+            if (VEC_BT(now->tag, 7) && dep + STRIDE != len) { // 需要把LIN取消掉
+                int cnt = POPCNT(now->vec);
+                int new_base = node_malloc(child_stage, cnt + 1);
+                for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+                    if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
+                        nodes(child_stage)[np].tag = 0;
+                        nodes(child_stage)[np].vec = 0;
+                        nodes(child_stage)[np].leaf_vec = 2;
+                        nodes(child_stage)[np].leaf_base = op;
+                        ++np, ++op;
+                    }
+                }
+                now->child_base = new_base;
+                VEC_CLEAR(now->tag, 7);
+            }
+            TrieNode *child = &nodes(child_stage)[now->child_base + POPCNT_LS(now->vec, idx) - 1];
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
         } else {
             TrieNode *child = &stk[dep/STRIDE + 1];
             child->vec = child->leaf_vec = 0;
+            child->tag = 0;
             insert_entry(dep + STRIDE, child, addr, len, entry_id);
             _insert_node(dep, now, idx, child);
         }
@@ -222,7 +264,11 @@ void remove_entry(int dep, int nid, in6_addr addr, int len) {
     } else {
         u32 idx = INDEX(addr, dep, STRIDE);
         if (VEC_BT(now->vec, idx)) {
-            remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
+            if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
+                if (dep + STRIDE == len) _remove_lin(dep, now, idx);
+            } else {
+                remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
+            }
         }
     }
 }
@@ -234,6 +280,7 @@ void update(bool insert, const RoutingTableEntry entry) {
     } else {
         remove_entry(0, node_root, entry.addr, entry.len);
     }
+    print(node_root, 0);
 }
 
 bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type) {
@@ -251,9 +298,12 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *ro
         }
         // 跳下一层
         if (VEC_BT(now->vec, idx)) {
-            now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
-            if (dep + STRIDE >= 128 && VEC_BT(now->leaf_vec, 1))
-                leaf = leafs[now->leaf_base];
+            if (VEC_BT(now->tag, 7)) {
+                leaf = leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
+                break;
+            } else {
+                now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
+            }
         } else {
             break;
         }
@@ -280,6 +330,7 @@ void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, int leaf) {
 }
 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
+// TODO: 支持LIN优化
 void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip) {
     if (dep > 128) return;
     TrieNode *now = &NOW;
@@ -309,7 +360,11 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
                 } else {
                     ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
                 }
-                _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+                if (VEC_BT(now->tag, 7)) {
+                    _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+                } else {
+                    _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+                }
             }
         }
     } else {
@@ -334,9 +389,25 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             } else {
                 ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
             }
-            _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+            if (VEC_BT(now->tag, 7)) {
+                _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+            } else {
+                _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
+            }
         }
     }
 
 }
 
+void test() {
+    nodes(0)[2] = nodes(0)[1];
+    printf("1 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    VEC_SET(nodes(0)[2].tag, 7);
+    VEC_SET(nodes(0)[2].child_base, 5);
+    printf("2 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    VEC_CLEAR(nodes(0)[2].tag, 7);
+    nodes(0)[2].child_base = node_malloc(0,1);
+    printf("3 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
+    nodes(0)[2].tag = 0;
+    nodes(0)[2].child_base = 0;
+}

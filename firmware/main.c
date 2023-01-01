@@ -1,4 +1,5 @@
 #include "lookup/lookup.h"
+#include <dma.h>
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
@@ -184,9 +185,17 @@ bool operate_d() {
 }
 
 bool operate_c() {
+    int c = 0;
     if (buffer[header] == '\n') {
         checking_all = 1;
         sprintf(info, "Checking all routing entries");
+        _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
+        for (int i = 0; i < c; ++i) {
+            RoutingTableEntry *entry = checking_entry + i;
+            printprefix(entry->addr, entry->len, ipbuffer);
+            printip(entry->nexthop, ipbuffer+100);
+            printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer+100, entry->route_type);
+        }
         return 1;
     }
     if (!_getip(&addr)) {
@@ -197,6 +206,14 @@ bool operate_c() {
     printip(&addr, ipbuffer);
     checking_addr = addr;
     sprintf(info, "Checking legal routing entry of %s", ipbuffer);
+
+    _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
+    for (int i = 0; i < c; ++i) {
+        RoutingTableEntry *entry = checking_entry + i;
+        printprefix(entry->addr, entry->len, ipbuffer);
+        printip(entry->nexthop, ipbuffer+100);
+        printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer+100, entry->route_type);
+    }
     return 1;
 }
 
@@ -238,15 +255,18 @@ void init_direct_route() {
 
 }
 
+extern void test();
+
 void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
     }
     init_uart();
 
+    test();
     init_direct_route();
     display();
-    printf("INITIALIZED\n");
+    printf("INITIALIZED, %d\n", sizeof(TrieNode));
 
     while (_gets(buffer, 1024)) {
         printf("Buffer: %s",buffer);
@@ -264,6 +284,11 @@ void start(int argc, char *argv[]) {
         }
         else if (op == 'c') { // check
             error = !operate_c();
+        } 
+        else if (op == 'f') { // DMA Demo
+            error = 0;
+            sprintf(info, "---- DMA DEMO ----");
+            dma_demo();
         } else {
             error = 1;
             sprintf(info, "Invalid Operation");
