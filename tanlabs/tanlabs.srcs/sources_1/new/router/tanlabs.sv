@@ -3,12 +3,19 @@
 /* Tsinghua Advanced Networking Labs */
 
 module tanlabs #(
+    parameter EXT_RAM_FOR_LEAF = 1,  // 将 ExtRAM 作为叶节点
     parameter ENABLE_VGA = 0,  // 启用 VGA (占用显存)
     parameter SIM = 0,  // 仿真模式
     parameter SYS_CLK_FREQ = 90_000_000,  // CPU 时钟频率
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
-    parameter WISHBONE_ADDR_WIDTH = 32
+    parameter WISHBONE_ADDR_WIDTH = 32,
+
+    parameter SRAM_ADDR_WIDTH = 20,
+    parameter SRAM_DATA_WIDTH = 32,
+
+    localparam SRAM_BYTES      = SRAM_DATA_WIDTH / 8,
+    localparam SRAM_BYTE_WIDTH = $clog2(SRAM_BYTES)
 ) (
     input wire gtrefclk_p,
     input wire gtrefclk_n,
@@ -760,9 +767,9 @@ module tanlabs #(
     wire                             dp_tx_valid;
 
     // MMIO 端口配置, 见下面的 Router MMIO
-    wire [                     47:0] mac             [3:0];
-    wire [                    127:0] local_ip        [3:0];
-    wire [                    127:0] gua_ip          [3:0];
+    wire [                     47:0] mac                  [3:0];
+    wire [                    127:0] local_ip             [3:0];
+    wire [                    127:0] gua_ip               [3:0];
 
     // Router Slave
     wire                             wb_router_cyc_i;
@@ -774,12 +781,24 @@ module tanlabs #(
     wire [WISHBONE_DATA_WIDTH/8-1:0] wb_router_sel_i;
     wire                             wb_router_we_i;
 
+    wire                             wb_router_sram_cyc_i;
+    wire                             wb_router_sram_stb_i;
+    wire                             wb_router_sram_ack_o;
+    wire [  WISHBONE_ADDR_WIDTH-1:0] wb_router_sram_adr_i;
+    wire [  WISHBONE_DATA_WIDTH-1:0] wb_router_sram_dat_i;
+    wire [  WISHBONE_DATA_WIDTH-1:0] wb_router_sram_dat_o;
+    wire [WISHBONE_DATA_WIDTH/8-1:0] wb_router_sram_sel_i;
+    wire                             wb_router_sram_we_i;
+
     // README: Instantiate your datapath.
     frame_datapath #(
+        .EXT_RAM_FOR_LEAF(EXT_RAM_FOR_LEAF),
         .DATA_WIDTH(DATA_WIDTH),
         .ID_WIDTH(ID_WIDTH),
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
-        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH),
+        .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
+        .SRAM_DATA_WIDTH(SRAM_DATA_WIDTH)
     ) frame_datapath_i (
         .eth_clk(eth_clk),
         .reset  (reset_eth),
@@ -816,6 +835,22 @@ module tanlabs #(
         .wb_dat_o (wb_router_dat_o),
         .wb_sel_i (wb_router_sel_i),
         .wb_we_i  (wb_router_we_i),
+
+        .wb_sram_cyc_i(wb_router_sram_cyc_i),
+        .wb_sram_stb_i(wb_router_sram_stb_i),
+        .wb_sram_ack_o(wb_router_sram_ack_o),
+        .wb_sram_adr_i(wb_router_sram_adr_i),
+        .wb_sram_dat_i(wb_router_sram_dat_i),
+        .wb_sram_dat_o(wb_router_sram_dat_o),
+        .wb_sram_sel_i(wb_router_sram_sel_i),
+        .wb_sram_we_i (wb_router_sram_we_i),
+
+        .sram_addr(ext_ram_addr),
+        .sram_data(ext_ram_data),
+        .sram_ce_n(ext_ram_ce_n),
+        .sram_oe_n(ext_ram_oe_n),
+        .sram_we_n(ext_ram_we_n),
+        .sram_be_n(ext_ram_be_n),
 
         .debug_led_cpu(debug_forwarding_table_core),
         .debug_led_eth(debug_forwarding_table_eth)
@@ -1345,8 +1380,8 @@ module tanlabs #(
     // Slave 0: Base SRAM
     sram_controller #(
         .CLK_FREQ       (SYS_CLK_FREQ),
-        .SRAM_ADDR_WIDTH(20),
-        .SRAM_DATA_WIDTH(32)
+        .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
+        .SRAM_DATA_WIDTH(SRAM_DATA_WIDTH)
     ) sram_controller_base (
         .clk_i(sys_clk),
         .rst_i(reset_core_without_bufg),
@@ -1371,32 +1406,53 @@ module tanlabs #(
     );
 
     // Slave 1: Ext SRAM
-    sram_controller #(
-        .CLK_FREQ       (SYS_CLK_FREQ),
-        .SRAM_ADDR_WIDTH(20),
-        .SRAM_DATA_WIDTH(32)
-    ) sram_controller_ext (
-        .clk_i(sys_clk),
-        .rst_i(reset_core_without_bufg),
+    generate
+        if (EXT_RAM_FOR_LEAF) begin
+            assign wb_router_sram_cyc_i = wbs1_cyc_o;
+            assign wb_router_sram_stb_i = wbs1_stb_o;
+            assign wbs1_ack_i           = wb_router_sram_ack_o;
+            assign wb_router_sram_adr_i = wbs1_adr_o;
+            assign wb_router_sram_dat_i = wbs1_dat_o;
+            assign wbs1_dat_i           = wb_router_sram_dat_o;
+            assign wb_router_sram_sel_i = wbs1_sel_o;
+            assign wb_router_sram_we_i  = wbs1_we_o;
 
-        // Wishbone slave (to MUX)
-        .wb_cyc_i(wbs1_cyc_o),
-        .wb_stb_i(wbs1_stb_o),
-        .wb_ack_o(wbs1_ack_i),
-        .wb_adr_i(wbs1_adr_o),
-        .wb_dat_i(wbs1_dat_o),
-        .wb_dat_o(wbs1_dat_i),
-        .wb_sel_i(wbs1_sel_o),
-        .wb_we_i (wbs1_we_o),
+        end else begin
+            assign wb_router_sram_cyc_i = 1'b0;
+            assign wb_router_sram_stb_i = 1'b0;
+            assign wb_router_sram_adr_i = '0;
+            assign wb_router_sram_dat_i = '0;
+            assign wb_router_sram_sel_i = '0;
+            assign wb_router_sram_we_i  = 1'b0;
 
-        // To SRAM chip
-        .sram_addr(ext_ram_addr),
-        .sram_data(ext_ram_data),
-        .sram_ce_n(ext_ram_ce_n),
-        .sram_oe_n(ext_ram_oe_n),
-        .sram_we_n(ext_ram_we_n),
-        .sram_be_n(ext_ram_be_n)
-    );
+            sram_controller #(
+                .CLK_FREQ       (SYS_CLK_FREQ),
+                .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
+                .SRAM_DATA_WIDTH(SRAM_DATA_WIDTH)
+            ) sram_controller_ext (
+                .clk_i(sys_clk),
+                .rst_i(reset_core_without_bufg),
+
+                // Wishbone slave (to MUX)
+                .wb_cyc_i(wbs1_cyc_o),
+                .wb_stb_i(wbs1_stb_o),
+                .wb_ack_o(wbs1_ack_i),
+                .wb_adr_i(wbs1_adr_o),
+                .wb_dat_i(wbs1_dat_o),
+                .wb_dat_o(wbs1_dat_i),
+                .wb_sel_i(wbs1_sel_o),
+                .wb_we_i (wbs1_we_o),
+
+                // To SRAM chip
+                .sram_addr(ext_ram_addr),
+                .sram_data(ext_ram_data),
+                .sram_ce_n(ext_ram_ce_n),
+                .sram_oe_n(ext_ram_oe_n),
+                .sram_we_n(ext_ram_we_n),
+                .sram_be_n(ext_ram_be_n)
+            );
+        end
+    endgenerate
 
     // Slave 2: Router RAM
     assign wb_router_cyc_i = wbs2_cyc_o;
@@ -1565,7 +1621,9 @@ module tanlabs #(
         .dest_wb_dat_o(wb_mmio_dat_o),
         .dest_wb_dat_i(wb_mmio_dat_i),
         .dest_wb_sel_o(wb_mmio_sel_o),
-        .dest_wb_we_o (wb_mmio_we_o)
+        .dest_wb_we_o (wb_mmio_we_o),
+
+        .debug_led()
     );
 
     router_mmio #(
