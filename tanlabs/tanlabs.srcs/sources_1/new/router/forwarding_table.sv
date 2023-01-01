@@ -587,7 +587,7 @@ module forwarding_table #(
                 end
             end
 
-        end else begin  // 使用 BRAM 作为叶节点存储
+        end else begin  // 使用 LUTRAM 作为叶节点存储
             assign wb_sram_ack_o = 1'b0;
             assign wb_sram_dat_o = '0;
 

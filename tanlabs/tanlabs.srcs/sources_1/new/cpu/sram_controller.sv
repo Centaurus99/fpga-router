@@ -211,7 +211,7 @@ module sram_controller #(
             end
 
         end else begin
-            // 四周期读写
+            // 四周期读, 五周期写
             typedef enum logic [2:0] {
                 STATE_IDLE,
                 STATE_READ1,
@@ -219,7 +219,8 @@ module sram_controller #(
                 STATE_READ3,
                 STATE_WRITE1,
                 STATE_WRITE2,
-                STATE_WRITE3
+                STATE_WRITE3,
+                STATE_WRITE4
             } state_t;
 
             state_t state, state_n;
@@ -250,7 +251,8 @@ module sram_controller #(
                     STATE_READ3: state_n = STATE_IDLE;
                     STATE_WRITE1: state_n = STATE_WRITE2;
                     STATE_WRITE2: state_n = STATE_WRITE3;
-                    STATE_WRITE3: state_n = STATE_IDLE;
+                    STATE_WRITE3: state_n = STATE_WRITE4;
+                    STATE_WRITE4: state_n = STATE_IDLE;
                     default: state_n = STATE_IDLE;
                 endcase
             end
@@ -270,7 +272,7 @@ module sram_controller #(
                         STATE_WRITE1: begin
                             sram_we_n <= 1'b0;
                         end
-                        STATE_WRITE3: begin
+                        STATE_WRITE4: begin
                             wb_ack_o  <= 1'b1;
                             sram_we_n <= 1'b1;
                         end
