@@ -14,3 +14,5 @@
 *.str
 .Xil/
 out_frames.pcap
+.vscode/
+!.vscode/settings.json

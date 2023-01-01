@@ -1,5 +1,6 @@
 #include "lookup/lookup.h"
 #include "lookup/memhelper.h"
+#include <dma.h>
 #include <stdint.h>
 #include <printf.h>
 #include <uart.h>
@@ -301,6 +302,11 @@ void start(int argc, char *argv[]) {
         }
         else if (op == 'q') { // query
             error = !operate_q();
+        } 
+        else if (op == 'f') { // DMA Demo
+            error = 0;
+            sprintf(info, "---- DMA DEMO ----");
+            dma_demo();
         } 
         else {
             error = 1;

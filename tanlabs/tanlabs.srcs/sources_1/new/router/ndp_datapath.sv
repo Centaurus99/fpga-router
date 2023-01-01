@@ -12,8 +12,8 @@ module ndp_datapath #(
     input wire eth_clk,
     input wire reset,
 
-    input wire [ 47:0] mac[3:0],
-    input wire [127:0] ip [3:0],
+    input wire [ 47:0] mac     [3:0],
+    input wire [127:0] local_ip[3:0],
 
     output reg          nc_we,
     output reg  [127:0] nc_in_v6_w,
@@ -150,7 +150,7 @@ module ndp_datapath #(
                                 .payload_len(16'h20_00),
                                 .next_hdr(IP6_TYPE_ICMP),
                                 .hop_limit(8'd255),
-                                .src_ip(ip[in.meta.dest]),
+                                .src_ip(local_ip[in.meta.dest]),
                                 .dst_ip(in_multicast_ip)
                             );
 
@@ -179,7 +179,7 @@ module ndp_datapath #(
                             s1_reg.meta.drop <= 1'b1;
 
                             // HACK: [调试时不启用] Target Address 须为接受口地址
-                        end else if (in_ip6.p.ns_data.target_address != ip[in.meta.id]) begin
+                        end else if (in_ip6.p.ns_data.target_address != local_ip[in.meta.id]) begin
                             s1_reg.meta.drop <= 1'b1;
 
                             // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
@@ -219,7 +219,7 @@ module ndp_datapath #(
                                 .payload_len(16'h20_00),
                                 .next_hdr(IP6_TYPE_ICMP),
                                 .hop_limit(8'd255),
-                                .src_ip(ip[in.meta.id]),
+                                .src_ip(local_ip[in.meta.id]),
                                 .dst_ip(in_ip6.src)
                             );
 
