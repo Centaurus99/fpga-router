@@ -70,7 +70,7 @@ module sram_controller #(
                 .S ()                                       // 1-bit set
             );
 
-            typedef enum logic [1:0] {
+            typedef enum {
                 STATE_IDLE,
                 STATE_READ,
                 STATE_WRITE
@@ -144,7 +144,7 @@ module sram_controller #(
                 .S ()                                       // 1-bit set
             );
 
-            typedef enum logic [2:0] {
+            typedef enum {
                 STATE_IDLE,
                 STATE_READ1,
                 STATE_READ2,
@@ -212,7 +212,7 @@ module sram_controller #(
 
         end else begin
             // 四周期读, 五周期写
-            typedef enum logic [2:0] {
+            typedef enum {
                 STATE_IDLE,
                 STATE_READ1,
                 STATE_READ2,

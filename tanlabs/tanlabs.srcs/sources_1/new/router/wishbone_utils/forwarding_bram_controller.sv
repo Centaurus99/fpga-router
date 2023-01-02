@@ -93,6 +93,7 @@ module forwarding_bram_controller #(
 
     typedef enum {
         ST_IDLE,
+        ST_WAIT,
         ST_READ,
         ST_WRITE
     } slave_state_t;
@@ -114,12 +115,15 @@ module forwarding_bram_controller #(
             case (state)
                 ST_IDLE: begin
                     if (is_request) begin
-                        if (wb_we_i == 1'b0) begin
-                            state <= ST_READ;
-                        end else begin
-                            ft_we[bram_pipeline] <= 1'b1;
-                            state                <= ST_WRITE;
-                        end
+                        state <= ST_WAIT;
+                    end
+                end
+                ST_WAIT: begin
+                    if (wb_we_i == 1'b0) begin
+                        state <= ST_READ;
+                    end else begin
+                        ft_we[bram_pipeline] <= 1'b1;
+                        state                <= ST_WRITE;
                     end
                 end
                 ST_READ: begin
