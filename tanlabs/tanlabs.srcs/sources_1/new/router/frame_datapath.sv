@@ -3,11 +3,18 @@
 `include "frame_datapath.vh"
 
 module frame_datapath #(
+    parameter EXT_RAM_FOR_LEAF = 1,  // 将 ExtRAM 作为叶节点
     parameter DATA_WIDTH = 64,
     parameter ID_WIDTH = 3,
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
-    parameter WISHBONE_ADDR_WIDTH = 32
+    parameter WISHBONE_ADDR_WIDTH = 32,
+
+    parameter SRAM_ADDR_WIDTH = 20,
+    parameter SRAM_DATA_WIDTH = 32,
+
+    localparam SRAM_BYTES      = SRAM_DATA_WIDTH / 8,
+    localparam SRAM_BYTE_WIDTH = $clog2(SRAM_BYTES)
 ) (
     input wire eth_clk,
     input wire reset,
@@ -33,8 +40,9 @@ module frame_datapath #(
     input  wire                        m_ready,
 
     // wishbone slave interface
-    input  wire                             cpu_clk,
-    input  wire                             cpu_reset,
+    input wire cpu_clk,
+    input wire cpu_reset,
+
     input  wire                             wb_cyc_i,
     input  wire                             wb_stb_i,
     output reg                              wb_ack_o,
@@ -43,6 +51,23 @@ module frame_datapath #(
     output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o,
     input  wire [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i,
     input  wire                             wb_we_i,
+
+    input  wire                             wb_sram_cyc_i,
+    input  wire                             wb_sram_stb_i,
+    output reg                              wb_sram_ack_o,
+    input  wire [  WISHBONE_ADDR_WIDTH-1:0] wb_sram_adr_i,
+    input  wire [  WISHBONE_DATA_WIDTH-1:0] wb_sram_dat_i,
+    output reg  [  WISHBONE_DATA_WIDTH-1:0] wb_sram_dat_o,
+    input  wire [WISHBONE_DATA_WIDTH/8-1:0] wb_sram_sel_i,
+    input  wire                             wb_sram_we_i,
+
+    // sram interface
+    output wire [SRAM_ADDR_WIDTH-1:0] sram_addr,
+    inout  wire [SRAM_DATA_WIDTH-1:0] sram_data,
+    output wire                       sram_ce_n,
+    output wire                       sram_oe_n,
+    output wire                       sram_we_n,
+    output wire [     SRAM_BYTES-1:0] sram_be_n,
 
     // debug
     output reg [7:0] debug_led_cpu,
@@ -197,8 +222,11 @@ module frame_datapath #(
     wire               forwarded_ready;
     logic      [127:0] forwarded_next_hop_ip;
     forwarding_table #(
+        .EXT_RAM_FOR_LEAF(EXT_RAM_FOR_LEAF),
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
-        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH),
+        .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
+        .SRAM_DATA_WIDTH(SRAM_DATA_WIDTH)
     ) forwarding_table_i (
         .clk     (eth_clk),
         .reset   (reset),
@@ -211,14 +239,31 @@ module frame_datapath #(
 
         .cpu_clk  (cpu_clk),
         .cpu_reset(cpu_reset),
-        .wb_cyc_i (wb_cyc_i),
-        .wb_stb_i (wb_stb_i),
-        .wb_ack_o (wb_ack_o),
-        .wb_adr_i (wb_adr_i),
-        .wb_dat_i (wb_dat_i),
-        .wb_dat_o (wb_dat_o),
-        .wb_sel_i (wb_sel_i),
-        .wb_we_i  (wb_we_i),
+
+        .wb_cyc_i(wb_cyc_i),
+        .wb_stb_i(wb_stb_i),
+        .wb_ack_o(wb_ack_o),
+        .wb_adr_i(wb_adr_i),
+        .wb_dat_i(wb_dat_i),
+        .wb_dat_o(wb_dat_o),
+        .wb_sel_i(wb_sel_i),
+        .wb_we_i (wb_we_i),
+
+        .wb_sram_cyc_i(wb_sram_cyc_i),
+        .wb_sram_stb_i(wb_sram_stb_i),
+        .wb_sram_ack_o(wb_sram_ack_o),
+        .wb_sram_adr_i(wb_sram_adr_i),
+        .wb_sram_dat_i(wb_sram_dat_i),
+        .wb_sram_dat_o(wb_sram_dat_o),
+        .wb_sram_sel_i(wb_sram_sel_i),
+        .wb_sram_we_i (wb_sram_we_i),
+
+        .sram_addr(sram_addr),
+        .sram_data(sram_data),
+        .sram_ce_n(sram_ce_n),
+        .sram_oe_n(sram_oe_n),
+        .sram_we_n(sram_we_n),
+        .sram_be_n(sram_be_n),
 
         .debug_led_cpu(debug_led_cpu),
         .debug_led_eth(debug_led_eth)

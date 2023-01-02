@@ -1,4 +1,4 @@
-#define END_OF_STACK 0x80800000
+#define END_OF_STACK 0x80400000
 
 .section .text.reset_vector, "ax", @progbits
 .global _reset_vector

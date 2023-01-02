@@ -12,43 +12,53 @@ set_property PACKAGE_PIN AB13 [get_ports gtrefclk_n]
 
 create_clock -period 8.000 -name gtref_clk -waveform {0.000 4.000} [get_nets gtref_clk]
 
-# SRAM delay for 100MHz clock and 3 cycles read/write
-# input setup delay = 10ns(read) - 10ns(clock period) - (-2.5ns)(output delay) + 2.0ns(pcb route time)
-set_input_delay -clock clk_out2_clk_wiz_0 -max 4.500 [get_ports {base_ram_data[*]}]
-set_input_delay -clock clk_out2_clk_wiz_0 -max 4.500 [get_ports {ext_ram_data[*]}]
+# Base SRAM delay for 93.333333MHz clock and 3 cycles read/write
+# input setup delay = 10ns(read) - 10ns(clock period) - (-2.7ns)(output delay) + 2.0ns(pcb route time)
+set_input_delay -clock clk_out2_clk_wiz_0 -max 4.300 [get_ports {base_ram_data[*]}]
 # input hold time 2.5ns
 set_input_delay -clock clk_out2_clk_wiz_0 -min 2.500 [get_ports {base_ram_data[*]}]
-set_input_delay -clock clk_out2_clk_wiz_0 -min 2.500 [get_ports {ext_ram_data[*]}]
 
-# 10ns + 2.5ns for output setup and 2.5ns for we_n hold
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {base_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports base_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports base_ram_oe_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports {ext_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports ext_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.500 [get_ports ext_ram_oe_n]
+# 10ns + 2.7ns for output setup and 2.7ns for we_n hold
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports {base_ram_data[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports {base_ram_addr[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports {base_ram_be_n[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports base_ram_ce_n]
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports base_ram_oe_n]
 # we_n signal should be covered with other signal
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.500 [get_ports base_ram_we_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.500 [get_ports ext_ram_we_n]
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports base_ram_we_n]
 
-# 2.9ns for output hold and 5ns + 2.9ns we_n setup
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {base_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports base_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports base_ram_oe_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_data[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_addr[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports {ext_ram_be_n[*]}]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports ext_ram_ce_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -min -2.900 [get_ports ext_ram_oe_n]
+# 2.7ns for output hold and 5ns + 2.7ns we_n setup
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports {base_ram_data[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports {base_ram_addr[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports {base_ram_be_n[*]}]
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports base_ram_ce_n]
+set_output_delay -clock clk_out2_clk_wiz_0 -min -2.700 [get_ports base_ram_oe_n]
 # we_n signal should be covered with other signal
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.900 [get_ports base_ram_we_n]
-set_output_delay -clock clk_out2_clk_wiz_0 -max -2.900 [get_ports ext_ram_we_n]
+set_output_delay -clock clk_out2_clk_wiz_0 -max -2.700 [get_ports base_ram_we_n]
+
+# Ext SRAM delay for 125MHz clock and 4 cycles read/write
+# input setup delay = 10ns(read) - 2*8ns(clock period) - (-3.6ns)(output delay) + 2.4ns(pcb route time)
+set_input_delay -clock clkout0 -max 0.000 [get_ports {ext_ram_data[*]}]
+# input hold time 2.5ns
+set_input_delay -clock clkout0 -min 2.500 [get_ports {ext_ram_data[*]}]
+
+# 8ns + 3.6ns for output setup and 3.6ns for we_n hold
+set_output_delay -clock clkout0 -max -3.600 [get_ports {ext_ram_data[*]}]
+set_output_delay -clock clkout0 -max -3.600 [get_ports {ext_ram_addr[*]}]
+set_output_delay -clock clkout0 -max -3.600 [get_ports {ext_ram_be_n[*]}]
+set_output_delay -clock clkout0 -max -3.600 [get_ports ext_ram_ce_n]
+set_output_delay -clock clkout0 -max -3.600 [get_ports ext_ram_oe_n]
+# we_n signal should be covered with other signal
+set_output_delay -clock clkout0 -min -3.600 [get_ports ext_ram_we_n]
+
+# 3.0ns for output hold and 8ns + 3.0ns we_n setup
+set_output_delay -clock clkout0 -min -3.000 [get_ports {ext_ram_data[*]}]
+set_output_delay -clock clkout0 -min -3.000 [get_ports {ext_ram_addr[*]}]
+set_output_delay -clock clkout0 -min -3.000 [get_ports {ext_ram_be_n[*]}]
+set_output_delay -clock clkout0 -min -3.000 [get_ports ext_ram_ce_n]
+set_output_delay -clock clkout0 -min -3.000 [get_ports ext_ram_oe_n]
+# we_n signal should be covered with other signal
+set_output_delay -clock clkout0 -max -3.000 [get_ports ext_ram_we_n]
 
 # Reset Button (BTN6)
 set_property PACKAGE_PIN F22 [get_ports reset_btn]

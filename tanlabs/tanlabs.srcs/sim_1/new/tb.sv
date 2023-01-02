@@ -15,6 +15,13 @@ module tb
     wire base_ram_oe_n;  // BaseRAM 读使能，低有效
     wire base_ram_we_n;  // BaseRAM 写使能，低有效
 
+    wire [31:0] ext_ram_data;  // ExtRAM 数据，低 8 位与 CPLD 串口控制器共享
+    wire [19:0] ext_ram_addr;  // ExtRAM 地址
+    wire[3:0] ext_ram_be_n;    // ExtRAM 字节使能，低有效。如果不使用字节使能，请保持为 0
+    wire ext_ram_ce_n;  // ExtRAM 片选，低有效
+    wire ext_ram_oe_n;  // ExtRAM 读使能，低有效
+    wire ext_ram_we_n;  // ExtRAM 写使能，低有效
+
     reg reset;
     initial begin
         reset = 1;
@@ -139,7 +146,14 @@ module tb
         .base_ram_ce_n (base_ram_ce_n),
         .base_ram_oe_n (base_ram_oe_n),
         .base_ram_we_n (base_ram_we_n),
-        .base_ram_be_n (base_ram_be_n)
+        .base_ram_be_n (base_ram_be_n),
+
+        .ext_ram_data (ext_ram_data),
+        .ext_ram_addr (ext_ram_addr),
+        .ext_ram_ce_n (ext_ram_ce_n),
+        .ext_ram_oe_n (ext_ram_oe_n),
+        .ext_ram_we_n (ext_ram_we_n),
+        .ext_ram_be_n (ext_ram_be_n)
     );
     
     // BaseRAM 仿真模型
@@ -160,6 +174,26 @@ module tb
         .WE_n   (base_ram_we_n),
         .LB_n   (base_ram_be_n[2]),
         .UB_n   (base_ram_be_n[3])
+    );
+
+    // ExtRAM 仿真模型
+    sram_model ext1 (
+        .DataIO (ext_ram_data[15:0]),
+        .Address(ext_ram_addr[19:0]),
+        .OE_n   (ext_ram_oe_n),
+        .CE_n   (ext_ram_ce_n),
+        .WE_n   (ext_ram_we_n),
+        .LB_n   (ext_ram_be_n[0]),
+        .UB_n   (ext_ram_be_n[1])
+    );
+    sram_model ext2 (
+        .DataIO (ext_ram_data[31:16]),
+        .Address(ext_ram_addr[19:0]),
+        .OE_n   (ext_ram_oe_n),
+        .CE_n   (ext_ram_ce_n),
+        .WE_n   (ext_ram_we_n),
+        .LB_n   (ext_ram_be_n[2]),
+        .UB_n   (ext_ram_be_n[3])
     );
 
     parameter BASE_RAM_INIT_FILE = "router_base_ram.bin";
