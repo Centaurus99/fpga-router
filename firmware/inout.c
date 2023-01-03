@@ -42,7 +42,6 @@ char _getchar() {
         if(UART_LSR & COM_LSR_DR) {
             return UART_THR;
         }
-
     }
 }
 
