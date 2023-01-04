@@ -154,7 +154,7 @@ module frame_datapath #(
             s1 <= 0;
         end else if (s1_ready) begin
             s1 <= in;
-            if (`should_handle(in)) begin
+            if (`should_handle(in) && in.meta.id != ID_CPU) begin  // CPU 发包不检验
                 if (in.data.dst != mac[in.meta.id] && in.data.dst != in_multicast_mac && in.data.dst != broadcast_mac) begin
                     s1.meta.drop <= 1;
                     // drop non ipv6 packet
@@ -204,8 +204,8 @@ module frame_datapath #(
                     // IPv6 目的地址为对应任意网口的 GUA 地址, 转给软件处理
                     s2.meta.dest <= ID_CPU;
 
-                end else begin
-                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
+                end else if (s1.meta.id != ID_CPU) begin
+                    // 否则需要转发, 若非 CPU 发包, 则检验 hop_limit 以及是否为组播包
                     if (s1.data.ip6.hop_limit <= 1) begin
                         // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
                         s2.meta.drop <= 1;
@@ -299,10 +299,12 @@ module frame_datapath #(
                     if (s3_ready) begin
                         s3_reg <= forwarded;
                         if (`should_handle(forwarded)) begin
-                            s3_state                  <= ST_QUERY_WAIT1;
-                            nc_in_v6_r                <= forwarded_next_hop_ip;
-                            nc_in_id_r                <= forwarded.meta.dest[1:0];
-                            s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
+                            s3_state   <= ST_QUERY_WAIT1;
+                            nc_in_v6_r <= forwarded_next_hop_ip;
+                            nc_in_id_r <= forwarded.meta.dest[1:0];
+                            if (forwarded.meta.id != ID_CPU) begin
+                                s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
+                            end
                         end
                     end
                 end
