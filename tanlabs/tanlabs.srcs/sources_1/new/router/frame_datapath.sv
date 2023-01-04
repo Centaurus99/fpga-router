@@ -202,7 +202,8 @@ module frame_datapath #(
 
                 end else if (s1_is_gua) begin
                     // IPv6 目的地址为对应任意网口的 GUA 地址, 转给软件处理
-                    s2.meta.dest <= ID_CPU;
+                    s2.meta.dont_touch <= 1'b1;
+                    s2.meta.dest       <= ID_CPU;
 
                 end else if (s1.meta.id != ID_CPU) begin
                     // 否则需要转发, 若非 CPU 发包, 则检验 hop_limit 以及是否为组播包
