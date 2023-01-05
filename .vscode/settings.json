@@ -3,6 +3,16 @@
     "files.associations": {
         "*.vh": "systemverilog",
         "*.v": "systemverilog",
-        "uart.h": "c"
+        "stdio.h": "c",
+        "stdint.h": "c",
+        "lookup.h": "c",
+        "memhelper.h": "c",
+        "cstdio": "c",
+        "assert.h": "c",
+        "printf.h": "c",
+        "gpio.h": "c",
+        "uart.h": "c",
+        "stdbool.h": "c",
+        "router.h": "c"
     }
 }
