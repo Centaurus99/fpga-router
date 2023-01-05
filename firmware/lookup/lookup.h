@@ -3,8 +3,8 @@
 
 #include "stdbool.h"
 
-#define NODE_COUNT_PER_STAGE  655350
-#define LEAF_COUNT  655350
+#define NODE_COUNT_PER_STAGE  1024
+#define LEAF_COUNT  1024
 #define ENTRY_COUNT  640
 #define STAGE_HEIGHT  4
 #define STRIDE  4

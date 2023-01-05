@@ -19,6 +19,7 @@ SECTIONS
     {
         *(.data*)
         *(.sdata*)
+        . = ALIGN(0x10);
     }
     . = ALIGN(0x10);
     _bss_begin = .;

@@ -79,7 +79,7 @@ int node_blk_cnt[8][17] = {
 int leaf_blk_cnt[17] = 
 	{42994,17747,3898 ,1787 ,1080 ,602  ,306  ,139  ,61   ,25   ,17   ,12   ,11   ,10   ,10   ,10   ,24   };
 #ifndef USE_BRAM
-TrieNode node_pool[62418];
+TrieNode node_pool[65536];
 extern TrieNode *_nodes[8];
 #endif
 int blk_pool[53286];
@@ -166,7 +166,7 @@ int leaf_malloc(int len) {
         assert(len < 16);
         id = _blk_pop(8, ++len); // TODO: 记录一下，如果这种小占大的把大的给占满了 应该把小的再挪回去
     }
-    // assert(blk_begin[8][len] + id*len + len < 65535);
+    assert(blk_begin[8][len] + id*len + len < 65535);
 #ifdef TRACE
     printf("L %d +\n", len);
 #endif

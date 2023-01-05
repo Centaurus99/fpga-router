@@ -225,9 +225,9 @@ bool operate_q() {
     }
     if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
         printip(&nexthop, ipbuffer);
-        sprintf(info, "Found %s %d %d", ipbuffer, if_index, route_type);
+        sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {
-        sprintf(info, "Not found");
+        sprintf(info, "NFound");
     }
     return 1;
 }
