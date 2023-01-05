@@ -47,8 +47,7 @@ typedef union packed {
     na_mes na_data;
 } mes_union;
 
-typedef struct packed
-{
+typedef struct packed {
     mes_union p;
     logic [127:0] dst;
     logic [127:0] src;
@@ -60,16 +59,14 @@ typedef struct packed
     logic [3:0] flow_hi;
 } ip6_hdr;
 
-typedef struct packed
-{
+typedef struct packed {
     ip6_hdr ip6;
     logic [15:0] ethertype;
     logic [47:0] src;
     logic [47:0] dst;
 } ether_hdr;
 
-typedef struct packed
-{
+typedef struct packed {
     // Per-frame metadata.
     // **They are only effective at the first beat.**
     logic [ID_WIDTH - 1:0] id;  // The ingress interface.
@@ -78,7 +75,7 @@ typedef struct packed
 
     // Do not touch this beat!
     // 目前用于表示发给软件的包和接收的 NS/NA 包
-    logic dont_touch;  
+    logic dont_touch;
 
     // Drop the next frame? It is useful when you need to shrink a frame
     // (e.g., replace an IPv6 packet to an ND solicitation).
@@ -92,8 +89,7 @@ typedef struct packed
 
 } frame_meta;
 
-typedef struct packed
-{
+typedef struct packed {
     // AXI-Stream signals.
     ether_hdr data;
     logic [DATAW_WIDTH_ND / 8 - 1:0] keep;
@@ -119,5 +115,9 @@ localparam IP6_TYPE_ICMP = 8'h3a;
 
 localparam ICMP_TYPE_NS = 8'd135;
 localparam ICMP_TYPE_NA = 8'd136;
+
+// 使用 ETHERTYPE 标识回发 ICMP 错误类型
+// {8{ICMP_CODE}, 8{ICMP_TYPE}}
+localparam ETHERTYPE_ICMP_TEM = 16'h00_03;  // ICMP Time Exceeded Message
 
 `endif
