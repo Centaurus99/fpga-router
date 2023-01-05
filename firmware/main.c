@@ -1,11 +1,11 @@
 #include "lookup/lookup.h"
 #include <dma.h>
-#include <stdint.h>
-#include <printf.h>
-#include <uart.h>
 #include <gpio.h>
+#include <printf.h>
+#include <router.h>
+#include <stdint.h>
+#include <uart.h>
 #include <vga.h>
-
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
@@ -19,9 +19,8 @@ extern bool _getip();
 extern void printip();
 extern void printprefix();
 
-extern void _prefix_query_all(int dep, int nid, const in6_addr addr, 
-    RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip);
-
+extern void _prefix_query_all(int dep, int nid, const in6_addr addr,
+                              RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip);
 
 in6_addr checking_addr = {0};
 bool checking_all = 1;
@@ -34,13 +33,13 @@ in6_addr addr, nexthop;
 char op;
 char ipbuffer[48], info[100];
 bool error;
-unsigned int forward_speed[2][4];  // 0.01 MB/s
+unsigned int forward_speed[2][4]; // 0.01 MB/s
 
 void draw_speed() {
     char tmp[10];
     for (int p = 0; p < 2; ++p) {
         for (int i = 0; i < 4; ++i) {
-            sprintf(tmp, "%4d.%02d", forward_speed[p][i]/100, forward_speed[p][i] % 100);
+            sprintf(tmp, "%4d.%02d", forward_speed[p][i] / 100, forward_speed[p][i] % 100);
             for (int j = 0; j < 7; ++j) {
                 update_pos(2 - p, 52 + 18 + 10 * i + j, tmp[j], p ? VGA_YELLOW : VGA_BLUE);
             }
@@ -60,20 +59,19 @@ void display() {
             update_pos(1, i, buffer[i], VGA_GREEN);
         else
             update_pos(1, i, buffer[i], VGA_BLUE);
-    
-    
+
     sprintf(buffer, "            Port| %7s | %7s | %7s | %7s", "0", "1", "2", "3");
     for (int i = 0; buffer[i]; ++i)
         update_pos(0, 52 + i, buffer[i], VGA_PINK);
-    sprintf(buffer, " In Speed (MB/s)| %7s | %7s | %7s | %7s","", "", "", "");
+    sprintf(buffer, " In Speed (MB/s)| %7s | %7s | %7s | %7s", "", "", "", "");
     for (int i = 0; buffer[i]; ++i)
         update_pos(1, 52 + i, buffer[i], VGA_PINK);
-    sprintf(buffer, "Out Speed (MB/s)| %7s | %7s | %7s | %7s","", "", "", "");
+    sprintf(buffer, "Out Speed (MB/s)| %7s | %7s | %7s | %7s", "", "", "", "");
     for (int i = 0; buffer[i]; ++i)
         update_pos(2, 52 + i, buffer[i], VGA_PINK);
 
     draw_speed();
-    
+
     if (checking_all) {
         sprintf(buffer, "<Checking all entries>", ipbuffer);
     } else {
@@ -104,7 +102,7 @@ void display() {
     _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
     int n = 5;
     m = 0;
-    for (int i = 0; i < c ; ++i) {
+    for (int i = 0; i < c; ++i) {
         RoutingTableEntry *entry = checking_entry + i;
         printprefix(entry->addr, entry->len, ipbuffer);
         m = 0;
@@ -128,8 +126,7 @@ void display() {
         }
         ++n;
     }
-    
-    
+
     for (int j = 0; j < VGA_W; j++) {
         update_pos(4, j, '-', VGA_WHITE);
         update_pos(VGA_ROW - 3, j, '-', VGA_WHITE);
@@ -149,21 +146,18 @@ bool operate_a() {
     }
     len = _getdec();
     if_index = _getdec();
-    if (!_getip(&nexthop)){
+    if (!_getip(&nexthop)) {
         sprintf(info, "Invalid IP nexthop; Usage: a [addr] [len] [if_index] [nexthop] [route_type]");
         return 0;
     }
     route_type = _getdec();
     RoutingTableEntry entry = {
-        .addr = addr, .len = len, 
-        .if_index = if_index, .nexthop = nexthop,
-        .route_type = route_type
-    };
+        .addr = addr, .len = len, .if_index = if_index, .nexthop = nexthop, .route_type = route_type};
     update(1, entry);
 
     printprefix(&addr, len, buffer);
-    printip(&nexthop, buffer+100);
-    sprintf(info, "Added %s %d %s %d", buffer, if_index, buffer+100, route_type);
+    printip(&nexthop, buffer + 100);
+    sprintf(info, "Added %s %d %s %d", buffer, if_index, buffer + 100, route_type);
     return 1;
 }
 
@@ -175,9 +169,7 @@ bool operate_d() {
     len = _getdec();
     route_type = _getdec();
     RoutingTableEntry entry = {
-        .addr = addr, .len = len, 
-        .if_index = 0, .nexthop = {{{0}}}, .route_type = route_type
-    };
+        .addr = addr, .len = len, .if_index = 0, .nexthop = {{{0}}}, .route_type = route_type};
     update(0, entry);
     printip(&addr, ipbuffer);
     sprintf(info, "Deleted %s %d %d", ipbuffer, len, route_type);
@@ -193,8 +185,8 @@ bool operate_c() {
         for (int i = 0; i < c; ++i) {
             RoutingTableEntry *entry = checking_entry + i;
             printprefix(entry->addr, entry->len, ipbuffer);
-            printip(entry->nexthop, ipbuffer+100);
-            printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer+100, entry->route_type);
+            printip(entry->nexthop, ipbuffer + 100);
+            printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type);
         }
         return 1;
     }
@@ -211,8 +203,8 @@ bool operate_c() {
     for (int i = 0; i < c; ++i) {
         RoutingTableEntry *entry = checking_entry + i;
         printprefix(entry->addr, entry->len, ipbuffer);
-        printip(entry->nexthop, ipbuffer+100);
-        printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer+100, entry->route_type);
+        printip(entry->nexthop, ipbuffer + 100);
+        printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type);
     }
     return 1;
 }
@@ -252,7 +244,6 @@ void init_direct_route() {
     entry.addr.s6_addr32[3] = 0;
     entry.len = 0;
     update(1, entry);
-
 }
 
 extern void test();
@@ -262,39 +253,38 @@ void start(int argc, char *argv[]) {
         *p = 0;
     }
     init_uart();
+    init_port_config();
 
     test();
     init_direct_route();
     display();
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
 
-    while (_gets(buffer, 1024)) {
-        printf("Buffer: %s",buffer);
-        header = 0;
-        op = _getnonspace();
-        if (op == 'e') { // exit
-            printf("Exited\n");
-            break;
-        }
-        else if (op == 'a') { // add
-            error = !operate_a();
-        }
-        else if (op == 'd') { //delete
-            error = !operate_d();
-        }
-        else if (op == 'c') { // check
-            error = !operate_c();
-        } 
-        else if (op == 'f') { // DMA Demo
-            error = 0;
-            sprintf(info, "---- DMA DEMO ----");
-            dma_demo();
-        } else {
-            error = 1;
-            sprintf(info, "Invalid Operation");
-        }
+    while (1) {
+        if (_gets(buffer, 1024)) {
+            printf("Buffer: %s", buffer);
+            header = 0;
+            op = _getnonspace();
+            if (op == 'e') { // exit
+                printf("Exited\n");
+                break;
+            } else if (op == 'a') { // add
+                error = !operate_a();
+            } else if (op == 'd') { // delete
+                error = !operate_d();
+            } else if (op == 'c') { // check
+                error = !operate_c();
+            } else if (op == 'f') { // DMA Demo
+                error = 0;
+                sprintf(info, "---- DMA DEMO ----");
+                dma_demo();
+            } else {
+                error = 1;
+                sprintf(info, "Invalid Operation");
+            }
 
-        printf("%s\r\n", info);
-        display();
+            printf("%s\r\n", info);
+            display();
+        }
     }
 }

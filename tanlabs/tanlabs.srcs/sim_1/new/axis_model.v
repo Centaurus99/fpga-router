@@ -44,6 +44,7 @@ module axis_model
         begin
             state <= ST_READ;
             m_valid <= 0;
+            #20000000;
         end
         else
         begin

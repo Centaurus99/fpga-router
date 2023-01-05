@@ -4,6 +4,7 @@
 
 `include "frame_datapath.vh"
 `include "packet_templete.vh"
+`include "multicast.vh"
 
 module ndp_datapath #(
     parameter DATA_WIDTH = 64,
@@ -14,6 +15,7 @@ module ndp_datapath #(
 
     input wire [ 47:0] mac     [3:0],
     input wire [127:0] local_ip[3:0],
+    input wire [127:0] gua_ip  [3:0],
 
     output reg          nc_we,
     output reg  [127:0] nc_in_v6_w,
@@ -92,24 +94,14 @@ module ndp_datapath #(
 
     typedef enum {
         ST_SEND_RECV,
+        ST_NS,
+        ST_NA,
         ST_WAIT_NC_READY
     } s1_state_t;
     s1_state_t s1_state;
     frame_beat s1, s1_reg;
     wire s1_ready;
     assign in_ready = (s1_ready && s1_state == ST_SEND_RECV) || !in.valid;
-
-    ip6_hdr in_ip6;
-    assign in_ip6 = in.data.ip6;
-
-    // 生成 in.data.ip6.dst 对应的组播地址
-    wire [127:0] in_multicast_ip;
-    wire [ 47:0] in_multicast_mac;
-    unicast_to_multicast unicast_to_multicast_i (
-        .ip_in  (in_ip6.dst),
-        .ip_out (in_multicast_ip),
-        .mac_out(in_multicast_mac)
-    );
 
     always @(*) begin
         s1       = s1_reg;
@@ -124,156 +116,176 @@ module ndp_datapath #(
             nc_in_v6_w <= 0;
             nc_in_id_w <= 0;
             s1_state   <= ST_SEND_RECV;
-        end else if (s1_state == ST_SEND_RECV) begin
-            if (s1_ready) begin
-                s1_reg <= in;
-                nc_we  <= 0;
-                if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
-                    // Receipt of Neighbor Solicitations
-                    // 解除锁定
-                    s1_reg.meta.dont_touch <= 1'b0;
-                    if (in_ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
-                        // 转发时邻居缓存未命中, 发送 NS 包查询, 对应接口在之前的路由表中获得, 故不做更改
-                        if (in.meta.send_from_datapath) begin
-                            // frame 部分
-                            if (in.last == 1'b0) begin
-                                s1_reg.meta.drop_next <= 1'b1;
-                            end
-                            s1_reg.last <= 1'b1;
-                            s1_reg.keep <= '1;
-                            s1_reg.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
+        end else begin
+            case (s1_state)
+                ST_SEND_RECV: begin
+                    nc_we <= 0;
+                    if (s1_ready) begin
+                        s1_reg <= in;
+                        if (in.valid && in.is_first && !in.meta.drop && in.meta.ndp_packet) begin
+                            // 解除锁定
+                            s1_reg.meta.dont_touch <= 1'b0;
 
-                            // IPv6 模板
-                            s1_reg.data <= IPv6_packet(
-                                .dst_mac(in_multicast_mac),
-                                .src_mac(mac[in.meta.dest]),
-                                .payload_len(16'h20_00),
-                                .next_hdr(IP6_TYPE_ICMP),
-                                .hop_limit(8'd255),
-                                .src_ip(local_ip[in.meta.dest]),
-                                .dst_ip(in_multicast_ip)
-                            );
-
-                            // ICMPv6 部分
-                            s1_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
-                            s1_reg.data.ip6.p.ns_data.code <= 8'b0;
-                            s1_reg.data.ip6.p.ns_data.checksum <= 16'b0;
-                            s1_reg.data.ip6.p.ns_data.reserved <= 32'b0;
-                            s1_reg.data.ip6.p.ns_data.target_address <= in_ip6.dst;
-                            s1_reg.data.ip6.p.ns_data.option_type <= 8'd1;
-                            s1_reg.data.ip6.p.ns_data.length <= 8'd1;
-                            s1_reg.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.dest];
-
-                            // NS 包(ICMPv6 部分)的合法性检验
-                        end else if (
-                            in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                            in_sum != 0 ||  // ICMP Checksum is valid
-                            in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
-                            in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
-                            in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
-                            in_ip6.p.ns_data.length <= 0  // All included options have a length that is greater than zero
-                            // If the IP source address is the unspecified address, the IP destination address is a solicited-node multicast address
-                            // If the IP source address is the unspecified address, there is no source link-layer address option in the message
-                            // 但我们不处理重复地址检测
-                            ) begin
-                            s1_reg.meta.drop <= 1'b1;
-
-                            // HACK: [调试时不启用] Target Address 须为接受口地址
-                        end else if (in_ip6.p.ns_data.target_address != local_ip[in.meta.id]) begin
-                            s1_reg.meta.drop <= 1'b1;
-
-                            // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
-                            // IPv6 Source Address 为未指定地址
-                        end else if (in_ip6.src == 128'b0) begin
-                            s1_reg.meta.drop <= 1'b1;
-
-                            // 收到 NS, 发送单播 NA 进行响应
-                        end else begin
-                            // 组播 NS, SHOULD 更新邻居缓存
-                            if (in_ip6.dst[7:0] == 8'hff) begin
-                                // HACK: 前面的 check 需要保证这里 in_ip6.src 不是未指定 IPv6 地址
-                                // HACK: in.data.src 源 MAC 地址暂时不知在哪里检验
-                                if (in.data.src == in_ip6.p.ns_data.source_link_layer_address) begin
-                                    nc_in_v6_w <= in_ip6.src;
-                                    nc_in_id_w <= in.meta.id[1:0];
-                                    nc_in_mac  <= in_ip6.p.ns_data.source_link_layer_address;
-                                    nc_we      <= 1;
-                                    if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
+                            if (in.meta.send_from_datapath) begin
+                                // 转发时邻居缓存未命中, 发送 NS 包查询, 对应接口在之前的路由表中获得, 故不做更改
+                                // frame 部分
+                                if (in.last == 1'b0) begin
+                                    s1_reg.meta.drop_next <= 1'b1;
                                 end
+                                s1_reg.last <= 1'b1;
+                                s1_reg.keep <= '1;
+                                s1_reg.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
+
+                                // IPv6 模板
+                                s1_reg.data <= IPv6_packet(
+                                    .dst_mac(multicast_MAC(solicited_node_IP(in.data.ip6.dst))),
+                                    .src_mac(mac[in.meta.dest]),
+                                    .payload_len(16'h20_00),
+                                    .next_hdr(IP6_TYPE_ICMP),
+                                    .hop_limit(8'd255),
+                                    .src_ip(local_ip[in.meta.dest]),
+                                    .dst_ip(solicited_node_IP(in.data.ip6.dst))
+                                );
+
+                                // ICMPv6 部分
+                                s1_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
+                                s1_reg.data.ip6.p.ns_data.code <= 8'b0;
+                                s1_reg.data.ip6.p.ns_data.checksum <= 16'b0;
+                                s1_reg.data.ip6.p.ns_data.reserved <= 32'b0;
+                                s1_reg.data.ip6.p.ns_data.target_address <= in.data.ip6.dst;
+                                s1_reg.data.ip6.p.ns_data.option_type <= 8'd1;
+                                s1_reg.data.ip6.p.ns_data.length <= 8'd1;
+                                s1_reg.data.ip6.p.ns_data.source_link_layer_address <= mac[in.meta.dest];
+
+                            end else if (in.data.ip6.p.ns_data.icmp_type == ICMP_TYPE_NS) begin
+                                // Receipt of Neighbor Solicitations
+
+                                // NS 包(ICMPv6 部分)的合法性检验
+                                if (in.data.ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
+                                    in_sum != 0 ||  // ICMP Checksum is valid
+                                    in.data.ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
+                                    in.data.ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
+                                    in.data.ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
+                                    in.data.ip6.p.ns_data.length <= 0  // All included options have a length that is greater than zero
+                                    // If the IP source address is the unspecified address, the IP destination address is a solicited-node multicast address
+                                    // If the IP source address is the unspecified address, there is no source link-layer address option in the message
+                                    // 但我们不处理重复地址检测
+                                    ) begin
+                                    s1_reg.meta.drop <= 1'b1;
+
+                                end else if (in.data.ip6.p.ns_data.target_address != local_ip[in.meta.id]
+                                            && in.data.ip6.p.ns_data.target_address != gua_ip[in.meta.id]) begin
+                                    s1_reg.meta.drop <= 1'b1;
+                                    // Target Address 须为接受口地址
+
+                                end else begin
+                                    // 收到 NS 包
+                                    s1_state <= ST_NS;
+                                end
+
+                            end else if (in.data.ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
+                                // Receipt of Neighbor Advertisements
+
+                                // NA 包(ICMPv6 部分)的合法性检验
+                                if (in.data.ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
+                                    in_sum != 0 ||  // ICMP Checksum is valid
+                                    in.data.ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
+                                    in.data.ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
+                                    in.data.ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
+                                    // If the IP Destination Address is a multicast address the Solicited flag is zero 但我们不处理组播NA
+                                    in.data.ip6.p.ns_data.length <= 0 // All included options have a length that is greater than zero
+                                    ) begin
+                                    s1_reg.meta.drop <= 1'b1;
+
+                                end else begin
+                                    s1_state <= ST_NA;
+                                end
+
+                            end else begin
+                                s1_reg.meta.drop <= 1'b1;
                             end
-
-                            // 发送 NA 包
-                            // frame 部分
-                            s1_reg.meta.dest <= in.meta.id;
-                            if (in.last == 1'b0) begin
-                                s1_reg.meta.drop_next <= 1'b1;
-                            end
-                            s1_reg.last <= 1'b1;
-                            s1_reg.keep <= '1;
-                            s1_reg.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
-
-                            // IPv6 模板
-                            s1_reg.data <= IPv6_packet(
-                                .dst_mac(in.data.src),
-                                .src_mac(mac[in.meta.id]),
-                                .payload_len(16'h20_00),
-                                .next_hdr(IP6_TYPE_ICMP),
-                                .hop_limit(8'd255),
-                                .src_ip(local_ip[in.meta.id]),
-                                .dst_ip(in_ip6.src)
-                            );
-
-                            // ICMPv6 部分
-                            s1_reg.data.ip6.p.na_data.icmp_type <= ICMP_TYPE_NA;
-                            s1_reg.data.ip6.p.na_data.code <= 0;
-                            s1_reg.data.ip6.p.na_data.checksum <= 0;
-                            s1_reg.data.ip6.p.na_data.reserved_lo <= 0;
-                            s1_reg.data.ip6.p.na_data.router_flag <= 1;
-                            s1_reg.data.ip6.p.na_data.solicited_flag <= 1;
-                            // INFO: 若为 anycast 地址, 则 SHOULD NOT set override_flag, 此处暂时忽略
-                            s1_reg.data.ip6.p.na_data.override_flag <= 1;
-                            s1_reg.data.ip6.p.na_data.reserved_hi <= 0;
-                            s1_reg.data.ip6.p.na_data.target_address <= in_ip6.p.ns_data.target_address;
-                            s1_reg.data.ip6.p.na_data.option_type <= 8'd2;
-                            s1_reg.data.ip6.p.na_data.length <= 1;
-                            s1_reg.data.ip6.p.na_data.target_link_layer_address <= mac[in.meta.id];
-
                         end
-
-                        // Receipt of Neighbor Advertisements
-                    end else if (in_ip6.p.na_data.icmp_type == ICMP_TYPE_NA) begin
-                        // NA 包(ICMPv6 部分)的合法性检验
-                        if (in_ip6.hop_limit != 8'd255 ||  // The IP Hop Limit field has a value of 255
-                            in_sum != 0 ||  // ICMP Checksum is valid
-                            in_ip6.p.ns_data.code != 0 ||  // ICMP Code is 0
-                            in_ip6.payload_len < 24 ||  // ICMP length (derived from the IP length) is 24 or more octets
-                            in_ip6.p.ns_data.target_address[7:0] == 8'hff ||  // Target Address is not a multicast address
-                            // If the IP Destination Address is a multicast address the Solicited flag is zero 但我们不处理组播NA
-                            in_ip6.p.ns_data.length <= 0 // All included options have a length that is greater than zero
-                            ) begin
-                            s1_reg.meta.drop <= 1'b1;
-
-                            // 组播 NA, 丢弃
-                        end else if (in_ip6.dst[7:0] == 8'hff) begin
-                            s1_reg.meta.drop <= 1'b1;
-
-                            // 单播 NA
-                        end else begin
-                            // 更新邻居缓存
-                            nc_in_v6_w       <= in_ip6.p.na_data.target_address;
-                            nc_in_id_w       <= in.meta.id[1:0];
-                            nc_in_mac        <= in_ip6.p.na_data.target_link_layer_address;
-                            nc_we            <= 1;
-                            s1_reg.meta.drop <= 1'b1;
-                            if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
-                        end
-                    end else begin
-                        s1_reg.meta.drop <= 1'b1;
                     end
                 end
-            end
-        end else if (s1_state == ST_WAIT_NC_READY) begin
-            if (nc_ready) s1_state <= ST_SEND_RECV;
+                ST_NS: begin
+                    s1_state <= ST_SEND_RECV;
+
+                    // 重复地址检测 (Duplicate Address Detection, DAD), 丢弃
+                    // IPv6 Source Address 为未指定地址
+                    if (s1_reg.data.ip6.src == 128'b0) begin
+                        s1_reg.meta.drop <= 1'b1;
+
+                        // 收到 NS, 发送单播 NA 进行响应
+                    end else begin
+                        // 组播 NS, SHOULD 更新邻居缓存
+                        if (s1_reg.data.ip6.dst[7:0] == 8'hff) begin
+                            nc_in_v6_w <= s1_reg.data.ip6.src;
+                            nc_in_id_w <= s1_reg.meta.id[1:0];
+                            nc_in_mac  <= s1_reg.data.ip6.p.ns_data.source_link_layer_address;
+                            nc_we      <= 1;
+                            if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
+                        end
+
+                        // 发送 NA 包
+                        // frame 部分
+                        s1_reg.meta.dest <= s1_reg.meta.id;
+                        if (s1_reg.last == 1'b0) begin
+                            s1_reg.meta.drop_next <= 1'b1;
+                        end
+                        s1_reg.last <= 1'b1;
+                        s1_reg.keep <= '1;
+                        s1_reg.keep[DATAW_WIDTH_ND/8-1:DATAW_WIDTH_ND/8-2] <= 2'b00;
+
+                        // IPv6 模板
+                        s1_reg.data <= IPv6_packet(
+                            .dst_mac(s1_reg.data.src),
+                            .src_mac(mac[s1_reg.meta.id]),
+                            .payload_len(16'h20_00),
+                            .next_hdr(IP6_TYPE_ICMP),
+                            .hop_limit(8'd255),
+                            .src_ip(s1_reg.data.ip6.p.ns_data.target_address),  // local_ip 或者 gua_ip
+                            .dst_ip(s1_reg.data.ip6.src)
+                        );
+
+                        // ICMPv6 部分
+                        s1_reg.data.ip6.p.na_data.icmp_type <= ICMP_TYPE_NA;
+                        s1_reg.data.ip6.p.na_data.code <= 0;
+                        s1_reg.data.ip6.p.na_data.checksum <= 0;
+                        s1_reg.data.ip6.p.na_data.reserved_lo <= 0;
+                        s1_reg.data.ip6.p.na_data.router_flag <= 1;
+                        s1_reg.data.ip6.p.na_data.solicited_flag <= 1;
+                        // INFO: 若为 anycast 地址, 则 SHOULD NOT set override_flag, 此处暂时忽略
+                        s1_reg.data.ip6.p.na_data.override_flag <= 1;
+                        s1_reg.data.ip6.p.na_data.reserved_hi <= 0;
+                        s1_reg.data.ip6.p.na_data.target_address <= s1_reg.data.ip6.p.ns_data.target_address;
+                        s1_reg.data.ip6.p.na_data.option_type <= 8'd2;
+                        s1_reg.data.ip6.p.na_data.length <= 1;
+                        s1_reg.data.ip6.p.na_data.target_link_layer_address <= mac[s1_reg.meta.id];
+                    end
+                end
+                ST_NA: begin
+                    s1_state <= ST_SEND_RECV;
+
+                    // 组播 NA, 丢弃
+                    if (s1_reg.data.ip6.dst[7:0] == 8'hff) begin
+                        s1_reg.meta.drop <= 1'b1;
+
+                        // 单播 NA
+                    end else begin
+                        // 更新邻居缓存
+                        nc_in_v6_w       <= s1_reg.data.ip6.p.na_data.target_address;
+                        nc_in_id_w       <= s1_reg.meta.id[1:0];
+                        nc_in_mac        <= s1_reg.data.ip6.p.na_data.target_link_layer_address;
+                        nc_we            <= 1;
+                        s1_reg.meta.drop <= 1'b1;
+                        if (!nc_ready) s1_state <= ST_WAIT_NC_READY;
+                    end
+                end
+                ST_WAIT_NC_READY: begin
+                    if (nc_ready) s1_state <= ST_SEND_RECV;
+                end
+                default: s1_state <= ST_SEND_RECV;
+            endcase
         end
     end
 

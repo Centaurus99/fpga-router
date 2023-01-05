@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
 `include "frame_datapath.vh"
+`include "multicast.vh"
 
 module frame_datapath #(
     parameter EXT_RAM_FOR_LEAF = 1,  // 将 ExtRAM 作为叶节点
@@ -131,21 +132,7 @@ module frame_datapath #(
         .out_ready(in_ready)
     );
 
-    // README: Your code here.
-    // See the guide to figure out what you need to do with frames.
-
-    // 生成包入口 local_ip[in.meta.id] 对应的组播地址
-    wire [127:0] in_multicast_ip;
-    wire [ 47:0] in_multicast_mac;
-    wire [ 47:0] broadcast_mac;
-    unicast_to_multicast unicast_to_multicast_i (
-        .ip_in  (local_ip[in.meta.id]),
-        .ip_out (in_multicast_ip),
-        .mac_out(in_multicast_mac)
-    );
-    assign broadcast_mac = 48'hff_ff_ff_ff_ff_ff;
-
-    // 检验 MAC 地址以及是否为 IPv6 包
+    // 二层检验 (检验 MAC 地址及 Type) 及 CPU 发包预处理
     frame_beat s1;
     wire       s1_ready;
     assign in_ready = s1_ready || !in.valid;
@@ -155,11 +142,42 @@ module frame_datapath #(
         end else if (s1_ready) begin
             s1 <= in;
             if (`should_handle(in)) begin
-                if (in.data.dst != mac[in.meta.id] && in.data.dst != in_multicast_mac && in.data.dst != broadcast_mac) begin
-                    s1.meta.drop <= 1;
-                    // drop non ipv6 packet
-                end else if (in.data.ip6.version != 4'd6) begin
-                    s1.meta.drop <= 1;
+                if (in.meta.id == ID_CPU) begin
+                    // CPU 发包, 预处理
+                    s1.data.ethertype  <= ETHERTYPE_IP6;  // 填充 Type 为 IPv6
+                    s1.meta.dont_touch <= 1'b1;
+                    case (in.data.src)
+                        // 若 CPU 设置了 src mac, 则生成对应的出接口号, 并直接发出
+                        mac[0]: s1.meta.dest <= 0;
+                        mac[1]: s1.meta.dest <= 1;
+                        mac[2]: s1.meta.dest <= 2;
+                        mac[3]: s1.meta.dest <= 3;
+                        default: begin
+                            s1.meta.dest       <= ID_CPU;
+                            s1.meta.dont_touch <= 1'b0;
+                        end
+                    endcase
+                    if (in.data.ip6.dst == {8'h01, 120'b0}) begin
+                        // Loopback
+                        s1.meta.dest       <= ID_CPU;
+                        s1.meta.dont_touch <= 1'b1;
+                    end
+                    if (in.data.ip6.dst[7:0] == 8'hff) begin
+                        // Multicast
+                        // MAC src 应由 CPU 设置
+                        s1.data.dst        <= multicast_MAC(in.data.ip6.dst);
+                        s1.meta.dont_touch <= 1'b1;
+                    end
+                    // 其余情况进入转发逻辑
+                end else begin
+                    // 非 CPU 发包, 二层检验
+                    if (in.data.dst != mac[in.meta.id] && in.data.dst[15:0] != 16'h3333 && in.data.dst != 48'hff_ff_ff_ff_ff_ff) begin
+                        // 仅接收接口 mac 地址, 组播 mac 地址, 广播 mac 地址
+                        s1.meta.drop <= 1;
+                    end else if (in.data.ethertype != ETHERTYPE_IP6) begin
+                        // 仅接收 IPv6 包
+                        s1.meta.drop <= 1;
+                    end
                 end
             end
         end
@@ -185,32 +203,39 @@ module frame_datapath #(
         end else if (s2_ready) begin
             s2 <= s1;
             if (`should_handle(s1)) begin
-                if ((s1.data.ip6.dst == local_ip[s1.meta.id] || s1.data.ip6.dst == in_multicast_ip)) begin
-                    // IPv6 目的地址为对应网口可接收地址, 需要接收
+                if (s1.data.ip6.version != 4'd6) begin
+                    // 参数错误
+                    // TODO: 回发 ICMP Parameter Problem Message
+                    s2.meta.drop <= 1'b1;
+
+                end else if ((s1.data.ip6.dst == local_ip[s1.meta.id] || s1_is_gua || s1.data.ip6.dst[7:0] == 8'hff)) begin
+                    // IPv6 目的地址为对应网口可接收地址 (链路本地, GUA, 组播), 需要接收
                     // 需要接收的包不需要转发逻辑处理
                     s2.meta.dont_touch <= 1'b1;
 
-                    // 如果为 NS 或 NA 包, 则交给 ndp_datapath 处理
                     if (s1.data.ip6.next_hdr == IP6_TYPE_ICMP
                         && (s1.data.ip6.p.ns_data.icmp_type == ICMP_TYPE_NS || s1.data.ip6.p.ns_data.icmp_type == ICMP_TYPE_NA)) begin
+                        // 如果为 NS 或 NA 包, 则交给 ndp_datapath 处理
                         s2.meta.ndp_packet <= 1'b1;
 
-                        // 否则转给软件处理
                     end else begin
+                        // 否则转给软件处理
                         s2.meta.dest <= ID_CPU;
                     end
 
-                end else if (s1_is_gua) begin
-                    // IPv6 目的地址为对应任意网口的 GUA 地址, 转给软件处理
-                    s2.meta.dest <= ID_CPU;
-
-                end else begin
-                    // 否则需要转发, 检验 hop_limit 以及是否为组播包
+                end else if (s1.meta.id != ID_CPU) begin
+                    // 否则需要转发
                     if (s1.data.ip6.hop_limit <= 1) begin
-                        // TODO: 生成 ICMP 信息回复, 此处暂时直接丢包
-                        s2.meta.drop <= 1;
-                    end else if (s1.data.ip6.dst[7:0] == 8'hff) begin
-                        s2.meta.drop <= 1;
+                        // hop_limit 不足, 回发 ICMP Time Exceeded Message
+                        // TODO: 限制发送速率
+                        if (s1.data.ip6.next_hdr == IP6_TYPE_ICMP && s1.data.ip6.p.ns_data.icmp_type[7] == 1'b0) begin
+                            // 若为 ICMP error messages, 则不回发
+                            s2.meta.drop <= 1'b1;
+                        end else begin
+                            s2.data.ethertype  <= ETHERTYPE_ICMP_TEM;
+                            s2.meta.dest       <= ID_CPU;
+                            s2.meta.dont_touch <= 1'b1;
+                        end
                     end
                 end
             end
@@ -299,10 +324,12 @@ module frame_datapath #(
                     if (s3_ready) begin
                         s3_reg <= forwarded;
                         if (`should_handle(forwarded)) begin
-                            s3_state                  <= ST_QUERY_WAIT1;
-                            nc_in_v6_r                <= forwarded_next_hop_ip;
-                            nc_in_id_r                <= forwarded.meta.dest[1:0];
-                            s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
+                            s3_state   <= ST_QUERY_WAIT1;
+                            nc_in_v6_r <= forwarded_next_hop_ip;
+                            nc_in_id_r <= forwarded.meta.dest[1:0];
+                            if (forwarded.meta.id != ID_CPU) begin
+                                s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
+                            end
                         end
                     end
                 end
@@ -371,6 +398,7 @@ module frame_datapath #(
 
         .mac     (mac),
         .local_ip(local_ip),
+        .gua_ip  (gua_ip),
 
         .nc_we     (nc_we),
         .nc_in_v6_w(nc_in_v6_w),

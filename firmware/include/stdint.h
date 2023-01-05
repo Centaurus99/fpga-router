@@ -17,6 +17,4 @@ typedef int32_t ssize_t;
 
 typedef long intmax_t;
 
-#define NULL (void *)(0ul)
-
 #endif
