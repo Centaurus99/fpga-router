@@ -144,14 +144,18 @@ module frame_datapath #(
             if (`should_handle(in)) begin
                 if (in.meta.id == ID_CPU) begin
                     // CPU 发包, 预处理
-                    s1.data.ethertype <= ETHERTYPE_IP6;  // 填充 Type 为 IPv6
+                    s1.data.ethertype  <= ETHERTYPE_IP6;  // 填充 Type 为 IPv6
+                    s1.meta.dont_touch <= 1'b1;
                     case (in.data.src)
-                        // 若 CPU 设置了 src mac, 则生成对应的出接口号
-                        mac[0]:  s1.meta.dest <= 0;
-                        mac[1]:  s1.meta.dest <= 1;
-                        mac[2]:  s1.meta.dest <= 2;
-                        mac[3]:  s1.meta.dest <= 3;
-                        default: s1.meta.dest <= ID_CPU;
+                        // 若 CPU 设置了 src mac, 则生成对应的出接口号, 并直接发出
+                        mac[0]: s1.meta.dest <= 0;
+                        mac[1]: s1.meta.dest <= 1;
+                        mac[2]: s1.meta.dest <= 2;
+                        mac[3]: s1.meta.dest <= 3;
+                        default: begin
+                            s1.meta.dest       <= ID_CPU;
+                            s1.meta.dont_touch <= 1'b0;
+                        end
                     endcase
                     if (in.data.ip6.dst == {8'h01, 120'b0}) begin
                         // Loopback
