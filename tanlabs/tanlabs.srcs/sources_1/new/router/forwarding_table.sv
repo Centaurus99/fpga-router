@@ -67,11 +67,13 @@ module forwarding_table #(
     assign debug_led_cpu = debug_cdc;
     assign debug_led_eth = debug_no_match_error;
 
-    forwarding_beat s          [PIPELINE_LENGTH:1];
-    forwarding_beat s_reg      [PIPELINE_LENGTH:1];
-    wire            s_ready    [PIPELINE_LENGTH:1];
-    forwarding_beat s_buf      [PIPELINE_LENGTH:0];
-    wire            s_buf_ready[PIPELINE_LENGTH:0];
+    forwarding_beat s               [PIPELINE_LENGTH:1];
+    forwarding_beat s_reg           [PIPELINE_LENGTH:1];
+    wire            s_ready         [PIPELINE_LENGTH:1];
+    forwarding_beat s_buf           [PIPELINE_LENGTH:1];
+    wire            s_buf_ready     [PIPELINE_LENGTH:1];
+    forwarding_beat s_buf_skid      [PIPELINE_LENGTH:0];
+    wire            s_buf_skid_ready[PIPELINE_LENGTH:0];
 
     // Skid buffer
     basic_skid_buffer u_basic_skid_buffer_1 (
@@ -80,14 +82,14 @@ module forwarding_table #(
         .in_data (in),
         .in_ready(in_ready),
 
-        .out_data (s_buf[0].beat),
-        .out_ready(s_buf_ready[0])
+        .out_data (s_buf_skid[0].beat),
+        .out_ready(s_buf_skid_ready[0])
     );
 
-    assign s_buf[0].stop      = '0;
-    assign s_buf[0].matched   = '0;
-    assign s_buf[0].leaf_addr = '0;
-    assign s_buf[0].node_addr = '0;  // 默认根节点地址为 0
+    assign s_buf_skid[0].stop      = '0;
+    assign s_buf_skid[0].matched   = '0;
+    assign s_buf_skid[0].leaf_addr = '0;
+    assign s_buf_skid[0].node_addr = '0;  // 默认根节点地址为 0
 
     // 内部节点读取信号
     logic         [   CHILD_ADDR_WIDTH - 1:0] ft_addr         [  PIPELINE_LENGTH:1];
@@ -376,7 +378,7 @@ module forwarding_table #(
             bram_state_t       bram_state;  // BRAM 读取状态
 
             // 连接 ready 信号
-            assign s_buf_ready[i-1] = (s_ready[i] && bram_state == BRAM_IDLE) || !s_buf[i-1].beat.valid;
+            assign s_buf_skid_ready[i-1] = (s_ready[i] && bram_state == BRAM_IDLE) || !s_buf_skid[i-1].beat.valid;
 
             // 连接状态机寄存器
             always_comb begin
@@ -392,7 +394,7 @@ module forwarding_table #(
             wire [                 127:0] ip_little_endian;
             reg  [                 127:0] ip_for_match;
 
-            assign ip_little_endian = {<<8{s_buf[i-1].beat.data.ip6.dst}};
+            assign ip_little_endian = {<<8{s_buf_skid[i-1].beat.data.ip6.dst}};
 
             // 寄存 BRAM 查询结果, 可能可以优化时序
             FTE_node ft_dout_for_parser;
@@ -420,11 +422,11 @@ module forwarding_table #(
                     unique case (bram_state)
                         BRAM_IDLE: begin
                             if (s_ready[i]) begin
-                                s_reg[i] <= s_buf[i-1];
-                                if (`should_search(s_buf[i-1])) begin
+                                s_reg[i] <= s_buf_skid[i-1];
+                                if (`should_search(s_buf_skid[i-1])) begin
                                     now_height <= 1;
                                     bram_state <= BRAM_ADDR_SENT;
-                                    ft_addr[i] <= s_buf[i-1].node_addr;
+                                    ft_addr[i] <= s_buf_skid[i-1].node_addr;
                                     ip_for_match <= {<<STRIDE{ip_little_endian << ((i-1)*STRIDE*STAGE_HEIGHT)}};
                                 end
                             end
@@ -471,6 +473,17 @@ module forwarding_table #(
                     s_buf[i] <= s[i];
                 end
             end
+
+            // 连接 Skid Buffer
+            basic_forwarding_skid_buffer u_basic_forwarding_skid_buffer (
+                .clk     (clk),
+                .reset   (reset),
+                .in_data (s_buf[i]),
+                .in_ready(s_buf_ready[i]),
+
+                .out_data (s_buf_skid[i]),
+                .out_ready(s_buf_skid_ready[i])
+            );
         end
     endgenerate
 
@@ -535,7 +548,7 @@ module forwarding_table #(
             } leaf_read_state_t;
 
             leaf_read_state_t s_leaf_state;
-            assign s_buf_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s_buf[PIPELINE_LENGTH].beat.valid;
+            assign s_buf_skid_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s_buf_skid[PIPELINE_LENGTH].beat.valid;
 
             always_comb begin
                 s_leaf            = s_leaf_reg;
@@ -558,12 +571,12 @@ module forwarding_table #(
                     unique case (s_leaf_state)
                         ST_INIT: begin
                             if (s_leaf_ready) begin
-                                s_leaf_reg <= s_buf[PIPELINE_LENGTH];
-                                if (`should_handle(s_buf[PIPELINE_LENGTH].beat)) begin
+                                s_leaf_reg <= s_buf_skid[PIPELINE_LENGTH];
+                                if (`should_handle(s_buf_skid[PIPELINE_LENGTH].beat)) begin
                                     // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
-                                    if (s_buf[PIPELINE_LENGTH].matched) begin
+                                    if (s_buf_skid[PIPELINE_LENGTH].matched) begin
                                         wb_router_adr_i <= {
-                                            s_buf[PIPELINE_LENGTH].leaf_addr, 2'b00
+                                            s_buf_skid[PIPELINE_LENGTH].leaf_addr, 2'b00
                                         };
                                         s_leaf_state <= ST_READ;
                                     end else begin
@@ -681,7 +694,7 @@ module forwarding_table #(
             } leaf_read_state_t;
 
             leaf_read_state_t s_leaf_state;
-            assign s_buf_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s_buf[PIPELINE_LENGTH].beat.valid;
+            assign s_buf_skid_ready[PIPELINE_LENGTH] = (s_leaf_ready && s_leaf_state == ST_INIT) || !s_buf_skid[PIPELINE_LENGTH].beat.valid;
 
             reg [LEAF_ADDR_WIDTH - 1:0] leaf_addr_reg1;
 
@@ -702,11 +715,11 @@ module forwarding_table #(
                     unique case (s_leaf_state)
                         ST_INIT: begin
                             if (s_leaf_ready) begin
-                                s_leaf_reg <= s_buf[PIPELINE_LENGTH];
-                                if (`should_handle(s_buf[PIPELINE_LENGTH].beat)) begin
+                                s_leaf_reg <= s_buf_skid[PIPELINE_LENGTH];
+                                if (`should_handle(s_buf_skid[PIPELINE_LENGTH].beat)) begin
                                     // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
-                                    if (s_buf[PIPELINE_LENGTH].matched) begin
-                                        leaf_addr_reg1 <= s_buf[PIPELINE_LENGTH].leaf_addr;
+                                    if (s_buf_skid[PIPELINE_LENGTH].matched) begin
+                                        leaf_addr_reg1 <= s_buf_skid[PIPELINE_LENGTH].leaf_addr;
                                         s_leaf_state   <= ST_ADDR;
                                     end else begin
                                         debug_no_match_error <= 1'b1;

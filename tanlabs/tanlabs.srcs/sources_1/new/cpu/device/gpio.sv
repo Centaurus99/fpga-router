@@ -29,8 +29,8 @@ module gpio #(
 );
 
     reg [15:0] leds_reg;
-    reg [ 7:0] dpy0_reg;
-    reg [ 7:0] dpy1_reg;
+    reg [ 3:0] dpy0_reg;
+    reg [ 3:0] dpy1_reg;
 
     reg [31:0] buffer      [31:0];
     reg [ 4:0] buffer_head;
@@ -54,7 +54,8 @@ module gpio #(
 
     typedef enum {
         ST_IDLE,
-        ST_UPDATE_POINTER
+        ST_READ_WAIT,
+        ST_READ_FIN
     } gpio_state_t;
 
     gpio_state_t state;
@@ -136,62 +137,75 @@ module gpio #(
     always_ff @(posedge clk) begin
         if (rst) begin
             leds_reg <= 16'h0000;
-            dpy0_reg <= 8'h00;
-            dpy1_reg <= 8'h00;
+            dpy0_reg <= 4'h00;
+            dpy1_reg <= 4'h00;
             is_read  <= 1'b0;
             state    <= ST_IDLE;
-        end else if (wb_cyc_i & wb_stb_i) begin
-            case (state)
-                ST_IDLE: begin
-                    case (wb_adr_i[3:0])
-                        4'h0: begin
-                            // 可读，不可写
-                            if (!wb_we_i) begin
-                                wb_ack_o <= 1'b0;
-                                is_read  <= 1'b1;
-                                state    <= ST_UPDATE_POINTER;
-                            end
-                        end
-                        4'h4: begin
-                            wb_ack_o <= 1'b0;
-                            if (!wb_we_i) begin
-                                wb_dat_o <= {16'h00, leds_reg};
-                            end else begin
-                                leds_reg <= wb_dat_i[15:0];
-                            end
-                        end
-                        4'h8: begin
-                            wb_ack_o <= 1'b0;
-                            if (!wb_we_i) begin
-                                wb_dat_o <= {16'h00, dpy0_reg, dpy1_reg};
-                            end else begin
-                                dpy0_reg <= wb_dat_i[15:8];
-                                dpy1_reg <= wb_dat_i[7:0];
-                            end
-                        end
-                        default: begin
-                            state <= ST_IDLE;
-                        end
-                    endcase
-                end
-                ST_UPDATE_POINTER: begin
-                    // 获得数据，同时等待循环队列更新指针
-                    wb_ack_o <= 1'b1;
-                    wb_dat_o <= buffer_data_o;
-                    is_read  <= 1'b0;
-                    state    <= ST_IDLE;
-                end
-                default: begin
-                    state <= ST_IDLE;
-                end
-            endcase
         end else begin
             wb_ack_o <= 1'b0;
+            if (wb_cyc_i && wb_stb_i && !wb_ack_o) begin
+                case (state)
+                    ST_IDLE: begin
+                        case (wb_adr_i[3:0])
+                            4'h0: begin
+                                // 可读，不可写
+                                if (!wb_we_i) begin
+                                    is_read <= 1'b1;
+                                    state   <= ST_READ_WAIT;
+                                end
+                            end
+                            4'h4: begin
+                                wb_ack_o <= 1'b1;
+                                state    <= ST_IDLE;
+                                if (!wb_we_i) begin
+                                    wb_dat_o <= {16'h00, leds_reg};
+                                end else begin
+                                    leds_reg <= wb_dat_i[15:0];
+                                end
+                            end
+                            4'h8: begin
+                                wb_ack_o <= 1'b1;
+                                state    <= ST_IDLE;
+                                if (!wb_we_i) begin
+                                    wb_dat_o <= {24'h00, dpy1_reg, dpy0_reg};
+                                end else begin
+                                    dpy1_reg <= wb_dat_i[7:4];
+                                    dpy0_reg <= wb_dat_i[3:0];
+                                end
+                            end
+                            default: begin
+                                wb_ack_o <= 1'b1;
+                                wb_dat_o <= 32'h0000_0000;
+                                state    <= ST_IDLE;
+                            end
+                        endcase
+                    end
+                    ST_READ_WAIT: begin
+                        is_read <= 1'b0;
+                        state   <= ST_READ_FIN;
+                    end
+                    ST_READ_FIN: begin
+                        // 获得数据，同时等待循环队列更新指针
+                        wb_ack_o <= 1'b1;
+                        wb_dat_o <= buffer_data_o;
+                        state    <= ST_IDLE;
+                    end
+                    default: begin
+                        state <= ST_IDLE;
+                    end
+                endcase
+            end
         end
     end
 
     assign leds = leds_reg;
-    assign dpy0 = dpy0_reg;
-    assign dpy1 = dpy1_reg;
+    SEG7_LUT segL (
+        .oSEG1(dpy0),
+        .iDIG (dpy0_reg)
+    );  // dpy0 是低位数码管
+    SEG7_LUT segH (
+        .oSEG1(dpy1),
+        .iDIG (dpy1_reg)
+    );  // dpy1 是高位数码管
 
 endmodule
