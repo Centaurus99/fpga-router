@@ -4,6 +4,7 @@
 #include "stdint.h"
 #include <stdbool.h>
 
+// DMA 控制 / 存储地址
 #define DMA_CTRL_ADDR 0x62000000
 #define DMA_BASE_ADDR 0x68000000
 
@@ -42,6 +43,12 @@ bool dma_read_need();
  * 告知读取完成, 将拉低 [等待 CPU 读取] 标志位
  */
 void dma_read_finish();
+
+/**
+ * 指定 DMA 发包端口
+ * \param port 端口号, 0-3
+ */
+void dma_set_out_port(uint8_t port);
 
 /**
  * DMA 串口交互程序, 用于测试

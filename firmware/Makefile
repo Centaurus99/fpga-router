@@ -42,6 +42,11 @@ ifeq ($(DISABLE_TIMER), y)
 	CFLAGS += -DDISABLE_TIMER
 endif
 
+override DEBUG ?= y
+ifeq ($(DEBUG), y)
+	CFLAGS += -D_DEBUG
+endif
+
 HEADERS=$(wildcard include/*.h)
 SOURCES=$(wildcard *.c *.S)
 OBJECTS=$(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.S,%.o,$(wildcard *.S))

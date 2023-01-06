@@ -2,6 +2,7 @@
 #define __LOOKUP_H__
 
 #include "stdbool.h"
+#include "router.h"
 
 #define NODE_COUNT_PER_STAGE  1024
 #define LEAF_COUNT  1024
@@ -11,7 +12,7 @@
 #define STAGE_COUNT  8
 
 #define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
-#define LEAF_ADDRESS  0x50000000
+#define LEAF_ADDRESS  0x80400000
 #define NEXT_HOP_ADDRESS  0x51000000
 
 
@@ -35,19 +36,6 @@ typedef unsigned int u32;
 typedef u32 leaf_t;
 
 int popcnt(u32 x);
-/* IPv6 address */
-typedef struct
-{
-    union
-    {
-        u8 __u6_addr8[16];
-        u16 __u6_addr16[8];
-        u32 __u6_addr32[4];
-    } __in6_u;
-#define s6_addr __in6_u.__u6_addr8
-#define s6_addr16 __in6_u.__u6_addr16
-#define s6_addr32 __in6_u.__u6_addr32
-} in6_addr;
 
 /*
   表示路由表的一项。

@@ -3,13 +3,44 @@
 `include "../../sources_1/new/router/forwarding_table.vh"
 
 module tb_forwarding_table #(
+    parameter EXT_RAM_FOR_LEAF = 1,  // 将 ExtRAM 作为叶节点
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
     parameter WISHBONE_ADDR_WIDTH = 32,
+
+    parameter SRAM_ADDR_WIDTH = 20,
+    parameter SRAM_DATA_WIDTH = 32,
+
     parameter TEST_ROUNDS = 4,
     parameter SIMPLE_TEST = 0,
     parameter SEND_STRESS = 0
 ) ();
+    wire [31:0] ext_ram_data;  // ExtRAM 数据，低 8 位与 CPLD 串口控制器共享
+    wire [19:0] ext_ram_addr;  // ExtRAM 地址
+    wire[3:0] ext_ram_be_n;    // ExtRAM 字节使能，低有效。如果不使用字节使能，请保持为 0
+    wire ext_ram_ce_n;  // ExtRAM 片选，低有效
+    wire ext_ram_oe_n;  // ExtRAM 读使能，低有效
+    wire ext_ram_we_n;  // ExtRAM 写使能，低有效
+
+    // ExtRAM 仿真模型
+    sram_model ext1 (
+        .DataIO (ext_ram_data[15:0]),
+        .Address(ext_ram_addr[19:0]),
+        .OE_n   (ext_ram_oe_n),
+        .CE_n   (ext_ram_ce_n),
+        .WE_n   (ext_ram_we_n),
+        .LB_n   (ext_ram_be_n[0]),
+        .UB_n   (ext_ram_be_n[1])
+    );
+    sram_model ext2 (
+        .DataIO (ext_ram_data[31:16]),
+        .Address(ext_ram_addr[19:0]),
+        .OE_n   (ext_ram_oe_n),
+        .CE_n   (ext_ram_ce_n),
+        .WE_n   (ext_ram_we_n),
+        .LB_n   (ext_ram_be_n[2]),
+        .UB_n   (ext_ram_be_n[3])
+    );
 
     wire clk_125M, clk_100M;
     clock clock_i (
@@ -36,6 +67,7 @@ module tb_forwarding_table #(
     assign const_ip[3] = {<<8{128'h2a0e_aa06_0497_0a03_41b7_0000_1234_5678}};
 
     wire                             cpu_clk;
+
     reg                              wb_cyc_i;
     reg                              wb_stb_i;
     reg                              wb_ack_o;
@@ -44,6 +76,15 @@ module tb_forwarding_table #(
     reg  [  WISHBONE_DATA_WIDTH-1:0] wb_dat_o;
     reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sel_i;
     reg                              wb_we_i;
+
+    reg                              wb_sram_cyc_i;
+    reg                              wb_sram_stb_i;
+    reg                              wb_sram_ack_o;
+    reg  [  WISHBONE_ADDR_WIDTH-1:0] wb_sram_adr_i;
+    reg  [  WISHBONE_DATA_WIDTH-1:0] wb_sram_dat_i;
+    reg  [  WISHBONE_DATA_WIDTH-1:0] wb_sram_dat_o;
+    reg  [WISHBONE_DATA_WIDTH/8-1:0] wb_sram_sel_i;
+    reg                              wb_sram_we_i;
 
     // 读取文件
     int fd, fd_in, fd_ans;
@@ -76,6 +117,12 @@ module tb_forwarding_table #(
     reg [WISHBONE_DATA_WIDTH-1:0] ram_data;
 
     // 写入内存
+    assign wb_adr_i      = ram_addr;
+    assign wb_dat_i      = ram_data;
+    assign wb_sel_i      = 4'b1111;
+    assign wb_sram_adr_i = ram_addr;
+    assign wb_sram_dat_i = ram_data;
+    assign wb_sram_sel_i = 4'b1111;
     always_ff @(posedge clk_100M or posedge reset) begin
         if (reset) begin
             state_write <= ST_WRITE_RAM;
@@ -83,28 +130,32 @@ module tb_forwarding_table #(
         end else begin
             case (state_write)
                 ST_WRITE_RAM: begin
-                    if (write_count == 0 || wb_ack_o) begin
-                        write_count <= write_count + 1;
-                        ret = $fscanf(fd, "%x%x", ram_addr, ram_data);
-                        if (ret != 2) begin
-                            wb_cyc_i    <= 1'b0;
-                            wb_stb_i    <= 1'b0;
-                            state_write <= ST_DONE;
+                    write_count <= write_count + 1;
+                    ret = $fscanf(fd, "%x%x", ram_addr, ram_data);
+                    if (ret != 2) begin
+                        state_write <= ST_DONE;
+                    end else begin
+                        if (ram_addr[WISHBONE_DATA_WIDTH-1:WISHBONE_DATA_WIDTH-4] == 4'h8) begin
+                            wb_sram_cyc_i <= 1'b1;
+                            wb_sram_stb_i <= 1'b1;
+                            wb_sram_we_i  <= 1'b1;
                         end else begin
-                            wb_cyc_i    <= 1'b1;
-                            wb_stb_i    <= 1'b1;
-                            wb_we_i     <= 1'b1;
-                            wb_sel_i    <= 4'b1111;
-                            wb_adr_i    <= ram_addr;
-                            wb_dat_i    <= ram_data;
-                            state_write <= ST_READ_RAM;
+                            wb_cyc_i <= 1'b1;
+                            wb_stb_i <= 1'b1;
+                            wb_we_i  <= 1'b1;
                         end
+                        state_write <= ST_READ_RAM;
                     end
                 end
                 ST_READ_RAM: begin
-                    if (wb_ack_o) begin
-                        wb_we_i     <= 1'b0;
-                        state_write <= ST_WRITE_RAM;
+                    if (wb_ack_o || wb_sram_ack_o) begin
+                        wb_cyc_i      <= 1'b0;
+                        wb_stb_i      <= 1'b0;
+                        wb_we_i       <= 1'b0;
+                        wb_sram_cyc_i <= 1'b0;
+                        wb_sram_stb_i <= 1'b0;
+                        wb_sram_we_i  <= 1'b0;
+                        state_write   <= ST_WRITE_RAM;
                     end
                 end
                 ST_DONE: begin
@@ -238,7 +289,7 @@ module tb_forwarding_table #(
                                         total_count <= total_count + 1;
                                         // 直连路由, next_hop_ip 为目标地址
                                         if (route_type_ans == 0) begin
-                                            if (ip_in != forwarded_next_hop_ip) begin
+                                            if (ip_in !== forwarded_next_hop_ip) begin
                                                 $display("ERROR! ip_ans:%x, next_hop_ip:%x", ip_in,
                                                          forwarded_next_hop_ip);
                                             end else begin
@@ -247,10 +298,10 @@ module tb_forwarding_table #(
                                             end
                                             // 静态或动态路由, next_hop_ip 由答案给出
                                         end else begin
-                                            if (ip_ans != forwarded_next_hop_ip) begin
+                                            if (ip_ans !== forwarded_next_hop_ip) begin
                                                 $display("ERROR! ip_ans:%x, next_hop_ip:%x",
                                                          ip_ans, forwarded_next_hop_ip);
-                                            end else if (port_ans != forwarded.meta.dest) begin
+                                            end else if (port_ans !== forwarded.meta.dest) begin
                                                 $display("ERROR! port_ans:%x, port:%x", port_ans,
                                                          forwarded.meta.dest);
                                             end else begin
@@ -279,8 +330,11 @@ module tb_forwarding_table #(
     endgenerate
 
     forwarding_table #(
+        .EXT_RAM_FOR_LEAF(EXT_RAM_FOR_LEAF),
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
-        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
+        .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH),
+        .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH),
+        .SRAM_DATA_WIDTH(SRAM_DATA_WIDTH)
     ) forwarding_table_i (
         .clk     (clk_125M),
         .reset   (reset),
@@ -293,14 +347,31 @@ module tb_forwarding_table #(
 
         .cpu_clk  (clk_100M),
         .cpu_reset(reset),
-        .wb_cyc_i (wb_cyc_i),
-        .wb_stb_i (wb_stb_i),
-        .wb_ack_o (wb_ack_o),
-        .wb_adr_i (wb_adr_i),
-        .wb_dat_i (wb_dat_i),
-        .wb_dat_o (wb_dat_o),
-        .wb_sel_i (wb_sel_i),
-        .wb_we_i  (wb_we_i)
+
+        .wb_cyc_i(wb_cyc_i),
+        .wb_stb_i(wb_stb_i),
+        .wb_ack_o(wb_ack_o),
+        .wb_adr_i(wb_adr_i),
+        .wb_dat_i(wb_dat_i),
+        .wb_dat_o(wb_dat_o),
+        .wb_sel_i(wb_sel_i),
+        .wb_we_i (wb_we_i),
+
+        .wb_sram_cyc_i(wb_sram_cyc_i),
+        .wb_sram_stb_i(wb_sram_stb_i),
+        .wb_sram_ack_o(wb_sram_ack_o),
+        .wb_sram_adr_i(wb_sram_adr_i),
+        .wb_sram_dat_i(wb_sram_dat_i),
+        .wb_sram_dat_o(wb_sram_dat_o),
+        .wb_sram_sel_i(wb_sram_sel_i),
+        .wb_sram_we_i (wb_sram_we_i),
+
+        .sram_addr(ext_ram_addr),
+        .sram_data(ext_ram_data),
+        .sram_ce_n(ext_ram_ce_n),
+        .sram_oe_n(ext_ram_oe_n),
+        .sram_we_n(ext_ram_we_n),
+        .sram_be_n(ext_ram_be_n)
     );
 
 endmodule

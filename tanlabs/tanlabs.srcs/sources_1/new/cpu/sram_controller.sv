@@ -70,7 +70,7 @@ module sram_controller #(
                 .S ()                                       // 1-bit set
             );
 
-            typedef enum logic [1:0] {
+            typedef enum {
                 STATE_IDLE,
                 STATE_READ,
                 STATE_WRITE
@@ -128,7 +128,7 @@ module sram_controller #(
                 end
             end
 
-        end else begin
+        end else if (CLK_FREQ <= 110_000_000) begin
             // 三周期读写
             ODDR #(
                 .DDR_CLK_EDGE("OPPOSITE_EDGE"),  // "OPPOSITE_EDGE" or "SAME_EDGE" 
@@ -144,7 +144,7 @@ module sram_controller #(
                 .S ()                                       // 1-bit set
             );
 
-            typedef enum logic [2:0] {
+            typedef enum {
                 STATE_IDLE,
                 STATE_READ1,
                 STATE_READ2,
@@ -204,6 +204,77 @@ module sram_controller #(
                             wb_ack_o       <= 1'b1;
                             sram_we_n_ddr1 <= 1'b0;
                             sram_we_n_ddr2 <= 1'b1;
+                        end
+                        default: ;  // do nothing
+                    endcase
+                end
+            end
+
+        end else begin
+            // 四周期读, 五周期写
+            typedef enum {
+                STATE_IDLE,
+                STATE_READ1,
+                STATE_READ2,
+                STATE_READ3,
+                STATE_WRITE1,
+                STATE_WRITE2,
+                STATE_WRITE3,
+                STATE_WRITE4
+            } state_t;
+
+            state_t state, state_n;
+
+            always_ff @(posedge clk_i or posedge rst_i) begin
+                if (rst_i) begin
+                    state <= STATE_IDLE;
+                end else begin
+                    state <= state_n;
+                end
+            end
+
+            always_comb begin
+                unique case (state)
+                    STATE_IDLE: begin
+                        if (request) begin
+                            if (wb_we_i) begin
+                                state_n = STATE_WRITE1;
+                            end else begin
+                                state_n = STATE_READ1;
+                            end
+                        end else begin
+                            state_n = STATE_IDLE;
+                        end
+                    end
+                    STATE_READ1: state_n = STATE_READ2;
+                    STATE_READ2: state_n = STATE_READ3;
+                    STATE_READ3: state_n = STATE_IDLE;
+                    STATE_WRITE1: state_n = STATE_WRITE2;
+                    STATE_WRITE2: state_n = STATE_WRITE3;
+                    STATE_WRITE3: state_n = STATE_WRITE4;
+                    STATE_WRITE4: state_n = STATE_IDLE;
+                    default: state_n = STATE_IDLE;
+                endcase
+            end
+
+            always_ff @(posedge clk_i or posedge rst_i) begin
+                if (rst_i) begin
+                    wb_ack_o       <= 1'b0;
+                    sram_we_n      <= 1'b1;
+                    sram_we_n_ddr1 <= 1'b1;
+                    sram_we_n_ddr2 <= 1'b1;
+                end else begin
+                    wb_ack_o <= 1'b0;
+                    case (state_n)
+                        STATE_READ3: begin
+                            wb_ack_o <= 1'b1;
+                        end
+                        STATE_WRITE1: begin
+                            sram_we_n <= 1'b0;
+                        end
+                        STATE_WRITE4: begin
+                            wb_ack_o  <= 1'b1;
+                            sram_we_n <= 1'b1;
                         end
                         default: ;  // do nothing
                     endcase
