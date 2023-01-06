@@ -45,7 +45,7 @@ module cpu_pipeline_if (
     always_ff @(posedge clk) begin
         if (rst) begin
             pc           <= 32'h8000_0000;
-            out          <= '{default: 0};
+            out          <= '{default: '0};
             flush_reg    <= 0;
             flush_pc_reg <= 32'h0000_0000;
         end else begin
@@ -62,7 +62,7 @@ module cpu_pipeline_if (
                     flush_reg    <= 0;
                     flush_pc_reg <= 32'h0000_0000;
                 end else if (out_ready) begin
-                    out <= '{default: 0};
+                    out <= '{default: '0};
                     if (wb_err_i) begin
                         out.cause <= EX_INST_PAGE_FAULT;
                     end

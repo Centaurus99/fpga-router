@@ -113,7 +113,7 @@ module neighbor_cache #(
     end
 
     // always_comb begin
-    //     wea = '{default: 0};
+    //     wea = '{default: '0};
     //     if (we) begin
     //         case (match_w)
     //             4'b0001: wea[0] = 1;
@@ -156,7 +156,7 @@ module neighbor_cache #(
     always_ff @(posedge clk) begin
         case (current)
             ST_INIT: begin
-                wea   <= '{default: 0};
+                wea   <= '{default: '0};
                 addra <= {in_id_w, hash_w};
                 dina  <= {in_mac, in_v6_w};
             end

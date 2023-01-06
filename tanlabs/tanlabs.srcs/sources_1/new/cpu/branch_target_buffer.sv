@@ -107,7 +107,7 @@ module branch_target_buffer #(
     assign next_pc_r = next_pc_r_comb;
     always_ff @(posedge clk) begin
         if (rst) begin
-            tail <= '{default: 0};
+            tail <= '{default: '0};
             // next_pc_r <= 0;
             pc_w_reg <= 0;
             next_pc_w_reg <= 0;
