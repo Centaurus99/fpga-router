@@ -22,11 +22,27 @@ void init_port_config() {
     }
 }
 
+void icmp_error_gen() {
+    while (dma_lock_request())
+        ;
+    volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
+    uint32_t len = (DMA_LEN + 48) > 1280 ? 1280 : (DMA_LEN + 48);
+    DMA_LEN = len;
+    for (uint32_t i = len; i > 62; --i) {
+        DMA_PTR[i] = DMA_PTR[i - 48];
+    }
+}
+
+void icmp_reply_gen() {
+    volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
+}
+
 void mainloop() {
     if (dma_read_need()) {
-        volatile PacketHeader *pkt = (PacketHeader *)DMA_PTR;
-        if (pkt->eth_hdr.ethertype != 0xdd86) {
-            // TODO: 回发 ICMP 错误包
+        volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
+        volatile EtherHeader *ether = (EtherHeader *)pkt;
+        if (ether->ethertype != 0xdd86) {
+            icmp_error_gen();
         } else {
             // TODO: 根据不同类型的包做不同的处理
             _ripng();

@@ -3,13 +3,7 @@
 
 #include <stdint.h>
 #include <lookup.h>
-
-typedef struct {
-    u16 src;
-    u16 dest;
-    u16 length;
-    u16 checksum;
-} UDPHeader;
+#include <router.h>
 
 typedef struct {
     in6_addr addr;

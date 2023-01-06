@@ -56,22 +56,22 @@ typedef struct {
     in6_addr ip_dst;
 } IP6Header;
 
-// 包头
-typedef struct {
-    EtherHeader eth_hdr;
-    IP6Header ip6_hdr;
-} PacketHeader;
-
 // ICMPv6 头
 typedef struct {
-    EtherHeader eth_hdr;
-    IP6Header ip6_hdr;
     uint8_t type;
     uint8_t code;
     uint16_t checksum;
     uint16_t identifier;
     uint16_t sequence;
-} ICMP6Packet;
+} ICMP6Header;
+
+// UDP 头
+typedef struct {
+    uint16_t src;
+    uint16_t dest;
+    uint16_t length;
+    uint16_t checksum;
+} UDPHeader;
 
 /**
  * 初始化各端口配置
