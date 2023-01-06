@@ -224,20 +224,6 @@ bool operate_q() {
     return 1;
 }
 
-bool operate_q() {
-    if (!_getip(&addr)) {
-        sprintf(info, "Invalid IP addr; Usage: q [addr]");
-        return 0;
-    }
-    if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
-        printip(&nexthop, ipbuffer);
-        sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
-    } else {
-        sprintf(info, "NFound");
-    }
-    return 1;
-}
-
 void init_direct_route() {
     RoutingTableEntry entry;
     entry.addr.s6_addr32[0] = 0x06aa0e2a;
@@ -307,6 +293,8 @@ void start(int argc, char *argv[]) {
                 error = 0;
                 sprintf(info, "---- DMA DEMO ----");
                 dma_demo();
+            } else if (op == 'q') { // query
+                error = !operate_q();
             } else {
                 error = 1;
                 sprintf(info, "Invalid Operation");
