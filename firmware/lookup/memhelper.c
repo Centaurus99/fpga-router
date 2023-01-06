@@ -103,7 +103,9 @@ int _blk_pop(int stage, int len) {
 void memhelper_init() {
     int cnt = 0;
     int begin = 0;
+#ifndef USE_BRAM
     int nodes_begin = 0;
+#endif
     for (int i = 0; i < 8; ++i) {
 #ifndef USE_BRAM
         _nodes[i] = &node_pool[nodes_begin];
