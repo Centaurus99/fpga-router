@@ -1,6 +1,7 @@
-#include <inout.h>
 #include <gpio.h>
+#include <inout.h>
 #include <printf.h>
+#include <router.h>
 #include <uart.h>
 #include <vga.h>
 
