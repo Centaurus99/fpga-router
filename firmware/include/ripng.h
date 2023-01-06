@@ -1,9 +1,9 @@
 #ifndef _RIPNG_H_
 #define _RIPNG_H_
 
-#include <stdint.h>
+#include <header.h>
 #include <lookup.h>
-#include <router.h>
+#include <stdint.h>
 
 typedef struct {
     in6_addr addr;
@@ -14,6 +14,6 @@ typedef struct {
 
 void _ripng();
 
-void check_ripng_entry(RipngEntry*);
+void check_ripng_entry(RipngEntry *);
 
 #endif
