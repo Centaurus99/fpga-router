@@ -1,10 +1,10 @@
 #ifndef _INOUT_H_
 #define _INOUT_H_
 
+#include <header.h>
 #include <lookup.h>
-#include <router.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 void timer();
 

@@ -1,8 +1,8 @@
 #ifndef __CHECKSUM_H__
 #define __CHECKSUM_H__
 
-#include "router.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief 进行 IPv6 + UDP/ICMPv6 的校验和的验证和更新

@@ -1,8 +1,8 @@
 #ifndef __LOOKUP_H__
 #define __LOOKUP_H__
 
+#include <header.h>
 #include <stdbool.h>
-#include <router.h>
 
 #define NODE_COUNT_PER_STAGE  1024
 #define LEAF_COUNT  65536
