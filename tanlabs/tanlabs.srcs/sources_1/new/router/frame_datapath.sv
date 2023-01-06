@@ -314,7 +314,7 @@ module frame_datapath #(
     // 转发逻辑
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s3_reg     <= '{default: 0};
+            s3_reg     <= '{default: '0};
             s3_state   <= ST_SEND_RECV;
             nc_in_v6_r <= 0;
             nc_in_id_r <= 0;
@@ -347,9 +347,11 @@ module frame_datapath #(
 
                         // 未查询到, 丢掉 并且发一个NS
                     end else begin
+                        if (s3_reg.last == 1'b0) begin
+                            s3_reg.meta.drop_next <= 1;
+                        end
                         s3_reg.last                         <= 1;
                         s3_reg.keep[DATAW_WIDTH_V6/8-1:0]   <= '1;
-                        s3_reg.meta.drop_next               <= 1;
                         s3_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
                         s3_reg.meta.ndp_packet              <= 1;
                         s3_reg.meta.send_from_datapath      <= 1;

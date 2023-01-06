@@ -412,12 +412,12 @@ module forwarding_table #(
             // 状态机
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
-                    s_reg[i]           <= '{default: 0};
+                    s_reg[i]           <= '{default: '0};
                     now_height         <= 0;
                     bram_state         <= BRAM_IDLE;
                     ft_addr[i]         <= '0;
                     ip_for_match       <= '0;
-                    ft_dout_for_parser <= '{default: 0};
+                    ft_dout_for_parser <= '{default: '0};
                 end else begin
                     unique case (bram_state)
                         BRAM_IDLE: begin
@@ -465,10 +465,10 @@ module forwarding_table #(
             end
 
             // 连接 Buffer
-            assign s_ready[i] = s_buf_ready[i] || !s_buf[i].beat.valid;
+            assign s_ready[i] = s_buf_ready[i] || !s[i].beat.valid;
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
-                    s_buf[i] <= '{default: 0};
+                    s_buf[i] <= '{default: '0};
                 end else if (s_buf_ready[i]) begin
                     s_buf[i] <= s[i];
                 end
@@ -563,7 +563,7 @@ module forwarding_table #(
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
                     debug_no_match_error <= '0;
-                    s_leaf_reg           <= '{default: 0};
+                    s_leaf_reg           <= '{default: '0};
                     s_leaf_state         <= ST_INIT;
                     s_leaf_next_hop_addr <= '0;
                     wb_router_adr_i      <= '0;
@@ -706,7 +706,7 @@ module forwarding_table #(
             always_ff @(posedge clk or posedge reset) begin
                 if (reset) begin
                     debug_no_match_error <= '0;
-                    s_leaf_reg           <= '{default: 0};
+                    s_leaf_reg           <= '{default: '0};
                     s_leaf_state         <= ST_INIT;
                     leaf_addr            <= '0;
                     leaf_addr_reg1       <= '0;
@@ -772,7 +772,7 @@ module forwarding_table #(
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            s_next_hop_reg   <= '{default: 0};
+            s_next_hop_reg   <= '{default: '0};
             s_next_hop_state <= ST_INIT;
             next_hop_addr    <= '0;
             next_hop_ip      <= '0;

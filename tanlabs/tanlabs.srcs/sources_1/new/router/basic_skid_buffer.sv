@@ -29,12 +29,12 @@ module basic_skid_buffer (
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
-            r_data <= '{default: 0};
+            r_data <= '{default: '0};
         end else begin
             if ((in_data.valid && in_ready) && (out_data.valid && !out_ready)) begin
                 r_data <= in_data;
             end else if (out_ready) begin
-                r_data <= '{default: 0};
+                r_data <= '{default: '0};
             end
         end
     end

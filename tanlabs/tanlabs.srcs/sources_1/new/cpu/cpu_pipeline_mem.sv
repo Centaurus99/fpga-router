@@ -66,7 +66,7 @@ module cpu_pipeline_mem (
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            out <= '{default: 0};
+            out <= '{default: '0};
         end else begin
             if (out_ready) begin
                 out       <= in;
