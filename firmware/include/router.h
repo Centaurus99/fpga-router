@@ -52,8 +52,8 @@ typedef struct {
     uint16_t length;
     uint8_t next_header;
     uint8_t hop_limit;
-    in6_addr ip_src;
-    in6_addr ip_dst;
+    in6_addr ip6_src;
+    in6_addr ip6_dst;
 } IP6Header;
 
 // ICMPv6 头
@@ -72,6 +72,9 @@ typedef struct {
     uint16_t length;
     uint16_t checksum;
 } UDPHeader;
+
+#define IPPROTO_UDP 17
+#define IPPROTO_ICMPV6 58
 
 /**
  * 初始化各端口配置

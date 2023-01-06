@@ -24,7 +24,7 @@ def serial_run(in_file='lookup/data/test_input_readable.txt', out_file='lookup/d
             s = ser.read(bytesToRead).decode('ascii')
             s1 = s.split('\n')[1]
             if s1[0] != 'D' and s1[0] != 'A':
-                fout.write(s1+'\n')
+                fout.write(s1)
             print(s, end='', flush=True)
 
 if len(sys.argv) > 1:

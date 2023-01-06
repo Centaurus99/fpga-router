@@ -5,4 +5,6 @@
 
 void assert(bool c);
 
+void assert_id(bool c, unsigned char id);
+
 #endif
