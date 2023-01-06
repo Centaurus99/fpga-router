@@ -24,8 +24,8 @@ __bswap32(uint32_t _x) {
 
 // End <machine/endian.h>
 
-bool validateAndFillChecksum(volatile uint8_t *packet, uint32_t len) {
-    volatile IP6Header *ip6 = (IP6Header *)packet;
+bool validateAndFillChecksum(uint8_t *packet, uint32_t len) {
+    IP6Header *ip6 = (IP6Header *)packet;
 
     uint32_t now_sum = 0;
     for (int i = 0; i < 16; i += 2) {
@@ -37,7 +37,7 @@ bool validateAndFillChecksum(volatile uint8_t *packet, uint32_t len) {
     uint8_t nxt_header = ip6->next_header;
     if (nxt_header == IPPROTO_UDP) {
         // UDP
-        volatile UDPHeader *udp = (UDPHeader *)&packet[sizeof(IP6Header)];
+        UDPHeader *udp = (UDPHeader *)&packet[sizeof(IP6Header)];
         // length: udp->length
         // checksum: udp->checksum
         uint16_t udp_len = __ntohs(udp->length);
@@ -78,7 +78,7 @@ bool validateAndFillChecksum(volatile uint8_t *packet, uint32_t len) {
 
     } else if (nxt_header == IPPROTO_ICMPV6) {
         // ICMPv6
-        volatile ICMP6Header *icmp = (ICMP6Header *)&packet[sizeof(IP6Header)];
+        ICMP6Header *icmp = (ICMP6Header *)&packet[sizeof(IP6Header)];
         // length:
         // checksum: icmp->checksum
         uint16_t icmp_len = len - sizeof(IP6Header);
