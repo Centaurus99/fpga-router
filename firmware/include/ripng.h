@@ -16,4 +16,6 @@ void _ripng();
 
 void check_ripng_entry(RipngEntry *);
 
+#define RIPNGPORT 0x0209 // 521
+
 #endif

@@ -1,4 +1,5 @@
 #include <ripng.h>
+#include <dma.h>
 
 void check_ripng_entry(RipngEntry* entry) {
     if(entry->metric == 0xff) {
