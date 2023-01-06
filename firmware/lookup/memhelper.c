@@ -90,7 +90,7 @@ int free_blk_top[9][17], blk_begin[9][17];
 
 void _blk_push(int stage, int len, int id) {
     // printf("PUSH %d %d %d\n", stage, len, id);
-    assert(free_blk_top[stage][len] < node_blk_cnt[stage][len]);
+    assert(free_blk_top[stage][len] < (stage < 8 ? node_blk_cnt[stage][len]: leaf_blk_cnt[len]));
     free_blk[stage][len][free_blk_top[stage][len]++] = id;
 }
 int _blk_pop(int stage, int len) {

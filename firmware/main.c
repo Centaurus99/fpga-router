@@ -32,7 +32,7 @@ extern int entry_count;
 u32 len, if_index, route_type;
 in6_addr addr, nexthop;
 char op;
-char ipbuffer[48], info[100];
+char ipbuffer[148], info[100];
 bool error;
 unsigned int forward_speed[2][4]; // 0.01 MB/s
 
@@ -281,8 +281,8 @@ void start(int argc, char *argv[]) {
             header = 0;
             op = _getnonspace();
             if (op == 'e') { // exit
-                printf("Exited\n");
-                break;
+                sprintf(info, "We will not exit!");
+                // break;
             } else if (op == 'a') { // add
                 error = !operate_a();
             } else if (op == 'd') { // delete
