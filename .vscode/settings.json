@@ -13,6 +13,7 @@
         "gpio.h": "c",
         "uart.h": "c",
         "stdbool.h": "c",
-        "router.h": "c"
+        "router.h": "c",
+        "stdbool.h": "c"
     }
 }

@@ -3,6 +3,8 @@
 
 #include "lookup.h"
 
+// #define TRIVIAL_MALLOC
+
 int node_malloc(int stage, int len);
 
 void node_free(int stage, int begin, int len);
@@ -14,6 +16,8 @@ int leaf_malloc(int len);
 void leaf_free(int begin, int len);
 
 bool is_leaf_used(int id);
+
+void memhelper_init();
 
 
 #endif

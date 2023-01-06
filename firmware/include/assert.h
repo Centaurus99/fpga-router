@@ -3,8 +3,6 @@
 
 #include <stdbool.h>
 
-void assert(bool c) {
-    if (!c)  1/0;
-}
+void assert(bool c);
 
 #endif
