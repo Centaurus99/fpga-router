@@ -32,6 +32,7 @@ extern int entry_count;
 
 u32 len, if_index, route_type;
 in6_addr addr, nexthop;
+LeafInfo leaf_info;
 char op;
 char ipbuffer[148], info[100];
 bool error;
@@ -216,7 +217,7 @@ bool operate_q() {
         sprintf(info, "Invalid IP addr; Usage: q [addr]");
         return 0;
     }
-    if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
+    if (prefix_query(addr, &nexthop, &if_index, &route_type, &leaf_info)) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {

@@ -5,7 +5,7 @@
 #include <router.h>
 
 #define NODE_COUNT_PER_STAGE  1024
-#define LEAF_COUNT  1024
+#define LEAF_COUNT  65536
 #define ENTRY_COUNT  640
 #define STAGE_HEIGHT  4
 #define STRIDE  4
@@ -44,16 +44,14 @@ int popcnt(u32 x);
   你可以在全局变量中把路由表以一定的数据结构格式保存下来。
 */
 
-typedef struct
-{
+typedef struct {
     u32 ip[4];
     u32 port;
     u32 route_type;
     u32 padding[2];
 } NextHopEntry;
 
-typedef struct
-{
+typedef struct {
     in6_addr addr;     // 匹配的 IPv6 地址前缀
     u32 len;      // 前缀长度
     u32 if_index; // 出端口编号
@@ -63,14 +61,20 @@ typedef struct
 } RoutingTableEntry;
 
 // 现在结构体内也会对齐 所以可以都用u32
-typedef struct
-{
+typedef struct {
     u32 vec;
     u32 leaf_vec;
     u16 child_base; // should be 16
     u16 tag; // 低8位可用，第8位表示leaf-in-node优化
     u32 leaf_base; // 16位可用
 } TrieNode;
+
+typedef struct {
+    u32 ip[4];
+    u32 len;
+    u32 metric;
+    // TODO more
+} LeafInfo;
 
 /**
  * @brief 插入/删除一条路由表表项
@@ -87,9 +91,10 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param addr 需要查询的目标地址，网络字节序
  * @param nexthop 如果查询到目标，把表项的 nexthop 写入
  * @param if_index 如果查询到目标，把表项的 if_index 写入
- * @return 查到则返回 true ，没查到则返回 false
+ * @param leaf_info 如果查询到目标，把叶节点额外信息写入
+ * @return 查到则返回 叶节点编号 ，没查到则返回 -1
  */
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type);
+int prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type, LeafInfo *leaf_info);
 
 /**
  * @brief 转换 mask 为前缀长度

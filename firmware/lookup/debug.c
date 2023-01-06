@@ -7,7 +7,7 @@
 #ifndef USE_BRAM
 extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 #define nodes(i) _nodes[i]
-extern leaf_t leafs[LEAF_COUNT];
+extern leaf_t leafs_entryid[LEAF_COUNT];
 extern NextHopEntry next_hops[ENTRY_COUNT];
 #else
 #define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
@@ -68,7 +68,7 @@ void print(u32 nid, int dep) {
 //     addr = LEAF_ADDRESS;
 //     for (int i = 0; i < LEAF_COUNT; ++i) {
 //         if (is_leaf_used(i)) {
-//             _write_u32s(f, addr, (u32 *)&leafs[i], 1);
+//             _write_u32s(f, addr, (u32 *)&leafs_entryid[i], 1);
 //         }
 //         addr += 4;
 //     }
