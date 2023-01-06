@@ -1,5 +1,4 @@
 #include <inout.h>
-#include "lookup/lookup.h"
 #include <gpio.h>
 #include <printf.h>
 #include <uart.h>
