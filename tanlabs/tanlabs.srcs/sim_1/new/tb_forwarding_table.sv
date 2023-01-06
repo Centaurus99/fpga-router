@@ -175,7 +175,7 @@ module tb_forwarding_table #(
             always_ff @(posedge clk_125M or posedge reset) begin
                 if (reset) begin
                     state_send <= ST_SEND;
-                    in         <= '{default: 0};
+                    in         <= '{default: '0};
                     send_count <= 0;
                 end else begin
                     if (state_write == ST_DONE) begin
@@ -196,7 +196,7 @@ module tb_forwarding_table #(
                             // 等待收包, 共计发包 TETS_ROUNDS 次
                             ST_SEND_WAIT: begin
                                 if (in_ready) begin
-                                    in <= '{default: 0};
+                                    in <= '{default: '0};
                                     if (send_count == TEST_ROUNDS) begin
                                         state_send <= ST_DONE;
                                     end else begin
@@ -225,7 +225,7 @@ module tb_forwarding_table #(
             always_ff @(posedge clk_125M or posedge reset) begin
                 if (reset) begin
                     state_send     <= ST_SEND;
-                    in             <= '{default: 0};
+                    in             <= '{default: '0};
                     ip_in          <= '0;
                     ip_ans         <= '0;
                     port_ans       <= '0;
@@ -266,7 +266,7 @@ module tb_forwarding_table #(
                             ST_SEND_WAIT: begin
                                 // 成功发出后输入置零
                                 if (in_ready) begin
-                                    in <= '{default: 0};
+                                    in <= '{default: '0};
                                 end
                                 // 在收到查完的包之后, 读取 answer 中的答案进行比对
                                 if (forwarded.valid) begin

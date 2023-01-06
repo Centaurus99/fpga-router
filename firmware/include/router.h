@@ -1,7 +1,7 @@
 #ifndef _ROUTER_H_
 #define _ROUTER_H_
 
-#include "stdint.h"
+#include <stdint.h>
 
 // 路由器端口配置地址
 #define PORT_CONFIG_ADDR(i) (0x61000000 + i * 0x00000100)
@@ -56,16 +56,32 @@ typedef struct {
     in6_addr ip_dst;
 } IP6Header;
 
-// 包头
+// ICMPv6 头
 typedef struct {
-    EtherHeader eth_hdr;
-    IP6Header ip6_hdr;
-} PacketHeader;
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint16_t identifier;
+    uint16_t sequence;
+} ICMP6Header;
+
+// UDP 头
+typedef struct {
+    uint16_t src;
+    uint16_t dest;
+    uint16_t length;
+    uint16_t checksum;
+} UDPHeader;
 
 /**
  * 初始化各端口配置
  */
 void init_port_config();
+
+/**
+ * 根据 ICMP 错误类型生成 ICMP 错误包
+ */
+void icmp_error_gen();
 
 /**
  * 路由器收发包维护程序主循环

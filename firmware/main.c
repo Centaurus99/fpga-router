@@ -1,5 +1,6 @@
-#include "lookup/lookup.h"
-#include "lookup/memhelper.h"
+#include <lookup.h>
+#include <memhelper.h>
+#include <inout.h>
 #include <dma.h>
 #include <gpio.h>
 #include <printf.h>
@@ -105,7 +106,7 @@ void display() {
     m = 0;
     for (int i = 0; i < c; ++i) {
         RoutingTableEntry *entry = checking_entry + i;
-        printprefix(entry->addr, entry->len, ipbuffer);
+        printprefix(&(entry->addr), entry->len, ipbuffer);
         m = 0;
         for (int j = 0; ipbuffer[j]; ++j) {
             update_pos(n, m++, ipbuffer[j], VGA_WHITE);
@@ -116,7 +117,7 @@ void display() {
             update_pos(n, m++, buffer[j], VGA_BLUE);
         }
         m = 54;
-        printip(entry->nexthop, ipbuffer);
+        printip(&(entry->nexthop), ipbuffer);
         for (int j = 0; ipbuffer[j]; ++j) {
             update_pos(n, m++, ipbuffer[j], VGA_GREEN);
         }
@@ -185,8 +186,8 @@ bool operate_c() {
         _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
         for (int i = 0; i < c; ++i) {
             RoutingTableEntry *entry = checking_entry + i;
-            printprefix(entry->addr, entry->len, ipbuffer);
-            printip(entry->nexthop, ipbuffer + 100);
+            printprefix(&(entry->addr), entry->len, ipbuffer);
+            printip(&(entry->nexthop), ipbuffer + 100);
             printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type);
         }
         return 1;
@@ -203,8 +204,8 @@ bool operate_c() {
     _prefix_query_all(0, 0, checking_addr, checking_entry, &c, checking_all, (in6_addr){{{0}}});
     for (int i = 0; i < c; ++i) {
         RoutingTableEntry *entry = checking_entry + i;
-        printprefix(entry->addr, entry->len, ipbuffer);
-        printip(entry->nexthop, ipbuffer + 100);
+        printprefix(&(entry->addr), entry->len, ipbuffer);
+        printip(&(entry->nexthop), ipbuffer + 100);
         printf("Found %s %d %s %d\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type);
     }
     return 1;
