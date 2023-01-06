@@ -32,8 +32,9 @@ extern int entry_count;
 
 u32 len, if_index, route_type;
 in6_addr addr, nexthop;
+LeafInfo leaf_info;
 char op;
-char ipbuffer[48], info[100];
+char ipbuffer[148], info[100];
 bool error;
 unsigned int forward_speed[2][4]; // 0.01 MB/s
 
@@ -216,7 +217,7 @@ bool operate_q() {
         sprintf(info, "Invalid IP addr; Usage: q [addr]");
         return 0;
     }
-    if (prefix_query(addr, &nexthop, &if_index, &route_type)) {
+    if (prefix_query(addr, &nexthop, &if_index, &route_type, &leaf_info)) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {
@@ -282,8 +283,8 @@ void start(int argc, char *argv[]) {
             header = 0;
             op = _getnonspace();
             if (op == 'e') { // exit
-                printf("Exited\n");
-                break;
+                sprintf(info, "We will not exit!");
+                // break;
             } else if (op == 'a') { // add
                 error = !operate_a();
             } else if (op == 'd') { // delete
