@@ -14,11 +14,11 @@ bool _gets(char *buf, int len);
 
 char _getnonspace();
 
-u32 _getdec();
+uint32_t _getdec();
 
 bool _getip(in6_addr *addr);
 
-char hextochar(u8 x);
+char hextochar(uint8_t x);
 
 void printip(in6_addr *addr, char *out);
 

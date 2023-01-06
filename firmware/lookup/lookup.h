@@ -3,6 +3,7 @@
 
 #include <header.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define NODE_COUNT_PER_STAGE  1024
 #define LEAF_COUNT  65536
@@ -18,24 +19,24 @@
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
 #define NODEINDEX(v)    ((v) >> STRIDE)
-#define VEC_CLEAR(v, i) ((v) &= ~((u32)1 << (i)))
-#define VEC_BT(v, i)    ((v) & (u32)1 << (i))
-#define VEC_SET(v, i)   ((v) |= (u32)1 << (i))
+#define VEC_CLEAR(v, i) ((v) &= ~((uint32_t)1 << (i)))
+#define VEC_BT(v, i)    ((v) & (uint32_t)1 << (i))
+#define VEC_SET(v, i)   ((v) |= (uint32_t)1 << (i))
 #define POPCNT(v)       popcnt(v)
 #define ZEROCNT(v)      popcnt(~(v))
-#define POPCNT_LS(v, i) popcnt((v) & (((u32)2 << (i)) - 1))
-#define ZEROCNT_LS(v, i) popcnt((~(v)) & (((u32)2 << (i)) - 1))
+#define POPCNT_LS(v, i) popcnt((v) & (((uint32_t)2 << (i)) - 1))
+#define ZEROCNT_LS(v, i) popcnt((~(v)) & (((uint32_t)2 << (i)) - 1))
 
 #define NOW nodes((dep) / STRIDE / STAGE_HEIGHT)[nid]
 #define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
+// typedef unsigned char uint8_t;
+// typedef unsigned short uint16_t;
+// typedef unsigned int uint32_t;
 // typedef __uint128_t u128;
-typedef u32 leaf_t;
+typedef uint32_t leaf_t;
 
-int popcnt(u32 x);
+int popcnt(uint32_t x);
 
 /*
   表示路由表的一项。
@@ -45,34 +46,34 @@ int popcnt(u32 x);
 */
 
 typedef struct {
-    u32 ip[4];
-    u32 port;
-    u32 route_type;
-    u32 padding[2];
+    uint32_t ip[4];
+    uint32_t port;
+    uint32_t route_type;
+    uint32_t padding[2];
 } NextHopEntry;
 
 typedef struct {
     in6_addr addr;     // 匹配的 IPv6 地址前缀
-    u32 len;      // 前缀长度
-    u32 if_index; // 出端口编号
+    uint32_t len;      // 前缀长度
+    uint32_t if_index; // 出端口编号
     in6_addr nexthop;  // 下一跳的 IPv6 地址
-    u32 route_type;
+    uint32_t route_type;
     // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
 } RoutingTableEntry;
 
 // 现在结构体内也会对齐 所以可以都用u32
 typedef struct {
-    u32 vec;
-    u32 leaf_vec;
-    u16 child_base; // should be 16
-    u16 tag; // 低8位可用，第8位表示leaf-in-node优化
-    u32 leaf_base; // 16位可用
+    uint32_t vec;
+    uint32_t leaf_vec;
+    uint16_t child_base; // should be 16
+    uint16_t tag; // 低8位可用，第8位表示leaf-in-node优化
+    uint32_t leaf_base; // 16位可用
 } TrieNode;
 
 typedef struct {
-    u32 ip[4];
-    u32 len;
-    u32 metric;
+    uint32_t ip[4];
+    uint32_t len;
+    uint32_t metric;
     // TODO more
 } LeafInfo;
 
@@ -94,7 +95,7 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param leaf_info 如果查询到目标，把叶节点额外信息写入
  * @return 查到则返回 叶节点编号 ，没查到则返回 -1
  */
-int prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type, LeafInfo *leaf_info);
+int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info);
 
 /**
  * @brief 转换 mask 为前缀长度
@@ -112,7 +113,7 @@ in6_addr len_to_mask(int len);
 
 // void print_ip(const in6_addr addr);
 
-void print(u32 id, int dep);
+void print(uint32_t id, int dep);
 
 void export_mem();
 

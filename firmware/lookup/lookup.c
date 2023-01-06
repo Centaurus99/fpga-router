@@ -1,10 +1,10 @@
-#include "lookup.h"
-#include "memhelper.h"
+#include <lookup.h>
+#include <memhelper.h>
 #include <stdio.h>
 #include <assert.h>
 
 #ifndef ENABLE_BITMANIP
-int popcnt(u32 x) {
+int popcnt(uint32_t x) {
     int cnt = 0;
     while (x) {
         if (x & 1) cnt++;
@@ -13,23 +13,23 @@ int popcnt(u32 x) {
     return cnt;
 }
 #else
-extern int popcnt(u32 x);
+extern int popcnt(uint32_t x);
 #endif
 
-static inline u32 INDEX (in6_addr addr, int s, int n) {
-    u32 res = 0;
+static inline uint32_t INDEX (in6_addr addr, int s, int n) {
+    uint32_t res = 0;
     int shift = 128 - s - n;
     for (int i = 15; i >= 0; -- i) {
         if (shift >= 0 && shift < 8)
             res |= addr.s6_addr[i] >> shift;
         else if (shift < 0 && shift > -8)
-            res |= (u32)addr.s6_addr[i] << (-shift);
+            res |= (uint32_t)addr.s6_addr[i] << (-shift);
         shift -= 8;
         if (shift < -32) break;
     }
     res = res & ((1u << n) - 1);
     // print_ip(addr);
-    // printf("%d %d %x\n", s, n, (u32)res);
+    // printf("%d %d %x\n", s, n, (uint32_t)res);
     return res;
 }
 
@@ -88,7 +88,7 @@ void _set_leaf(int id, leaf_t entry, LeafInfo info) {
 }
 
 // 在now的idx处增加一个新节点（保证之前不存在），必要时整体移动子节点
-void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
+void _insert_node(int dep, TrieNode *now, uint32_t idx, TrieNode *child) {
     // printf("NODE %d %d\n",dep, idx);
     int child_stage = STAGE(dep + STRIDE);
 
@@ -103,7 +103,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
         } else if (VEC_BT(now->tag, 7)) {
             int cnt = POPCNT(now->vec);
             int new_base = leaf_malloc(cnt + 1);
-            for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+            for (uint32_t i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
                 if (i == idx) {
                     _copy_leaf(child->leaf_base, np);
                     ++np;
@@ -123,7 +123,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     if (VEC_BT(now->tag, 7)) {
         int cnt = POPCNT(now->vec);
         int new_base = node_malloc(child_stage, cnt + 1);
-        for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+        for (uint32_t i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == idx) {
                 nodes(child_stage)[np] = *child;
                 ++np;
@@ -146,7 +146,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
     } else {
         int cnt = POPCNT(now->vec);
         int new_base = node_malloc(child_stage, cnt + 1);
-        for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+        for (uint32_t i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == idx) {
                 nodes(child_stage)[np] = *child;
                 ++np;
@@ -163,7 +163,7 @@ void _insert_node(int dep, TrieNode *now, u32 idx, TrieNode *child) {
 }
 
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
-void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id, LeafInfo info) {
+void _insert_leaf(int dep, TrieNode *now, uint32_t pfx, leaf_t entry_id, LeafInfo info) {
     // printf("~INSERT LEAF: %x %x\n", pfx, entry_id);
     int cnt = POPCNT(now->leaf_vec);
     if (!cnt) { // 如果now没有叶子
@@ -171,7 +171,7 @@ void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id, LeafInfo inf
         _set_leaf(now->leaf_base, entry_id, info);
     } else {
         int new_base = leaf_malloc(cnt + 1);
-        for (u32 i = 1, op = now->leaf_base, np = new_base; i < (1<<STRIDE); ++i) {
+        for (uint32_t i = 1, op = now->leaf_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == pfx) {
                 _set_leaf(np, entry_id, info);
                 ++np;
@@ -187,7 +187,7 @@ void _insert_leaf(int dep, TrieNode *now, u32 pfx, leaf_t entry_id, LeafInfo inf
 }
 
 // 移除now的pfx位置的叶子（保证存在）然后把后面的往前挪
-void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
+void _remove_leaf(int dep, TrieNode *now, uint32_t pfx) {
     // printf("~REMOVE LEAF: %x, %x\n", now, pfx);
     int p = POPCNT_LS(now->leaf_vec, pfx);
     if (p <= 1) {
@@ -197,7 +197,7 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
         ++(now->leaf_base);
     } else {
         p = now->leaf_base + p - 1;  // 要删掉的叶子
-        for (u32 i = pfx + 1; i < (1<<STRIDE); ++i) {
+        for (uint32_t i = pfx + 1; i < (1<<STRIDE); ++i) {
             if (VEC_BT(now->leaf_vec, i)) {
                 _copy_leaf(p+1, p);
                 ++p;
@@ -210,7 +210,7 @@ void _remove_leaf(int dep, TrieNode *now, u32 pfx) {
     
 }
 
-void _remove_lin(int dep, TrieNode *now, u32 idx) {
+void _remove_lin(int dep, TrieNode *now, uint32_t idx) {
     int p = POPCNT_LS(now->vec, idx);
     if (p <= 1) {
         VEC_CLEAR(now->vec, idx);
@@ -221,7 +221,7 @@ void _remove_lin(int dep, TrieNode *now, u32 idx) {
         ++(now->child_base);
     } else {
         p = now->child_base + p - 1;  // 要删掉的LIN子节点
-        for (u32 i = idx + 1; i < (1<<STRIDE); ++i) {
+        for (uint32_t i = idx + 1; i < (1<<STRIDE); ++i) {
             if (VEC_BT(now->vec, i)) {
                 _copy_leaf(p+1, p);
                 ++p;
@@ -237,7 +237,7 @@ void _remove_lin(int dep, TrieNode *now, u32 idx) {
 void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_id, LeafInfo info) {
     if (dep + STRIDE > len) {
         int l = len - dep;
-        u32 pfx = INDEX(addr, dep, l) | (1 << l);
+        uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
         // printf("INSERT %d %x\n", dep,pfx);
         if (VEC_BT(now->leaf_vec, pfx)) { // change
             _set_leaf(now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1, entry_id, info);
@@ -245,7 +245,7 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
             _insert_leaf(dep, now, pfx, entry_id, info);
         }
     } else {
-        u32 idx = INDEX(addr, dep, STRIDE);
+        uint32_t idx = INDEX(addr, dep, STRIDE);
         // printf("INSERT %d %x\n", dep,idx);
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
@@ -258,7 +258,7 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
             if (VEC_BT(now->tag, 7) && dep + STRIDE != len) { // 需要把LIN取消掉
                 int cnt = POPCNT(now->vec);
                 int new_base = node_malloc(child_stage, cnt);
-                for (u32 i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
+                for (uint32_t i = 0, op = now->child_base, np = new_base; i < (1<<STRIDE); ++i) {
                     if (VEC_BT(now->vec, i)) { // TODO: 改成右移一位效率更高
                         nodes(child_stage)[np].tag = 0;
                         nodes(child_stage)[np].vec = 0;
@@ -292,12 +292,12 @@ void remove_entry(int dep, int nid, in6_addr addr, int len) {
     TrieNode *now = &NOW;
     if (dep + STRIDE > len) {
         int l = len - dep;
-        u32 pfx = INDEX(addr, dep, l) | (1 << l);
+        uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
         if (VEC_BT(now->leaf_vec, pfx)) { // remove
             _remove_leaf(dep, now, pfx);
         }
     } else {
-        u32 idx = INDEX(addr, dep, STRIDE);
+        uint32_t idx = INDEX(addr, dep, STRIDE);
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
                 if (dep + STRIDE == len) _remove_lin(dep, now, idx);
@@ -324,14 +324,14 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-int prefix_query(const in6_addr addr, in6_addr *nexthop, u32 *if_index, u32 *route_type, LeafInfo *leaf_info) {
+int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
     int leaf = -1;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
     for (int dep = 0; dep < 128; dep += STRIDE) {
-        u32 idx = INDEX(addr, dep, STRIDE);
+        uint32_t idx = INDEX(addr, dep, STRIDE);
         // 在当前层匹配一个最长的前缀
-        for (u32 pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
+        for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
             if (VEC_BT(now->leaf_vec, pfx)) {
                 leaf = now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1;
                 break;
@@ -407,11 +407,11 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             }
         }
     } else {
-        u32 idx = INDEX(addr, dep, STRIDE);
-        u32 x = (idx>>1)|(1<<(STRIDE-1));
+        uint32_t idx = INDEX(addr, dep, STRIDE);
+        uint32_t x = (idx>>1)|(1<<(STRIDE-1));
         for (int i = 0; i < STRIDE; ++i) {
-            u32 pfx = x >> i;
-            u32 idxi = idx >> (i+1);
+            uint32_t pfx = x >> i;
+            uint32_t idxi = idx >> (i+1);
             if (VEC_BT(now->leaf_vec, pfx)) {
                 int leaf = leafs_entryid[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                 if (dep%8==0) {

@@ -74,8 +74,8 @@ char _getnonspace() {
     return buffer[header++];
 }
 
-u32 _getdec() {
-    u32 ret = 0;
+uint32_t _getdec() {
+    uint32_t ret = 0;
     char c = _getnonspace();
     for (; c >= '0' && c <= '9'; c = buffer[header++]) {
         ret = ret * 10 + c - '0';
@@ -139,7 +139,7 @@ bool _getip(in6_addr *addr) {
     return i == 7;
 }
 
-char hextochar(u8 x) {
+char hextochar(uint8_t x) {
     if (x < 10)
         return '0' + x;
     return 'a' + x - 10;

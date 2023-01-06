@@ -58,7 +58,6 @@ void mainloop() {
                     }
                 }
             }
-            _ripng(pkt);
         }
         dma_read_finish();
     }
