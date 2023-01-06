@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 {
     memhelper_init();
 
-    u32 len, if_index, route_type;
+    uint32_t len, if_index, route_type;
     in6_addr addr, nexthop;
     char addr_buffer[128];
     char nexthop_buffer[128];

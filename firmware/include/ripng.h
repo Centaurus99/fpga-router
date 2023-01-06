@@ -2,17 +2,17 @@
 #define _RIPNG_H_
 
 #include <header.h>
-#include <lookup.h>
 #include <stdint.h>
+
 
 typedef struct {
     in6_addr addr;
-    u16 route_tag;
-    u8 prefix_len;
-    u8 metric;
+    uint16_t route_tag;
+    uint8_t prefix_len;
+    uint8_t metric;
 } RipngEntry;
 
-void _ripng();
+void _ripng(uint8_t *packet, uint32_t length);
 
 void check_ripng_entry(RipngEntry *);
 

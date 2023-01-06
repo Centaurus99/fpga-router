@@ -16,7 +16,7 @@ extern char buffer[1025];
 extern int header;
 extern bool _gets();
 extern char _getnonspace();
-extern u32 _getdec();
+extern uint32_t _getdec();
 extern bool _getip();
 extern void printip();
 extern void printprefix();
@@ -30,7 +30,7 @@ RoutingTableEntry checking_entry[100];
 extern RoutingTableEntry routing_table[];
 extern int entry_count;
 
-u32 len, if_index, route_type;
+uint32_t len, if_index, route_type;
 in6_addr addr, nexthop;
 LeafInfo leaf_info;
 char op;

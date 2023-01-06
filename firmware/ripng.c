@@ -9,7 +9,7 @@ void check_ripng_entry(RipngEntry* entry) {
     }
 }
 
-void _ripng() {
+void _ripng(uint8_t *packet, uint32_t length) {
     // 此处处理RIPNG协议
     
 }
