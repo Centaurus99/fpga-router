@@ -114,3 +114,4 @@ in6_addr len_to_mask(int len) {
 }
 
 void export_mem(){}
+void memhelper_init(){}

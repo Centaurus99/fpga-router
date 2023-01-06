@@ -2,6 +2,11 @@ CXX ?= g++
 CXXFLAGS ?= --std=c++11 -g
 LDFLAGS ?= -g
 
+override TRACE ?= n
+ifeq ($(TRACE), y)
+	CXXFLAGS += -DTRACE
+endif
+
 .PHONY: all clean grade
 all: lookup
 
