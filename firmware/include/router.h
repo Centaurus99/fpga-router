@@ -62,10 +62,26 @@ typedef struct {
     IP6Header ip6_hdr;
 } PacketHeader;
 
+// ICMPv6 头
+typedef struct {
+    EtherHeader eth_hdr;
+    IP6Header ip6_hdr;
+    uint8_t type;
+    uint8_t code;
+    uint16_t checksum;
+    uint16_t identifier;
+    uint16_t sequence;
+} ICMP6Packet;
+
 /**
  * 初始化各端口配置
  */
 void init_port_config();
+
+/**
+ * 根据 ICMP 错误类型生成 ICMP 错误包
+ */
+void icmp_error_gen();
 
 /**
  * 路由器收发包维护程序主循环
