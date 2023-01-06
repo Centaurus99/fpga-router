@@ -1,7 +1,7 @@
 #ifndef _ROUTER_H_
 #define _ROUTER_H_
 
-#include "stdint.h"
+#include <stdint.h>
 
 // 路由器端口配置地址
 #define PORT_CONFIG_ADDR(i) (0x61000000 + i * 0x00000100)

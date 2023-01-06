@@ -1,8 +1,7 @@
+#include <inout.h>
 #include "lookup/lookup.h"
 #include <gpio.h>
 #include <printf.h>
-#include <router.h>
-#include <stdint.h>
 #include <uart.h>
 #include <vga.h>
 
