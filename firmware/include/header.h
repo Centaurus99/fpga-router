@@ -49,7 +49,7 @@ typedef struct {
     in6_addr ip6_src;
     in6_addr ip6_dst;
 } IP6Header;
-#define IP6_DEFAULT_FLOW 0x00000006
+#define IP6_DEFAULT_FLOW 0x00000060
 #define IP6_DEFAULT_HOP_LIMIT 64
 
 // ICMPv6 头
@@ -80,8 +80,33 @@ typedef struct {
 #define IPPROTO_UDP 17
 #define IPPROTO_ICMPV6 58
 
+#define ICMP6_TYPE_ECHO_REQUEST 128
+#define ICMP6_TYPE_ECHO_REPLY 129
+
+#define ETHER_PTR(packet) ((EtherHeader *)((uint8_t *)packet))
 #define IP6_PTR(packet) ((IP6Header *)(((uint8_t *)packet) + sizeof(EtherHeader)))
 #define UDP_PTR(packet) ((UDPHeader *)(((uint8_t *)packet) + sizeof(EtherHeader) + sizeof(IP6Header)))
 #define ICMP6_PTR(packet) ((ICMP6Header *)(((uint8_t *)packet) + sizeof(EtherHeader) + sizeof(IP6Header)))
+
+// <machine/endian.h>
+static inline uint16_t
+__bswap16(uint16_t _x) {
+
+    return ((uint16_t)((_x >> 8) | ((_x << 8) & 0xff00)));
+}
+
+static inline uint32_t
+__bswap32(uint32_t _x) {
+
+    return ((uint32_t)((_x >> 24) | ((_x >> 8) & 0xff00) |
+                       ((_x << 8) & 0xff0000) | ((_x << 24) & 0xff000000)));
+}
+
+#define __htonl(_x) __bswap32(_x)
+#define __htons(_x) __bswap16(_x)
+#define __ntohl(_x) __bswap32(_x)
+#define __ntohs(_x) __bswap16(_x)
+
+// End <machine/endian.h>
 
 #endif

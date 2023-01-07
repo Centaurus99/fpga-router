@@ -3,27 +3,6 @@
 #include <header.h>
 #include <stdint.h>
 
-// <machine/endian.h>
-static inline uint16_t
-__bswap16(uint16_t _x) {
-
-    return ((uint16_t)((_x >> 8) | ((_x << 8) & 0xff00)));
-}
-
-static inline uint32_t
-__bswap32(uint32_t _x) {
-
-    return ((uint32_t)((_x >> 24) | ((_x >> 8) & 0xff00) |
-                       ((_x << 8) & 0xff0000) | ((_x << 24) & 0xff000000)));
-}
-
-#define __htonl(_x) __bswap32(_x)
-#define __htons(_x) __bswap16(_x)
-#define __ntohl(_x) __bswap32(_x)
-#define __ntohs(_x) __bswap16(_x)
-
-// End <machine/endian.h>
-
 bool validateAndFillChecksum(uint8_t *packet, uint32_t len) {
     IP6Header *ip6 = (IP6Header *)packet;
 

@@ -10,7 +10,7 @@ int node_blk_cnt[8][17] = {
 	{1016 ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,26   }};
 int leaf_blk_cnt[17] = 
 	{42994,17747,3898 ,1787 ,1080 ,602  ,306  ,139  ,61   ,25   ,17   ,12   ,11   ,10   ,10   ,10   ,24   };
-#ifndef USE_BRAM
+#ifndef ON_BOARD
 TrieNode node_pool[62418];
 extern TrieNode *_nodes[8];
 #endif

@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
         {
             sscanf(buffer, "%c%x%x%x%x", &tmp, &addr.s6_addr32[0], &addr.s6_addr32[1], &addr.s6_addr32[2], &addr.s6_addr32[3]);
             //   assert(inet_pton(AF_INET6, addr_buffer, &addr) == 1);
-            if (prefix_query(addr, &nexthop, &if_index, &route_type))
+            LeafInfo leaf_info;
+            if (prefix_query(addr, &nexthop, &if_index, &route_type, &leaf_info) >= 0)
             {
                 printf("%08x %08x %08x %08x %d %d\n",
                        nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3],
