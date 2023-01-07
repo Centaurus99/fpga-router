@@ -4,6 +4,11 @@
 #include <header.h>
 #include <stdint.h>
 
+typedef struct {
+    uint8_t command;
+    uint8_t version;
+    uint16_t zero;
+} RipngHead;
 
 typedef struct {
     in6_addr addr;
@@ -14,8 +19,14 @@ typedef struct {
 
 void _ripng(uint8_t *packet, uint32_t length);
 
-void check_ripng_entry(RipngEntry *);
+void receive_ripngentry(RipngEntry *);
+
+void send_ripngentries();
 
 #define RIPNGPORT 0x0209 // 521
+
+#define RipngEntryNum(len) (((len) - sizeof(EtherHeader) - sizeof(IP6Header) - sizeof(UDPHeader) - sizeof(RipngHead)) / sizeof(RipngEntry))
+#define RipngHead_PTR(packet) (RipngHead *)((packet) + sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader)))
+#define RipngEntries_PTR(packet) (RipngEntry *)((packet) + sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader) + sizeof(RipngHead)))
 
 #endif
