@@ -5,6 +5,8 @@
 #include <router.h>
 #include <checksum.h>
 #include <stddef.h>
+#include <printf.h>
+#include <inout.h>
 
 const RipngEntry request_for_all = {
     .addr.__in6_u.__u6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x0f};
@@ -57,32 +59,42 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             dma_send_finish();
             dma_lock_release();
         } else if (riphead->command == RIPNG_RESPONSE) {
-            IP6Header *ipv6_header = IP6_PTR(packet);
-            if (ipv6_header->ip6_dst.s6_addr[0] == 0xff) {
-                if (ipv6_header->hop_limit == 0xff && udp_header->src == RIPNGPORT) {
-                    // 收到广播的 Response
-                    
+            if(check_linklocal_address(ipv6_header->ip6_src) && ! check_own_address(ipv6_header->ip6_src)) {
+                if (ipv6_header->ip6_dst.s6_addr[0] == 0xff) {
+                    if (ipv6_header->hop_limit == 0xff && udp_header->src == RIPNGPORT) {
+                        // 收到广播的 Response，可用于更改路由表
+                        for (uint32_t i = 0; i < ripng_num; i++) {
+                            
+                        }
+                    } else {
+                        // 收到一个错误的广播 Response
+                        printf("Drop Packet: Boardcast Ripng Response with hop limit %x src %x \r\n", riphead->command);
+                    }
                 } else {
-                    // 收到一个不对的
-#ifdef _DEBUG
-                    printf("Drop Packet: Boardcast Ripng Response with hop limit %x src %x", riphead->command);
-#endif
+                    // 收到单播的 Response
+                    if (ipv6_header->hop_limit == 0xff) {
+                        // 可以更新路由表
+                        for (uint32_t i = 0; i < ripng_num; i++) {
+
+                        }
+                    } else {
+                        // 不可以更新路由表，只能用作诊断
+                        debug_ripng();
+                    }
                 }
             } else {
-                // 收到单播的 Response
-
+                // 不合理的地址
+                char *ipbuffer;
+                printip(&(ipv6_header->ip6_src), ipbuffer);
+                printf("Drop Packet: Invalid Ripng from %s \r\n", ipbuffer);
             }
         } else {
             // 不合法的 ripng 指令
-#ifdef _DEBUG
-            printf("Drop Packet: Invalid Ripng command %x", riphead->command);
-#endif
+            printf("Drop Packet: Invalid Ripng command %x \r\n", riphead->command);
         }
     } else {
         // 不合法的 ripng 包
-#ifdef _DEBUG
-        printf("Drop Packet: Invalid Ripng packet format");
-#endif
+        printf("Drop Packet: Invalid Ripng packet format \r\n");
     }
 }
 
@@ -127,4 +139,8 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
         }
     }
     dma_lock_release();
+}
+
+void debug_ripng() {
+    // TODO: 用于回复远程诊断
 }

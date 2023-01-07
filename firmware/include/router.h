@@ -37,4 +37,8 @@ void icmp_error_gen();
  */
 void mainloop();
 
+bool check_linklocal_address(in6_addr addr);
+
+bool check_own_address(in6_addr addr);
+
 #endif
