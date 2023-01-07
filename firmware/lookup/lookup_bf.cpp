@@ -47,7 +47,7 @@ void update(bool insert, const RoutingTableEntry entry) {
   }
 }
 
-bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
+int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
   RoutingTableEntry target;
   int max_len = -1;
   for (auto entry : routing_table) {
@@ -64,9 +64,9 @@ bool prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, ui
     *nexthop = target.nexthop;
     *if_index = target.if_index;
     *route_type = target.route_type;
-    return true;
+    return 1;
   }
-  return false;
+  return -1;
 }
 
 int mask_to_len(const in6_addr mask) {

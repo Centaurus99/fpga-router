@@ -32,9 +32,9 @@ ifeq ($(EN_VGA), y)
 	CFLAGS += -DENABLE_VGA
 endif
 
-override USE_BRAM ?= y
-ifeq ($(USE_BRAM), y)
-	CFLAGS += -DUSE_BRAM
+override ON_BOARD ?= y
+ifeq ($(ON_BOARD), y)
+	CFLAGS += -DON_BOARD
 endif
 
 override DISABLE_TIMER ?= n

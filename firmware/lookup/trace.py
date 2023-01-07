@@ -60,7 +60,7 @@ def export(ratio=1.0):
         for j in range(17):
             f.write((f'{lmax[j]}'+' '*10)[:5] + (',' if j<16 else '}'))
         f.write(';\n')
-        f.write('#ifndef USE_BRAM\n')
+        f.write('#ifndef ON_BOARD\n')
         f.write(f'TrieNode node_pool[{node_cnt}];\n')
         f.write('extern TrieNode *_nodes[8];\n')
         f.write('#endif\n')
