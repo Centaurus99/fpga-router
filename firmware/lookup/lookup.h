@@ -80,9 +80,9 @@ typedef union {
 
 typedef struct {
     bool valid;
+    uint8_t len;
+    uint8_t metric;
     uint32_t ip[4];
-    uint32_t len;
-    uint32_t metric;
     // TODO more
 } LeafInfo;
 
@@ -97,14 +97,14 @@ typedef struct {
 void update(bool insert, const RoutingTableEntry entry);
 
 /**
- * @brief 进行一次路由表的查询，按照最长前缀匹配原则
+ * @brief 进行一次路由表的查询，len=255时，按照最长前缀匹配原则；否则按照 len 匹配
  * @param addr 需要查询的目标地址，网络字节序
  * @param nexthop 如果查询到目标，把表项的 nexthop 写入
  * @param if_index 如果查询到目标，把表项的 if_index 写入
  * @param leaf_info 如果查询到目标，把叶节点额外信息写入
  * @return 查到则返回 叶节点编号 ，没查到则返回 -1
  */
-int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info);
+int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info);
 
 /**
  * @brief 转换 mask 为前缀长度

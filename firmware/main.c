@@ -215,10 +215,11 @@ bool operate_c() {
 
 bool operate_q() {
     if (!_getip(&addr)) {
-        sprintf(info, "Invalid IP addr; Usage: q [addr]");
+        sprintf(info, "Invalid IP addr; Usage: q [addr] [len]");
         return 0;
     }
-    if (prefix_query(addr, &nexthop, &if_index, &route_type, &leaf_info)) {
+    len = _getdec();
+    if (prefix_query(addr, len, &nexthop, &if_index, &route_type, &leaf_info) >= 0) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {
