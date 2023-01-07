@@ -35,7 +35,7 @@ void icmp_error_gen();
 /**
  * 路由器收发包维护程序主循环
  */
-void mainloop();
+void mainloop(bool release_lock);
 
 bool check_linklocal_address(in6_addr addr);
 
