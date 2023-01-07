@@ -80,7 +80,6 @@ typedef struct {
     uint8_t metric;
     uint8_t len;
     in6_addr ip;
-    // TODO more
 } LeafInfo;
 
 extern uint32_t leaf_count;
@@ -108,26 +107,28 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param leaf_info 如果查询到目标，把叶节点额外信息写入
  * @return 查到则返回 叶节点编号 ，没查到则返回 -1
  */
-int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info);
+bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafNode *leaf_node);
 
-/**
- * @brief 转换 mask 为前缀长度
- * @param mask 需要转换的 IPv6 mask
- * @return mask 合法则返回前缀长度，不合法则返回 -1
- */
-int mask_to_len(const in6_addr mask);
+// /**
+//  * @brief 转换 mask 为前缀长度
+//  * @param mask 需要转换的 IPv6 mask
+//  * @return mask 合法则返回前缀长度，不合法则返回 -1
+//  */
+// int mask_to_len(const in6_addr mask);
 
-/**
- * @brief 转换前缀长度为 IPv6 mask，前缀长度范围为 [0,128]
- * @param len 需要转换的前缀长度
- * @return len 合法则返回对应的 mask，不合法则返回 0
- */
-in6_addr len_to_mask(int len);
+// /**
+//  * @brief 转换前缀长度为 IPv6 mask，前缀长度范围为 [0,128]
+//  * @param len 需要转换的前缀长度
+//  * @return len 合法则返回对应的 mask，不合法则返回 0
+//  */
+// in6_addr len_to_mask(int len);
 
 // void print_ip(const in6_addr addr);
 
-void print(uint32_t id, int dep);
+// void print(uint32_t id, int dep);
 
-void export_mem();
+// void export_mem();
+
+void lookup_init();
 
 #endif

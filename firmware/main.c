@@ -2,7 +2,6 @@
 #include <gpio.h>
 #include <inout.h>
 #include <lookup.h>
-#include <memhelper.h>
 #include <printf.h>
 #include <router.h>
 #include <stdint.h>
@@ -219,7 +218,7 @@ bool operate_q() {
         return 0;
     }
     len = _getdec();
-    if (prefix_query(addr, len, &nexthop, &if_index, &route_type, NULL) >= 0) {
+    if (prefix_query(addr, len, &nexthop, &if_index, &route_type, NULL)) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {
@@ -261,14 +260,13 @@ void init_direct_route() {
 
 extern void test();
 
-Timer dpy_timer;
 void dpy_led_timeout(Timer *t, int i) {
     if (i == 1) {
         GPIO_DPY += 1;
     } else {
         GPIO_DPY += 0x10;
     }
-    timer_start(t, 3 - i);
+    timer_start(t, i);
 }
 
 void start(int argc, char *argv[]) {
@@ -278,12 +276,12 @@ void start(int argc, char *argv[]) {
     init_uart();
     init_port_config();
 
-    memhelper_init();
+    lookup_init();
     init_direct_route();
     display();
-    dpy_timer = timer_init(10000000, 5);
-    timer_set_timeout(&dpy_timer, dpy_led_timeout);
-    timer_start(&dpy_timer, 1);
+    Timer *dpy_timer = timer_init(SECOND, 5);
+    timer_set_timeout(dpy_timer, dpy_led_timeout);
+    timer_start(dpy_timer, 1);
 
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
 

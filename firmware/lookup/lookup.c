@@ -2,6 +2,7 @@
 #include <memhelper.h>
 #include <stdio.h>
 #include <assert.h>
+#include <timer.h>
 
 #ifndef ENABLE_BITMANIP
 int popcnt(uint32_t x) {
@@ -313,25 +314,44 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
     return -1;
 }
 
+Timer *timeout_timer;
+
+void timeout_timeout(Timer *t, int i) {
+    if (leafs_info[i].valid) {
+        leafs_info[i].valid = false;
+        remove_entry(0, node_root, leafs_info[i].ip, leafs_info[i].len);
+    }
+}
+
 void update(bool insert, const RoutingTableEntry entry) {
     if (insert) {
         LeafNode leaf = _new_leaf_node(entry);
         LeafInfo *info = &leafs_info[leaf._leaf_id];
-        // printf("~%d %d\n",leaf._leaf_id, leaf._nexthop_id);
         info->valid = true;
         info->metric = entry.metric;
         info->len = entry.len;
         info->ip = entry.addr;
-        // TODO set info (metric, ...)
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
+        if (entry.route_type != 0)
+            timer_start(timeout_timer, leaf._leaf_id);
     } else {
+        assert_id(entry.route_type != 0, 1);
         uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
-        if (lid != -1)
+        if (lid != -1) {
             leafs_info[lid].valid = false;
+            timer_stop(timeout_timer, lid);
+        }
     }
 }
 
-int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
+void update_leaf_info(LeafNode leaf, uint8_t metric) {
+    assert_id(next_hops[leaf._nexthop_id].route_type != 0, 1);
+    leafs_info[leaf._leaf_id].metric = metric;
+    timer_stop(timeout_timer, leaf._leaf_id);
+    timer_start(timeout_timer, leaf._leaf_id);
+}
+
+bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafNode *leaf_node) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
@@ -361,16 +381,16 @@ int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *
             break;
         }
     }
-    if (leaf == NULL)  return -1;
+    if (leaf == NULL)  return false;
     if (nexthop != NULL)
         *nexthop = next_hops[leaf->_nexthop_id].ip;
     if (if_index != NULL)
         *if_index = next_hops[leaf->_nexthop_id].port;
     if (route_type != NULL)
         *route_type = next_hops[leaf->_nexthop_id].route_type;
-    if (leaf_info != NULL)
-        *leaf_info = leafs_info[leaf->_leaf_id];
-    return leaf->_leaf_id;
+    if (leaf_node != NULL)
+        leaf_node = leaf;
+    return true;
 }
 
 void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode leaf) {
@@ -459,4 +479,10 @@ void test() {
     printf("3 %d %d\n", nodes(0)[2].child_base, nodes(0)[2].tag);
     nodes(0)[2].tag = 0;
     nodes(0)[2].child_base = 0;
+}
+
+void lookup_init() {
+    memhelper_init();
+    timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_COUNT);
+    timer_set_timeout(timeout_timer, timeout_timeout);
 }
