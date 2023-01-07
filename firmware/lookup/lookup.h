@@ -86,11 +86,11 @@ typedef struct {
 extern uint32_t leaf_count;
 #ifndef ON_BOARD
     extern LeafInfo leafs_info[LEAF_COUNT];
+    extern NextHopEntry next_hops[ENTRY_COUNT];
 #else
     #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)
+    #define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
-
-extern next_hops;
 
 /**
  * @brief 插入/删除一条路由表表项

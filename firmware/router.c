@@ -129,7 +129,7 @@ void mainloop() {
 }
 
 bool check_linklocal_address(in6_addr addr) {
-    return addr.s6_addr16[0] & 0xc0ff == 0x80fe;
+    return (addr.s6_addr16[0] & 0xc0ff) == 0x80fe;
 }
 
 bool check_own_address(in6_addr addr) {

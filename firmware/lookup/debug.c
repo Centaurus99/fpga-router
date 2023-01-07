@@ -8,11 +8,9 @@
 extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 #define nodes(i) _nodes[i]
 extern nexthop_id_t leafs[LEAF_COUNT];
-extern NextHopEntry next_hops[ENTRY_COUNT];
 #else
 #define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
 #define leafs ((volatile nexthop_id_t *)LEAF_ADDRESS)
-#define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
 
 extern nexthop_id_t entry_count;

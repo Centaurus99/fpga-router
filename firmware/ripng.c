@@ -87,7 +87,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                 }
             } else {
                 // 不合理的地址
-                char *ipbuffer;
+                char ipbuffer[100];
                 printip(&(ipv6_header->ip6_src), ipbuffer);
                 printf("Drop Packet: Invalid Ripng from %s \r\n", ipbuffer);
             }
