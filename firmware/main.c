@@ -270,13 +270,6 @@ void dpy_led_timeout(Timer *t, int i) {
     timer_start(t, i);
 }
 
-void ripng_timeout(Timer *t, int i) {
-    for (uint8_t i = 0; i < 4; i ++) {
-
-    }
-    timer_start(t, i);
-}
-
 void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
