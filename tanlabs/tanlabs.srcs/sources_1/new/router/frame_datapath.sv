@@ -160,6 +160,7 @@ module frame_datapath #(
                     if (in.data.ip6.dst == {8'h01, 120'b0}) begin
                         // Loopback
                         s1.meta.dest       <= ID_CPU;
+                        s1.data.dst        <= {45'b0, ID_CPU};
                         s1.meta.dont_touch <= 1'b1;
                     end
                     if (in.data.ip6.dst[7:0] == 8'hff) begin
@@ -221,6 +222,7 @@ module frame_datapath #(
                     end else begin
                         // 否则转给软件处理
                         s2.meta.dest <= ID_CPU;
+                        s2.data.dst  <= {45'b0, s1.meta.id};
                     end
 
                 end else if (s1.meta.id != ID_CPU) begin
@@ -234,6 +236,7 @@ module frame_datapath #(
                         end else begin
                             s2.data.ethertype  <= ETHERTYPE_ICMP_TEM;
                             s2.meta.dest       <= ID_CPU;
+                            s2.data.dst        <= {45'b0, s1.meta.id};
                             s2.meta.dont_touch <= 1'b1;
                         end
                     end
