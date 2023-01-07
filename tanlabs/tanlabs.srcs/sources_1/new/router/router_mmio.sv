@@ -187,8 +187,10 @@ module router_mmio #(
                                     dma_wait_cpu_o <= 1'b0;
                                 end
                                 if (wb_dat_i[3]) begin
-                                    dma_cpu_lock_o    <= 1'b0;
                                     dma_wait_router_o <= 1'b1;
+                                end
+                                if (wb_dat_i[4]) begin
+                                    dma_cpu_lock_o <= 1'b0;
                                 end
                             end else begin
                                 wb_dat_o <= {

@@ -42,7 +42,7 @@ ifeq ($(DISABLE_TIMER), y)
 	CFLAGS += -DDISABLE_TIMER
 endif
 
-override DEBUG ?= y
+override DEBUG ?= n
 ifeq ($(DEBUG), y)
 	CFLAGS += -D_DEBUG
 endif
