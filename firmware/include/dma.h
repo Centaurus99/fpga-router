@@ -58,7 +58,15 @@ bool dma_read_need();
 void dma_read_finish();
 
 /**
+ * 根据路由器中魔改的目的 MAC 地址, 判断接收端口
+ *
+ * \return 接收端口号
+ */
+uint8_t dma_get_receive_port();
+
+/**
  * 指定 DMA 发包端口
+ *
  * \param port 端口号, 0-3
  */
 void dma_set_out_port(uint8_t port);
