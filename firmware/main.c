@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <uart.h>
 #include <vga.h>
+#include <timer.h>
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
@@ -265,6 +266,16 @@ void init_direct_route() {
 
 extern void test();
 
+Timer dpy_timer;
+void dpy_led_timeout(Timer *t, int i) {
+    if (i == 1) {
+        GPIO_DPY += 1;
+    } else {
+        GPIO_DPY += 0x10;
+    }
+    timer_start(t, 3 - i);
+}
+
 void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
@@ -275,6 +286,10 @@ void start(int argc, char *argv[]) {
     memhelper_init();
     init_direct_route();
     display();
+    dpy_timer = timer_init(10000000, 5);
+    timer_set_timeout(&dpy_timer, dpy_led_timeout);
+    timer_start(&dpy_timer, 1);
+
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
 
     while (1) {
