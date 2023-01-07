@@ -2,7 +2,7 @@
 
 #define now (*(volatile uint32_t *)0x200BFF8)
 
-uint32_t pool[3][LEAF_COUNT * 2];
+uint32_t timer_pool[3][LEAF_COUNT * 2];
 uint32_t pool_header = 0;
 
 bool _timer_expired(Timer *t, uint32_t id) {
@@ -13,9 +13,9 @@ Timer timer_init(void (*timeout)(int), uint32_t interval, uint32_t pool_size) {
     Timer t;
     t.head = 0;
     t.tail = 0;
-    t.nxt = &pool[0][pool_header];
-    t.pre = &pool[1][pool_header];
-    t.start_time = &pool[2][pool_header];
+    t.nxt = &timer_pool[0][pool_header];
+    t.pre = &timer_pool[1][pool_header];
+    t.start_time = &timer_pool[2][pool_header];
     pool_header += pool_size;
     return t;
 }

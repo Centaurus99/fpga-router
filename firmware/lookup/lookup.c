@@ -33,30 +33,33 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
     return res;
 }
 
-#ifndef USE_BRAM
+#ifndef ON_BOARD
 
-#ifdef TRIVIAL_MALLOC
-TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
-#else
-TrieNode *_nodes[STAGE_COUNT];
-#endif
+    #ifdef TRIVIAL_MALLOC
+    TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+    #else
+    TrieNode *_nodes[STAGE_COUNT];
+    #endif
 
-#define nodes(i) _nodes[i]
-leaf_t leafs_entryid[LEAF_COUNT];
-NextHopEntry next_hops[ENTRY_COUNT];
+    #define nodes(i) _nodes[i]
+    LeafNode leafs[LEAF_COUNT];
+    NextHopEntry next_hops[ENTRY_COUNT];
+    LeafInfo leafs_info[LEAF_COUNT];
+
 #else
-#define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
-#define leafs_entryid ((leaf_t *)LEAF_ADDRESS)
-#define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
+    #define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
+    #define leafs ((LeafNode *)LEAF_ADDRESS)
+    #define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
+    #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)
 #endif
-LeafInfo leafs_info[LEAF_COUNT];
-leaf_t entry_count;
+nexthop_id_t entry_count;
+uint32_t leaf_count;
 int node_root;
 
 TrieNode stk[33];
 
-leaf_t _new_entry(const RoutingTableEntry entry) {
-    for (leaf_t i = 0; i < entry_count; ++ i) {
+nexthop_id_t _new_entry(const RoutingTableEntry entry) {
+    for (nexthop_id_t i = 0; i < entry_count; ++ i) {
         if (next_hops[i].port == entry.if_index &&
             next_hops[i].ip[0] == entry.nexthop.s6_addr32[0] && 
             next_hops[i].ip[1] == entry.nexthop.s6_addr32[1] && 
@@ -77,14 +80,19 @@ leaf_t _new_entry(const RoutingTableEntry entry) {
     return entry_count++;
 }
 
-void _copy_leaf(int src, int dst) {
-    leafs_entryid[dst] = leafs_entryid[src];
-    leafs_info[dst] = leafs_info[src];
+LeafNode _new_leaf_node(const RoutingTableEntry entry) {
+    LeafNode ret;
+    ret.leaf_id = ++leaf_count;
+    ret._nexthop_id = _new_entry(entry);
+    return ret;
 }
 
-void _set_leaf(int id, leaf_t entry, LeafInfo info) {
-    leafs_entryid[id] = entry;
-    leafs_info[id] = info;
+inline void _copy_leaf(int src, int dst) {
+    leafs[dst] = leafs[src];
+}
+
+inline void _set_leaf(int i, const LeafNode leaf) {
+    leafs[i] = leaf;
 }
 
 // 在now的idx处增加一个新节点（保证之前不存在），必要时整体移动子节点
@@ -163,17 +171,17 @@ void _insert_node(int dep, TrieNode *now, uint32_t idx, TrieNode *child) {
 }
 
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
-void _insert_leaf(int dep, TrieNode *now, uint32_t pfx, leaf_t entry_id, LeafInfo info) {
+void _insert_leaf(int dep, TrieNode *now, uint32_t pfx, const LeafNode leaf) {
     // printf("~INSERT LEAF: %x %x\n", pfx, entry_id);
     int cnt = POPCNT(now->leaf_vec);
     if (!cnt) { // 如果now没有叶子
         now->leaf_base = leaf_malloc(1);
-        _set_leaf(now->leaf_base, entry_id, info);
+        _set_leaf(now->leaf_base, leaf);
     } else {
         int new_base = leaf_malloc(cnt + 1);
         for (uint32_t i = 1, op = now->leaf_base, np = new_base; i < (1<<STRIDE); ++i) {
             if (i == pfx) {
-                _set_leaf(np, entry_id, info);
+                _set_leaf(np, leaf);
                 ++np;
             } else if (VEC_BT(now->leaf_vec, i)) { // TODO: 改成右移一位效率更高
                 _copy_leaf(op, np);
@@ -234,15 +242,15 @@ void _remove_lin(int dep, TrieNode *now, uint32_t idx) {
 }
 
 
-void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_id, LeafInfo info) {
+void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, LeafNode leaf) {
     if (dep + STRIDE > len) {
         int l = len - dep;
         uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
         // printf("INSERT %d %x\n", dep,pfx);
         if (VEC_BT(now->leaf_vec, pfx)) { // change
-            _set_leaf(now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1, entry_id, info);
+            _set_leaf(now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1, leaf);
         } else { // add
-            _insert_leaf(dep, now, pfx, entry_id, info);
+            _insert_leaf(dep, now, pfx, leaf);
         }
     } else {
         uint32_t idx = INDEX(addr, dep, STRIDE);
@@ -250,7 +258,7 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7) && dep + STRIDE == len) { // 已经有这个LIN子节点，直接改
-                _set_leaf(now->child_base + POPCNT_LS(now->vec, idx) - 1, entry_id, info);
+                _set_leaf(now->child_base + POPCNT_LS(now->vec, idx) - 1, leaf);
                 return;
             }
             int child_stage = STAGE(dep + STRIDE);
@@ -274,27 +282,30 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, leaf_t entry_i
                 VEC_CLEAR(now->tag, 7);
             }
             TrieNode *child = &nodes(child_stage)[now->child_base + POPCNT_LS(now->vec, idx) - 1];
-            insert_entry(dep + STRIDE, child, addr, len, entry_id, info);
+            insert_entry(dep + STRIDE, child, addr, len, leaf);
         } else {
             TrieNode *child = &stk[dep/STRIDE + 1];
             child->vec = child->leaf_vec = 0;
             child->child_base = 0;
             child->leaf_base = 0;
             child->tag = 0;
-            insert_entry(dep + STRIDE, child, addr, len, entry_id, info);
+            insert_entry(dep + STRIDE, child, addr, len, leaf);
             _insert_node(dep, now, idx, child);
         }
     }
 }
 
 // HACK: 为了方便，即使是没有叶子的点也会保留在树里
-void remove_entry(int dep, int nid, in6_addr addr, int len) {
+// 返回被删除的叶子的leaf_id
+uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
     TrieNode *now = &NOW;
     if (dep + STRIDE > len) {
         int l = len - dep;
         uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
         if (VEC_BT(now->leaf_vec, pfx)) { // remove
+            uint32_t lid = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._leaf_id;
             _remove_leaf(dep, now, pfx);
+            return lid;
         }
     } else {
         uint32_t idx = INDEX(addr, dep, STRIDE);
@@ -302,30 +313,35 @@ void remove_entry(int dep, int nid, in6_addr addr, int len) {
             if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
                 if (dep + STRIDE == len) _remove_lin(dep, now, idx);
             } else {
-                remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
+                return remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
             }
         }
     }
+    return -1;
 }
 
 void update(bool insert, const RoutingTableEntry entry) {
     if (insert) {
-        leaf_t eid = _new_entry(entry);
-        LeafInfo info;
-        info.ip[0] = entry.addr.s6_addr32[0];
-        info.ip[1] = entry.addr.s6_addr32[1];
-        info.ip[2] = entry.addr.s6_addr32[2];
-        info.ip[3] = entry.addr.s6_addr32[3];
-        info.len = entry.len;
+        LeafNode leaf = _new_leaf_node(entry);
+        LeafInfo *info = &leafs_info[leaf._leaf_id];
+        // printf("~%d %d\n",leaf._leaf_id, leaf._nexthop_id);
+        info->valid = true;
+        info->ip[0] = entry.addr.s6_addr32[0];
+        info->ip[1] = entry.addr.s6_addr32[1];
+        info->ip[2] = entry.addr.s6_addr32[2];
+        info->ip[3] = entry.addr.s6_addr32[3];
+        info->len = entry.len;
         // TODO set info (metric, ...)
-        insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, eid, info);
+        insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
     } else {
-        remove_entry(0, node_root, entry.addr, entry.len);
+        uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
+        if (lid != -1)
+            leafs_info[lid].valid = false;
     }
 }
 
 int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
-    int leaf = -1;
+    LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
     for (int dep = 0; dep < 128; dep += STRIDE) {
@@ -333,14 +349,14 @@ int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uin
         // 在当前层匹配一个最长的前缀
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
             if (VEC_BT(now->leaf_vec, pfx)) {
-                leaf = now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1;
+                leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                 break;
             }
         }
         // 跳下一层
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7)) {
-                leaf = now->child_base + POPCNT_LS(now->vec, idx) - 1;
+                leaf = &leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
                 break;
             } else {
                 now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
@@ -349,26 +365,27 @@ int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uin
             break;
         }
     }
-    if (leaf == -1)  return -1;
-    nexthop->s6_addr32[0] = next_hops[leafs_entryid[leaf]].ip[0];
-    nexthop->s6_addr32[1] = next_hops[leafs_entryid[leaf]].ip[1];
-    nexthop->s6_addr32[2] = next_hops[leafs_entryid[leaf]].ip[2];
-    nexthop->s6_addr32[3] = next_hops[leafs_entryid[leaf]].ip[3];
-    *if_index = next_hops[leafs_entryid[leaf]].port;
-    *route_type = next_hops[leafs_entryid[leaf]].route_type;
-    *leaf_info = leafs_info[leaf];
-    return 1;
+    if (leaf == NULL)  return -1;
+    // printf("~%u %u\n", leaf->_leaf_id, leaf->_nexthop_id);
+    nexthop->s6_addr32[0] = next_hops[leaf->_nexthop_id].ip[0];
+    nexthop->s6_addr32[1] = next_hops[leaf->_nexthop_id].ip[1];
+    nexthop->s6_addr32[2] = next_hops[leaf->_nexthop_id].ip[2];
+    nexthop->s6_addr32[3] = next_hops[leaf->_nexthop_id].ip[3];
+    *if_index = next_hops[leaf->_nexthop_id].port;
+    *route_type = next_hops[leaf->_nexthop_id].route_type;
+    *leaf_info = leafs_info[leaf->_leaf_id];
+    return leaf->_leaf_id;
 }
 
-void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, int leaf) {
+void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode leaf) {
     t->addr = *ip;
     t->len = len;
-    t->nexthop.s6_addr32[0] = next_hops[leaf].ip[0];
-    t->nexthop.s6_addr32[1] = next_hops[leaf].ip[1];
-    t->nexthop.s6_addr32[2] = next_hops[leaf].ip[2];
-    t->nexthop.s6_addr32[3] = next_hops[leaf].ip[3];
-    t->if_index = next_hops[leaf].port;
-    t->route_type = next_hops[leaf].route_type;
+    t->nexthop.s6_addr32[0] = next_hops[leaf._nexthop_id].ip[0];
+    t->nexthop.s6_addr32[1] = next_hops[leaf._nexthop_id].ip[1];
+    t->nexthop.s6_addr32[2] = next_hops[leaf._nexthop_id].ip[2];
+    t->nexthop.s6_addr32[3] = next_hops[leaf._nexthop_id].ip[3];
+    t->if_index = next_hops[leaf._nexthop_id].port;
+    t->route_type = next_hops[leaf._nexthop_id].route_type;
 }
 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
@@ -381,7 +398,7 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             if (!VEC_BT(now->leaf_vec, pfx)) continue;
             for (int l = 3; l >= 0; --l) {
                 if (pfx & (1<<l)) {
-                    int leaf = leafs_entryid[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                    LeafNode leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                     if (dep%8==0) {
                         ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0x0f) | ((pfx ^ (1<<l)) << (8-l));
                     } else {
@@ -400,7 +417,7 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
                     ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
                 }
                 if (VEC_BT(now->tag, 7)) {
-                    _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs_entryid[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+                    _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
                 } else {
                     _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
                 }
@@ -413,7 +430,7 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             uint32_t pfx = x >> i;
             uint32_t idxi = idx >> (i+1);
             if (VEC_BT(now->leaf_vec, pfx)) {
-                int leaf = leafs_entryid[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                LeafNode leaf = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                 if (dep%8==0) {
                     ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf) | (idxi << (4+i+1));
                 } else {
@@ -429,7 +446,7 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
                 ip.s6_addr[dep/8] = (ip.s6_addr[dep/8] & 0xf0) | idx;
             }
             if (VEC_BT(now->tag, 7)) {
-                _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs_entryid[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
+                _append_answer(checking_entry + (*count)++, &ip, dep + STRIDE, leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]);
             } else {
                 _prefix_query_all(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, checking_entry, count, checking_all, ip);
             }

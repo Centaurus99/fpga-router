@@ -3,9 +3,12 @@
 #include <ripng.h>
 #include <router.h>
 #include <checksum.h>
+#include <timer.h>
+
 
 uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x30};
 uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+Timer timers[4];
 
 void init_port_config() {
     for (uint8_t port = 0; port < 4; ++port) {
@@ -78,6 +81,7 @@ void icmp_reply_gen() {
 }
 
 void mainloop() {
+    // timer_tick(&timers[0]);
     if (dma_read_need()) {
         volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
         volatile uint32_t len = (uint32_t)DMA_LEN;

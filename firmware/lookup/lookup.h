@@ -1,7 +1,7 @@
 #ifndef __LOOKUP_H__
 #define __LOOKUP_H__
 
-#include <header.h>
+#include "../include/header.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,6 +15,7 @@
 #define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
 #define LEAF_ADDRESS  0x80400000
 #define NEXT_HOP_ADDRESS  0x51000000
+#define LEAF_INFO_ADDRESS 0x80500000
 
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
@@ -34,7 +35,7 @@
 // typedef unsigned short uint16_t;
 // typedef unsigned int uint32_t;
 // typedef __uint128_t u128;
-typedef uint32_t leaf_t;
+typedef uint8_t nexthop_id_t;
 
 int popcnt(uint32_t x);
 
@@ -70,7 +71,15 @@ typedef struct {
     uint32_t leaf_base; // 16位可用
 } TrieNode;
 
+typedef union {
+    uint8_t nexthop_id[4]; // only use nexthop_id[3]
+    uint32_t leaf_id; // only use low 24 bits
+    #define _nexthop_id nexthop_id[3]
+    #define _leaf_id leaf_id & 0x00ffffff
+} LeafNode;
+
 typedef struct {
+    bool valid;
     uint32_t ip[4];
     uint32_t len;
     uint32_t metric;
