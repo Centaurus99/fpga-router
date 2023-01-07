@@ -32,6 +32,6 @@ void send_ripngentries();
 #define RIPNG_REQUEST 0x1
 #define RIPNG_RESPONSE 0x2
 
-#define METRIC_INF 0x0f
+#define METRIC_INF 0x10
 
 #endif
