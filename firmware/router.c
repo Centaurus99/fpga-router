@@ -4,7 +4,6 @@
 #include <ripng.h>
 #include <router.h>
 
-
 uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x30};
 uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
@@ -24,23 +23,6 @@ void init_port_config() {
     }
 }
 
-uint8_t get_receive_port() {
-    EtherHeader *ether = ETHER_PTR(DMA_PTR);
-    uint8_t port;
-    if (mac_addr_equal(ether->mac_dst, MAC_ADDR(0))) {
-        port = 0;
-    } else if (mac_addr_equal(ether->mac_dst, MAC_ADDR(1))) {
-        port = 1;
-    } else if (mac_addr_equal(ether->mac_dst, MAC_ADDR(2))) {
-        port = 2;
-    } else if (mac_addr_equal(ether->mac_dst, MAC_ADDR(3))) {
-        port = 3;
-    } else {
-        port = 0;
-    }
-    return port;
-}
-
 void icmp_error_gen() {
     while (!dma_lock_request())
         ;
@@ -55,7 +37,7 @@ void icmp_error_gen() {
     }
 
     // 生成 ICMPv6 错误包
-    uint8_t port = get_receive_port();
+    uint8_t port = dma_get_receive_port();
 
     EtherHeader *ether = ETHER_PTR(DMA_PTR);
     IP6Header *ip6 = IP6_PTR(DMA_PTR);

@@ -568,20 +568,28 @@ module forwarding_table #(
                     s_leaf_next_hop_addr <= '0;
                     wb_router_adr_i      <= '0;
                 end else begin
+                    debug_no_match_error <= '0;
                     unique case (s_leaf_state)
                         ST_INIT: begin
                             if (s_leaf_ready) begin
                                 s_leaf_reg <= s_buf_skid[PIPELINE_LENGTH];
                                 if (`should_handle(s_buf_skid[PIPELINE_LENGTH].beat)) begin
-                                    // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
                                     if (s_buf_skid[PIPELINE_LENGTH].matched) begin
+                                        // 若匹配上, 则继续查询
                                         wb_router_adr_i <= {
                                             s_buf_skid[PIPELINE_LENGTH].leaf_addr, 2'b00
                                         };
                                         s_leaf_state <= ST_READ;
                                     end else begin
+                                        // 未匹配上, 回发 Destination Unreachable Message
                                         debug_no_match_error <= 1'b1;
-                                        s_leaf_state         <= ST_INIT;
+                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                        s_leaf_reg.beat.data.dst <= {
+                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                        };
+                                        s_leaf_reg.beat.meta.dont_touch <= 1'b1;
+                                        s_leaf_state <= ST_INIT;
                                     end
                                 end
                             end
@@ -712,18 +720,26 @@ module forwarding_table #(
                     leaf_addr_reg1       <= '0;
                     s_leaf_next_hop_addr <= '0;
                 end else begin
+                    debug_no_match_error <= '0;
                     unique case (s_leaf_state)
                         ST_INIT: begin
                             if (s_leaf_ready) begin
                                 s_leaf_reg <= s_buf_skid[PIPELINE_LENGTH];
                                 if (`should_handle(s_buf_skid[PIPELINE_LENGTH].beat)) begin
-                                    // 应有匹配（至少根节点上有默认路由）, 若无匹配则错误
                                     if (s_buf_skid[PIPELINE_LENGTH].matched) begin
+                                        // 若匹配上, 则继续查询
                                         leaf_addr_reg1 <= s_buf_skid[PIPELINE_LENGTH].leaf_addr;
                                         s_leaf_state   <= ST_ADDR;
                                     end else begin
+                                        // 未匹配上, 回发 Destination Unreachable Message
                                         debug_no_match_error <= 1'b1;
-                                        s_leaf_state         <= ST_INIT;
+                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                        s_leaf_reg.beat.data.dst <= {
+                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                        };
+                                        s_leaf_reg.beat.meta.dont_touch <= 1'b1;
+                                        s_leaf_state <= ST_INIT;
                                     end
                                 end
                             end
