@@ -19,7 +19,9 @@ typedef struct {
 
 void receive_ripng(uint8_t *packet, uint32_t length);
 
-void send_all_ripngentries(uint8_t *packet, uint8_t port);
+void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port);
+
+void debug_ripng();
 
 #define RIPNGPORT 0x0209 // 521
 
@@ -35,5 +37,7 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port);
 #define MTU 1500
 
 #define MAXRipngEntryNum RipngEntryNum(MTU)
+#define MAXRipngUDPLength MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)
+#define MAXRipngLength (uint32_t)(MAXRipngEntryNum * sizeof(RipngEntry) + (sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader) + sizeof(RipngHead)))
 
 #endif

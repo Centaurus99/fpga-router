@@ -90,6 +90,8 @@ extern uint32_t leaf_count;
     #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)
 #endif
 
+extern next_hops;
+
 /**
  * @brief 插入/删除一条路由表表项
  * @param insert 如果要插入则为 true ，要删除则为 false
