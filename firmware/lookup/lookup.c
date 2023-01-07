@@ -329,6 +329,7 @@ void update(bool insert, const RoutingTableEntry entry) {
         LeafInfo *info = &leafs_info[leaf._leaf_id];
         info->valid = true;
         info->metric = entry.metric;
+        info->nexthop_id = leaf._nexthop_id;
         info->len = entry.len;
         info->ip = entry.addr;
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
@@ -351,7 +352,7 @@ void update_leaf_info(LeafNode leaf, uint8_t metric) {
     timer_start(timeout_timer, leaf._leaf_id);
 }
 
-bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafNode *leaf_node) {
+bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
@@ -388,8 +389,8 @@ bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t 
         *if_index = next_hops[leaf->_nexthop_id].port;
     if (route_type != NULL)
         *route_type = next_hops[leaf->_nexthop_id].route_type;
-    if (leaf_node != NULL)
-        leaf_node = leaf;
+    if (leaf_info != NULL)
+        *leaf_info = leafs_info[leaf->_leaf_id];
     return true;
 }
 

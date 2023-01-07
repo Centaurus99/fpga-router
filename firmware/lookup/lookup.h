@@ -79,6 +79,7 @@ typedef struct {
     bool valid;
     uint8_t metric;
     uint8_t len;
+    nexthop_id_t nexthop_id;
     in6_addr ip;
 } LeafInfo;
 
@@ -107,7 +108,7 @@ void update(bool insert, const RoutingTableEntry entry);
  * @param leaf_info 如果查询到目标，把叶节点额外信息写入
  * @return 查到则返回 叶节点编号 ，没查到则返回 -1
  */
-bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafNode *leaf_node);
+bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_node);
 
 // /**
 //  * @brief 转换 mask 为前缀长度
