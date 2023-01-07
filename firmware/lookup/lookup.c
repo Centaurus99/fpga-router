@@ -50,7 +50,6 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
     #define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
     #define leafs ((LeafNode *)LEAF_ADDRESS)
     #define next_hops ((NextHopEntry *)NEXT_HOP_ADDRESS)
-    #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)
 #endif
 nexthop_id_t entry_count;
 uint32_t leaf_count;

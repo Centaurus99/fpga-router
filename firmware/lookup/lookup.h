@@ -31,10 +31,6 @@
 #define NOW nodes((dep) / STRIDE / STAGE_HEIGHT)[nid]
 #define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
 
-// typedef unsigned char uint8_t;
-// typedef unsigned short uint16_t;
-// typedef unsigned int uint32_t;
-// typedef __uint128_t u128;
 typedef uint8_t nexthop_id_t;
 
 int popcnt(uint32_t x);
@@ -86,6 +82,13 @@ typedef struct {
     in6_addr ip;
     // TODO more
 } LeafInfo;
+
+extern uint32_t leaf_count;
+#ifndef ON_BOARD
+    extern LeafInfo leafs_info[LEAF_COUNT];
+#else
+    #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)
+#endif
 
 /**
  * @brief 插入/删除一条路由表表项
