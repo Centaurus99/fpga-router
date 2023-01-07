@@ -28,27 +28,7 @@ void dma_set_out_port(uint8_t port) {
         printf("Error: port %d is not valid.\r\n", port);
         return;
     }
-    volatile uint16_t *config;
-    switch (port) {
-    case 0:
-        config = (uint16_t *)PORT_CONFIG_ADDR(0);
-        break;
-    case 1:
-        config = (uint16_t *)PORT_CONFIG_ADDR(1);
-        break;
-    case 2:
-        config = (uint16_t *)PORT_CONFIG_ADDR(2);
-        break;
-    case 3:
-        config = (uint16_t *)PORT_CONFIG_ADDR(3);
-        break;
-    default:
-        break;
-    }
-    volatile uint16_t *p_dst = (volatile uint16_t *)DMA_PTR + 3;
-    for (int i = 0; i < 3; ++i) {
-        p_dst[i] = config[i];
-    }
+    ETHER_PTR(DMA_PTR)->mac_src = MAC_ADDR(port);
 }
 
 void dma_demo() {

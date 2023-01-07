@@ -1,5 +1,6 @@
 #include <checksum.h>
 #include <dma.h>
+#include <printf.h>
 #include <ripng.h>
 #include <router.h>
 
@@ -8,14 +9,13 @@ uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x0a, 0x00, 0x00,
 
 void init_port_config() {
     for (uint8_t port = 0; port < 4; ++port) {
-        volatile PortConfig *config = (PortConfig *)PORT_CONFIG_ADDR(port);
-        volatile uint8_t *mac = (uint8_t *)&config->mac;
-        volatile uint8_t *gua_ip = (uint8_t *)&config->gua_ip;
+        volatile uint8_t *mac = MAC_ADDR(port).mac_addr8;
+        volatile uint8_t *gua_ip = GUA_IP(port).s6_addr;
         for (uint8_t i = 0; i < 6; ++i) {
             mac[i] = base_mac[i];
         }
         mac[5] += port;
-        config->eui64_ctrl = 1;
+        EUI64_CTRL(port) = 1;
         for (uint8_t i = 0; i < 16; ++i) {
             gua_ip[i] = base_gua_ip[i];
         }
@@ -24,8 +24,7 @@ void init_port_config() {
 }
 
 uint8_t get_receive_port() {
-    volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
-    volatile EtherHeader *ether = (EtherHeader *)pkt;
+    EtherHeader *ether = ETHER_PTR(DMA_PTR);
     uint8_t port;
     if (mac_addr_equal(ether->mac_dst, MAC_ADDR(0))) {
         port = 0;
@@ -42,7 +41,7 @@ uint8_t get_receive_port() {
 }
 
 void icmp_error_gen() {
-    while (dma_lock_request())
+    while (!dma_lock_request())
         ;
 
     // 将原始包保留至 ICMPv6 错误包的数据部分
