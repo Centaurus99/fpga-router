@@ -3,18 +3,24 @@
 #include <router.h>
 #include <uart.h>
 
-bool dma_lock_request() {
-    DMA_CTRL = DMA_REG_CPU_LOCK;
-    return (DMA_CTRL & DMA_REG_CPU_LOCK);
+const mac_addr mac_zero = {
+    .mac_addr16 = {0x0000, 0x0000, 0x0000}};
+
+void dma_lock_request() {
+    while (!(DMA_CTRL & DMA_REG_CPU_LOCK)) {
+        DMA_CTRL = DMA_REG_CPU_LOCK;
+    }
 }
 
 void dma_lock_release() {
     DMA_CTRL = DMA_REG_RELEASE_LOCK;
 }
 
-bool dma_send_allow() {
-    return ((DMA_CTRL & DMA_REG_WAIT_ROUTER) == 0) &&
-           (DMA_CTRL & DMA_REG_CPU_LOCK);
+void dma_send_request() {
+    while (DMA_CTRL & DMA_REG_WAIT_ROUTER) {
+        continue;
+    }
+    ETHER_PTR(DMA_PTR)->mac_src = mac_zero;
 }
 
 void dma_send_finish() {
@@ -80,12 +86,8 @@ void dma_demo() {
             if (ch == 'q') {
                 break;
             } else if (ch == 'w') {
-                if (!dma_lock_request()) { // 先获得写入锁, 再写入数据
-                    continue;
-                }
-                while (!dma_send_allow()) { // 等待发送允许
-                    continue;
-                }
+                dma_lock_request(); // 先获得写入锁, 再写入数据
+                dma_send_request(); // 等待发送允许
                 printf("DMA Write: len = ");
                 write_len = 0;
                 ch = _getchar_uart();

@@ -21,11 +21,9 @@
 #define DMA_REG_CPU_LOCK 0x01     /* CPU 锁 */
 
 /**
- * 请求获得 DMA 缓存区的写入锁
- *
- * \return 是否请求成功
+ * 请求获得 DMA 缓存区的写入锁, 阻塞直到获得锁
  */
-bool dma_lock_request();
+void dma_lock_request();
 
 /**
  * 释放 DMA 缓存区的写入锁
@@ -33,11 +31,9 @@ bool dma_lock_request();
 void dma_lock_release();
 
 /**
- * 查询 [等待 Router 读取] 标志位, 判断是否允许发送
- *
- * \return 是否允许发送
+ * 查询 [等待 Router 读取] 标志位, 判断是否允许发送, 阻塞直到允许发送
  */
-bool dma_send_allow();
+void dma_send_request();
 
 /**
  * 告知发送完成, 并拉高 [等待 Router 读取] 标志位

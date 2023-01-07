@@ -10,10 +10,10 @@
 #include <timer.h>
 
 const RipngEntry request_for_all = {
-    .addr.__in6_u.__u6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x0f};
+    .addr.s6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x0f};
 
 const in6_addr ripng_multicast = {
-    .__in6_u.__u6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}
+    .s6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}
 };
 
 void receive_ripng(uint8_t *packet, uint32_t length) {
@@ -28,12 +28,8 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
             uint32_t ripng_num = RipngEntryNum(length);
-            while (!dma_lock_request()) {
-                continue;
-            }
-            while (!dma_send_allow()) {
-                continue;
-            }
+            dma_lock_request();
+            dma_send_request();
             uint8_t port = dma_get_receive_port();
             LeafInfo leafinfo;
             for (uint32_t i = 0; i < ripng_num; i++) {
@@ -102,12 +98,8 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
 }
 
 void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port) {
-    while (!dma_lock_request()) { // 先获得写入锁, 再写入数据
-        continue;
-    }
-    while (!dma_send_allow()) { // 等待发送允许
-        continue;
-    }
+    dma_lock_request();
+    dma_send_request();
     uint32_t ripngentrynum = 0;
     IP6Header *ipv6_header = IP6_PTR(packet);
     UDPHeader *udp_header = UDP_PTR(packet);
@@ -130,9 +122,7 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
                 dma_set_out_port(port);
                 dma_send_finish();
                 // 重新尝试得到发送允许
-                while (!dma_send_allow()) {
-                    continue;
-                }
+                dma_send_request();
                 ripngentrynum -= MAXRipngEntryNum;
             }
             ripentry[ripngentrynum - 1].addr = leafs_info[i].ip;
@@ -157,9 +147,7 @@ void ripng_timeout(Timer *t, int i) {
 
 void ripng_init() {
     // FF02::9
-    while (!dma_lock_request()) {
-        continue;
-    }
+    dma_lock_request();
     if(dma_read_need()) {
         dma_read_finish();
     }
