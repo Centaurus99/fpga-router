@@ -19,7 +19,7 @@ typedef struct {
 
 void receive_ripng(uint8_t *packet, uint32_t length);
 
-void send_all_ripngentries(uint8_t *packet, uint8_t port);
+void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port);
 
 #define RIPNGPORT 0x0209 // 521
 
