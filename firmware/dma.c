@@ -19,7 +19,18 @@ void dma_send_finish() {
     DMA_CTRL = DMA_REG_WAIT_ROUTER;
 }
 
-bool dma_read_need() { return (DMA_CTRL & DMA_REG_WAIT_CPU); }
+bool dma_read_need() {
+#ifdef _DEBUG
+    if (DMA_CTRL & DMA_REG_WAIT_CPU) {
+        printf("DMA Read: len = %d data = ", DMA_LEN);
+        for (int i = 0; i < DMA_LEN; i++) {
+            printf("%02x ", DMA_PTR[i]);
+        }
+        printf(".\r\n");
+    }
+#endif
+    return (DMA_CTRL & DMA_REG_WAIT_CPU);
+}
 
 void dma_read_finish() { DMA_CTRL = DMA_REG_WAIT_CPU; }
 

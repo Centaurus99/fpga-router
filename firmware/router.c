@@ -75,27 +75,64 @@ void icmp_error_gen() {
 }
 
 void icmp_reply_gen() {
+    while (!dma_lock_request())
+        ;
+
+    IP6Header *ip6 = IP6_PTR(DMA_PTR);
+    if (ip6->ip6_dst.s6_addr[0] == 0xff) {
+        // 组播包使用 0 号口作为源 IP
+        ip6->ip6_dst = ip6->ip6_src;
+        ip6->ip6_src = GUA_IP(0);
+    } else {
+        // 单播包使用原来的目的地址作为源 IP
+        in6_addr temp = ip6->ip6_dst;
+        ip6->ip6_dst = ip6->ip6_src;
+        ip6->ip6_src = temp;
+    }
+
+    ICMP6Header *icmp6 = ICMP6_PTR(DMA_PTR);
+    icmp6->type = ICMP6_TYPE_ECHO_REPLY;
+    icmp6->code = 0;
+    icmp6->checksum = 0;
+
+    validateAndFillChecksum((uint8_t *)ip6, DMA_LEN - sizeof(EtherHeader));
+
+    dma_send_finish();
 }
 
 void mainloop() {
     if (dma_read_need()) {
-        volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
-        volatile uint32_t len = (uint32_t)DMA_LEN;
-        volatile EtherHeader *ether = (EtherHeader *)pkt;
+        volatile EtherHeader *ether = ETHER_PTR(DMA_PTR);
         if (ether->ethertype != 0xdd86) {
+            // 以太网类型不是 IPv6, 即为硬件通知生成 ICMPv6 错误包
             icmp_error_gen();
         } else {
-            // TODO: 根据不同类型的包做不同的处理
-            IP6Header *ipv6 = IP6_PTR(pkt);
-            if (!validateAndFillChecksum((uint8_t *)(ipv6), len - sizeof(EtherHeader))) {
-                // TODO: 处理 checksum 异常
-            } else {
-                if (ipv6->next_header == IPPROTO_UDP) {
-                    UDPHeader *udp = UDP_PTR(ipv6);
-                    if (udp->src == RIPNGPORT && udp->dest == RIPNGPORT) {
-                        _ripng((uint8_t *)pkt, len);
+            volatile IP6Header *ip6 = IP6_PTR(DMA_PTR);
+            if (ip6->next_header == IPPROTO_ICMPV6) {
+                // ICMPv6 包
+                if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
+                    volatile ICMP6Header *icmp6 = ICMP6_PTR(DMA_PTR);
+                    if (icmp6->type == ICMP6_TYPE_ECHO_REQUEST) {
+                        icmp_reply_gen();
                     }
+                } else {
+                    printf("Drop ICMPv6 Packet: checksum error\r\n");
                 }
+            } else if (ip6->next_header == IPPROTO_UDP) {
+                // UDP 包
+                if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
+                    volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
+                    if (udp->src == RIPNGPORT && udp->dest == RIPNGPORT) {
+                        _ripng((uint8_t *)DMA_PTR, DMA_LEN);
+                    }
+                } else {
+                    printf("Drop UDP Packet: checksum error\r\n");
+                }
+            } else {
+                // 其他包直接丢弃
+#ifdef _DEBUG
+                printf("Drop Packet: ip6->next_header = %02x\r\n", ip6->next_header);
+#endif
             }
         }
         dma_read_finish();

@@ -80,6 +80,9 @@ typedef struct {
 #define IPPROTO_UDP 17
 #define IPPROTO_ICMPV6 58
 
+#define ICMP6_TYPE_ECHO_REQUEST 128
+#define ICMP6_TYPE_ECHO_REPLY 129
+
 #define ETHER_PTR(packet) ((EtherHeader *)((uint8_t *)packet))
 #define IP6_PTR(packet) ((IP6Header *)(((uint8_t *)packet) + sizeof(EtherHeader)))
 #define UDP_PTR(packet) ((UDPHeader *)(((uint8_t *)packet) + sizeof(EtherHeader) + sizeof(IP6Header)))
