@@ -19,7 +19,18 @@ void dma_send_finish() {
     DMA_CTRL = DMA_REG_WAIT_ROUTER;
 }
 
-bool dma_read_need() { return (DMA_CTRL & DMA_REG_WAIT_CPU); }
+bool dma_read_need() {
+#ifdef _DEBUG
+    if (DMA_CTRL & DMA_REG_WAIT_CPU) {
+        printf("DMA Read: len = %d data = ", DMA_LEN);
+        for (int i = 0; i < DMA_LEN; i++) {
+            printf("%02x ", DMA_PTR[i]);
+        }
+        printf(".\r\n");
+    }
+#endif
+    return (DMA_CTRL & DMA_REG_WAIT_CPU);
+}
 
 void dma_read_finish() { DMA_CTRL = DMA_REG_WAIT_CPU; }
 
@@ -28,27 +39,7 @@ void dma_set_out_port(uint8_t port) {
         printf("Error: port %d is not valid.\r\n", port);
         return;
     }
-    volatile uint16_t *config;
-    switch (port) {
-    case 0:
-        config = (uint16_t *)PORT_CONFIG_ADDR(0);
-        break;
-    case 1:
-        config = (uint16_t *)PORT_CONFIG_ADDR(1);
-        break;
-    case 2:
-        config = (uint16_t *)PORT_CONFIG_ADDR(2);
-        break;
-    case 3:
-        config = (uint16_t *)PORT_CONFIG_ADDR(3);
-        break;
-    default:
-        break;
-    }
-    volatile uint16_t *p_dst = (volatile uint16_t *)DMA_PTR + 3;
-    for (int i = 0; i < 3; ++i) {
-        p_dst[i] = config[i];
-    }
+    ETHER_PTR(DMA_PTR)->mac_src = MAC_ADDR(port);
 }
 
 void dma_demo() {

@@ -47,7 +47,9 @@ module sram_controller #(
         sram_data_o_comb = wb_dat_i;
         wb_dat_o         = sram_data_i_comb;
         request          = wb_cyc_i & wb_stb_i;
-        sram_ce_n        = ~request;
+        // FIXME
+        // sram_ce_n        = ~request;
+        sram_ce_n        = 1'b0;
         sram_oe_n        = wb_we_i;
         sram_data_t_comb = ~wb_we_i;
         sram_be_n        = ~wb_sel_i;
