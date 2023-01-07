@@ -8,6 +8,15 @@ bool dma_lock_request() {
     return (DMA_CTRL & DMA_REG_CPU_LOCK);
 }
 
+void dma_lock_release() {
+    DMA_CTRL = DMA_REG_RELEASE_LOCK;
+}
+
+bool dma_send_allow() {
+    return (DMA_CTRL & DMA_REG_WAIT_ROUTER == 0) &&
+           (DMA_CTRL & DMA_REG_CPU_LOCK);
+}
+
 void dma_send_finish() {
 #ifdef _DEBUG
     printf("DMA Send: len = %d data = ", DMA_LEN);
@@ -65,6 +74,9 @@ void dma_demo() {
                 if (!dma_lock_request()) { // 先获得写入锁, 再写入数据
                     continue;
                 }
+                while (!dma_send_allow()) { // 等待发送允许
+                    continue;
+                }
                 printf("DMA Write: len = ");
                 write_len = 0;
                 ch = _getchar_uart();
@@ -102,7 +114,8 @@ void dma_demo() {
                 //     printf("%02x ", DMA_PTR[i]);
                 // }
                 printf(".\r\n");
-                dma_send_finish(); // 写完后, 告知发送完成
+                dma_send_finish();  // 写完后, 告知发送完成
+                dma_lock_release(); // 释放写入锁
                 ch = 0;
             } else {
                 ch = 0;
