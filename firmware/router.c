@@ -2,7 +2,6 @@
 #include <dma.h>
 #include <ripng.h>
 #include <router.h>
-#include <checksum.h>
 
 uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x30};
 uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
@@ -86,14 +85,14 @@ void mainloop() {
             icmp_error_gen();
         } else {
             // TODO: 根据不同类型的包做不同的处理
-            IP6Header *ipv6 = IPv6_PTR(pkt);
-            if(! validateAndFillChecksum((uint8_t *)(ipv6), len)){ 
+            IP6Header *ipv6 = IP6_PTR(pkt);
+            if (!validateAndFillChecksum((uint8_t *)(ipv6), len)) {
                 // TODO: 处理 checksum 异常
             } else {
-                if(ipv6->next_header == IPPROTO_UDP) {
-                    UDPHeader * udp = UDP_PTR(ipv6);
-                    if(udp->src == RIPNGPORT && udp->dest == RIPNGPORT) {
-                        _ripng(pkt, len);
+                if (ipv6->next_header == IPPROTO_UDP) {
+                    UDPHeader *udp = UDP_PTR(ipv6);
+                    if (udp->src == RIPNGPORT && udp->dest == RIPNGPORT) {
+                        _ripng((uint8_t *)pkt, len);
                     }
                 }
             }
