@@ -7,10 +7,10 @@
 // 路由器端口配置地址
 #define PORT_CONFIG_ADDR(i) (0x61000000 + i * 0x00000100)
 
-#define MAC_ADDR(i) (((volatile PortConfig *)PORT_CONFIG_ADDR(i))->mac)
+#define MAC_ADDR(i) (((PortConfig *)PORT_CONFIG_ADDR(i))->mac)
 #define EUI64_CTRL(i) (((volatile PortConfig *)PORT_CONFIG_ADDR(i))->eui64_ctrl)
-#define LOCAL_IP(i) (((volatile PortConfig *)PORT_CONFIG_ADDR(i))->local_ip)
-#define GUA_IP(i) (((volatile PortConfig *)PORT_CONFIG_ADDR(i))->gua_ip)
+#define LOCAL_IP(i) (((PortConfig *)PORT_CONFIG_ADDR(i))->local_ip)
+#define GUA_IP(i) (((PortConfig *)PORT_CONFIG_ADDR(i))->gua_ip)
 
 // 路由器端口配置结构体
 typedef struct {
