@@ -86,6 +86,8 @@ typedef struct packed {
     logic send_from_datapath;
     // 该数据包须由 ndp_datapath 接收
     logic ndp_packet;
+    // 该数据包须根据 ip_dst 查询邻居缓存, 优先级高于 dont_touch
+    logic need_nc_lookup;
 
 } frame_meta;
 

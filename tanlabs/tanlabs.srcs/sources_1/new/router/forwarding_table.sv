@@ -583,13 +583,19 @@ module forwarding_table #(
                                     end else begin
                                         // 未匹配上, 回发 Destination Unreachable Message
                                         debug_no_match_error <= 1'b1;
-                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
-                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
-                                        s_leaf_reg.beat.data.dst <= {
-                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
-                                        };
-                                        s_leaf_reg.beat.meta.dont_touch <= 1'b1;
-                                        s_leaf_state <= ST_INIT;
+                                        s_leaf_state         <= ST_INIT;
+                                        if (s_buf_skid[PIPELINE_LENGTH].beat.data.ip6.next_hdr == IP6_TYPE_ICMP
+                                         && s_buf_skid[PIPELINE_LENGTH].beat.data.ip6.p.ns_data.icmp_type[7] == 1'b0) begin
+                                            // 若为 ICMP error messages, 则不回发
+                                            s_leaf_reg.beat.meta.drop <= 1'b1;
+                                        end else begin
+                                            s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                            s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                            s_leaf_reg.beat.data.dst <= {
+                                                45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                            };
+                                            s_leaf_reg.beat.meta.dont_touch <= 1'b1;
+                                        end
                                     end
                                 end
                             end
@@ -733,13 +739,19 @@ module forwarding_table #(
                                     end else begin
                                         // 未匹配上, 回发 Destination Unreachable Message
                                         debug_no_match_error <= 1'b1;
-                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
-                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
-                                        s_leaf_reg.beat.data.dst <= {
-                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
-                                        };
-                                        s_leaf_reg.beat.meta.dont_touch <= 1'b1;
-                                        s_leaf_state <= ST_INIT;
+                                        s_leaf_state         <= ST_INIT;
+                                        if (s_buf_skid[PIPELINE_LENGTH].beat.data.ip6.next_hdr == IP6_TYPE_ICMP
+                                         && s_buf_skid[PIPELINE_LENGTH].beat.data.ip6.p.ns_data.icmp_type[7] == 1'b0) begin
+                                            // 若为 ICMP error messages, 则不回发
+                                            s_leaf_reg.beat.meta.drop <= 1'b1;
+                                        end else begin
+                                            s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                            s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                            s_leaf_reg.beat.data.dst <= {
+                                                45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                            };
+                                            s_leaf_reg.beat.meta.dont_touch <= 1'b1;
+                                        end
                                     end
                                 end
                             end

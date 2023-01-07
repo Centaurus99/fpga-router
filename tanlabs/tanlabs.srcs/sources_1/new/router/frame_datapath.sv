@@ -138,24 +138,20 @@ module frame_datapath #(
     assign in_ready = s1_ready || !in.valid;
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s1 <= 0;
+            s1 <= '{default: '0};
         end else if (s1_ready) begin
             s1 <= in;
             if (`should_handle(in)) begin
                 if (in.meta.id == ID_CPU) begin
                     // CPU 发包, 预处理
-                    s1.data.ethertype  <= ETHERTYPE_IP6;  // 填充 Type 为 IPv6
-                    s1.meta.dont_touch <= 1'b1;
+                    s1.data.ethertype <= ETHERTYPE_IP6;  // 填充 Type 为 IPv6
                     case (in.data.src)
                         // 若 CPU 设置了 src mac, 则生成对应的出接口号, 并直接发出
-                        mac[0]: s1.meta.dest <= 0;
-                        mac[1]: s1.meta.dest <= 1;
-                        mac[2]: s1.meta.dest <= 2;
-                        mac[3]: s1.meta.dest <= 3;
-                        default: begin
-                            s1.meta.dest       <= ID_CPU;
-                            s1.meta.dont_touch <= 1'b0;
-                        end
+                        mac[0]:  s1.meta.dest <= 0;
+                        mac[1]:  s1.meta.dest <= 1;
+                        mac[2]:  s1.meta.dest <= 2;
+                        mac[3]:  s1.meta.dest <= 3;
+                        default: s1.meta.dest <= ID_CPU;
                     endcase
                     if (in.data.ip6.dst == {8'h01, 120'b0}) begin
                         // Loopback
@@ -168,6 +164,12 @@ module frame_datapath #(
                         // MAC src 应由 CPU 设置
                         s1.data.dst        <= multicast_MAC(in.data.ip6.dst);
                         s1.meta.dont_touch <= 1'b1;
+                    end
+                    if ((in.data.ip6.dst[15:0] & 16'hc0ff) == 16'h80fe) begin
+                        // Link Local
+                        // MAC src 应由 CPU 设置
+                        s1.meta.dont_touch     <= 1'b1;
+                        s1.meta.need_nc_lookup <= 1'b1;
                     end
                     // 其余情况进入转发逻辑
                 end else begin
@@ -200,7 +202,7 @@ module frame_datapath #(
     assign s1_ready = s2_ready || !s1.valid;
     always_ff @(posedge eth_clk or posedge reset) begin
         if (reset) begin
-            s2 <= 0;
+            s2 <= '{default: '0};
         end else if (s2_ready) begin
             s2 <= s1;
             if (`should_handle(s1)) begin
@@ -326,9 +328,13 @@ module frame_datapath #(
                 ST_SEND_RECV: begin
                     if (s3_ready) begin
                         s3_reg <= forwarded;
-                        if (`should_handle(forwarded)) begin
-                            s3_state   <= ST_QUERY_WAIT1;
-                            nc_in_v6_r <= forwarded_next_hop_ip;
+                        if (`should_handle(forwarded) || forwarded.meta.need_nc_lookup) begin
+                            s3_state <= ST_QUERY_WAIT1;
+                            if (forwarded.meta.need_nc_lookup) begin
+                                nc_in_v6_r <= forwarded.data.ip6.dst;
+                            end else begin
+                                nc_in_v6_r <= forwarded_next_hop_ip;
+                            end
                             nc_in_id_r <= forwarded.meta.dest[1:0];
                             if (forwarded.meta.id != ID_CPU) begin
                                 s3_reg.data.ip6.hop_limit <= forwarded.data.ip6.hop_limit - 1;
