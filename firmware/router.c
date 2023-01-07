@@ -46,6 +46,8 @@ uint8_t get_receive_port() {
 void icmp_error_gen() {
     while (!dma_lock_request())
         ;
+    while (!dma_send_allow())
+        ;
 
     // 将原始包保留至 ICMPv6 错误包的数据部分
     uint32_t len = (DMA_LEN + 48) > 1280 ? 1280 : (DMA_LEN + 48);
@@ -75,10 +77,13 @@ void icmp_error_gen() {
     validateAndFillChecksum((uint8_t *)ip6, len - sizeof(EtherHeader));
 
     dma_send_finish();
+    dma_lock_release();
 }
 
 void icmp_reply_gen() {
     while (!dma_lock_request())
+        ;
+    while (!dma_send_allow())
         ;
 
     IP6Header *ip6 = IP6_PTR(DMA_PTR);
@@ -101,6 +106,7 @@ void icmp_reply_gen() {
     validateAndFillChecksum((uint8_t *)ip6, DMA_LEN - sizeof(EtherHeader));
 
     dma_send_finish();
+    dma_lock_release();
 }
 
 void mainloop() {
