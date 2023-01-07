@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <uart.h>
 #include <vga.h>
+#include <timer.h>
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
@@ -214,10 +215,11 @@ bool operate_c() {
 
 bool operate_q() {
     if (!_getip(&addr)) {
-        sprintf(info, "Invalid IP addr; Usage: q [addr]");
+        sprintf(info, "Invalid IP addr; Usage: q [addr] [len]");
         return 0;
     }
-    if (prefix_query(addr, &nexthop, &if_index, &route_type, &leaf_info)) {
+    len = _getdec();
+    if (prefix_query(addr, len, &nexthop, &if_index, &route_type, &leaf_info) >= 0) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {
@@ -265,6 +267,16 @@ void init_direct_route() {
 
 extern void test();
 
+Timer dpy_timer;
+void dpy_led_timeout(Timer *t, int i) {
+    if (i == 1) {
+        GPIO_DPY += 1;
+    } else {
+        GPIO_DPY += 0x10;
+    }
+    timer_start(t, 3 - i);
+}
+
 void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
@@ -275,6 +287,10 @@ void start(int argc, char *argv[]) {
     memhelper_init();
     init_direct_route();
     display();
+    dpy_timer = timer_init(10000000, 5);
+    timer_set_timeout(&dpy_timer, dpy_led_timeout);
+    timer_start(&dpy_timer, 1);
+
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
 
     while (1) {

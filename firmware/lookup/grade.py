@@ -95,7 +95,7 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
                 else:
                     ip = random.choice(entrys)[0]
                 f.write(f'Q {to_u32s(ip)}\n')
-                f2.write(f'q {ip}\n')
+                f2.write(f'q {ip} 255\n')
                 query_after_update_complete -= 1
 
 def gen_ionly_input(in_file, N):
