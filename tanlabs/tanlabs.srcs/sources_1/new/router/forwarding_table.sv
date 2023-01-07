@@ -555,7 +555,7 @@ module forwarding_table #(
                 s_leaf.beat.valid = s_leaf_reg.beat.valid && s_leaf_state == ST_INIT;
                 wb_router_stb_i   = s_leaf_state == ST_READ;
                 wb_router_cyc_i   = wb_router_stb_i;
-                wb_router_sel_i   = 4'b0001;
+                wb_router_sel_i   = 4'b1000;
                 wb_router_dat_i   = '0;
                 wb_router_we_i    = 1'b0;
             end
@@ -589,7 +589,7 @@ module forwarding_table #(
                         ST_READ: begin
                             if (wb_router_ack_o) begin
                                 wb_router_adr_i      <= '0;
-                                s_leaf_next_hop_addr <= wb_router_dat_o;
+                                s_leaf_next_hop_addr <= wb_router_dat_o[31:24];
                                 s_leaf_state         <= ST_INIT;
                             end
                         end
