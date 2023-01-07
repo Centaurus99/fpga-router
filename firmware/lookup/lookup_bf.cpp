@@ -47,7 +47,7 @@ void update(bool insert, const RoutingTableEntry entry) {
   }
 }
 
-int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
+int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
   RoutingTableEntry target;
   int max_len = -1;
   for (auto entry : routing_table) {

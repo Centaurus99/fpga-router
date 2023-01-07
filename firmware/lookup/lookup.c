@@ -340,24 +340,29 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
+int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
-    for (int dep = 0; dep < 128; dep += STRIDE) {
+    for (int dep = 0; dep < len; dep += STRIDE) {
         uint32_t idx = INDEX(addr, dep, STRIDE);
         // 在当前层匹配一个最长的前缀
-        for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1) {
+        int l = dep + STRIDE - 1;
+        for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
             if (VEC_BT(now->leaf_vec, pfx)) {
-                leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
-                break;
+                if (len == 255 || len == l) {
+                    leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
+                    break;
+                }
             }
         }
         // 跳下一层
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7)) {
-                leaf = &leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
-                break;
+                if (len == 255 || len == dep + STRIDE) {
+                    leaf = &leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
+                    break;
+                }
             } else {
                 now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
             }
@@ -366,7 +371,6 @@ int prefix_query(const in6_addr addr, in6_addr *nexthop, uint32_t *if_index, uin
         }
     }
     if (leaf == NULL)  return -1;
-    // printf("~%u %u\n", leaf->_leaf_id, leaf->_nexthop_id);
     nexthop->s6_addr32[0] = next_hops[leaf->_nexthop_id].ip[0];
     nexthop->s6_addr32[1] = next_hops[leaf->_nexthop_id].ip[1];
     nexthop->s6_addr32[2] = next_hops[leaf->_nexthop_id].ip[2];
