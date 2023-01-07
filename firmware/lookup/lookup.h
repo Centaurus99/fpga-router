@@ -47,7 +47,7 @@ int popcnt(uint32_t x);
 */
 
 typedef struct {
-    uint32_t ip[4];
+    in6_addr ip;
     uint32_t port;
     uint32_t route_type;
     uint32_t padding[2];
@@ -60,6 +60,7 @@ typedef struct {
     in6_addr nexthop;  // 下一跳的 IPv6 地址
     uint32_t route_type;
     // 为了实现 RIPng 协议，在 router 作业中需要在这里添加额外的字段
+    uint8_t metric;
 } RoutingTableEntry;
 
 // 现在结构体内也会对齐 所以可以都用u32
@@ -80,9 +81,9 @@ typedef union {
 
 typedef struct {
     bool valid;
-    uint8_t len;
     uint8_t metric;
-    uint32_t ip[4];
+    uint8_t len;
+    in6_addr ip;
     // TODO more
 } LeafInfo;
 
