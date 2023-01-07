@@ -27,6 +27,7 @@ def serial_run(in_file='lookup/data/test_input_readable.txt', out_file='lookup/d
                 fout.write(s1)
             print(s, end='', flush=True)
 
+
 if len(sys.argv) > 1:
     serial_run()
     exit(0)
@@ -48,7 +49,6 @@ pkt = [x + ' ' for x in pkt]
 pkt = ''.join(pkt)
 write_list = 'f\r\nw' + pkt + '\r\r'
 
-write_list = "f\nw62 8c 1f 64 69 10 30 8c 1f 64 69 10 32 86 dd 60 00 00 00 00 08 3a 40 fe 80 00 00 00 00 00 00 8e 1f 64 ff fe 69 10 32 2a 0e aa 06 04 97 0a 02 00 00 00 00 00 00 56 78 80 00 46 5b 00 00 00 00\r\r"
 i = 0
 while True:
     bytesToRead = ser.inWaiting()

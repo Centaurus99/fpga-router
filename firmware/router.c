@@ -24,10 +24,8 @@ void init_port_config() {
 }
 
 void icmp_error_gen() {
-    while (!dma_lock_request())
-        ;
-    while (!dma_send_allow())
-        ;
+    dma_lock_request();
+    dma_send_request();
 
     // 将原始包保留至 ICMPv6 错误包的数据部分
     uint32_t len = (DMA_LEN + 48) > 1280 ? 1280 : (DMA_LEN + 48);
@@ -61,10 +59,8 @@ void icmp_error_gen() {
 }
 
 void icmp_reply_gen() {
-    while (!dma_lock_request())
-        ;
-    while (!dma_send_allow())
-        ;
+    dma_lock_request();
+    dma_send_request();
 
     IP6Header *ip6 = IP6_PTR(DMA_PTR);
     if (ip6->ip6_dst.s6_addr[0] == 0xff) {
@@ -129,7 +125,7 @@ void mainloop() {
 }
 
 bool check_linklocal_address(in6_addr addr) {
-    return addr.s6_addr16[0] & 0xc0ff == 0x80fe;
+    return (addr.s6_addr16[0] & 0xc0ff) == 0x80fe;
 }
 
 bool check_own_address(in6_addr addr) {
