@@ -13,7 +13,7 @@ void dma_lock_release() {
 }
 
 bool dma_send_allow() {
-    return (DMA_CTRL & DMA_REG_WAIT_ROUTER == 0) &&
+    return ((DMA_CTRL & DMA_REG_WAIT_ROUTER) == 0) &&
            (DMA_CTRL & DMA_REG_CPU_LOCK);
 }
 
