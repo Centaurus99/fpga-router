@@ -78,7 +78,7 @@ int node_blk_cnt[8][17] = {
 	{1016 ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,5    ,26   }};
 int leaf_blk_cnt[17] = 
 	{42994,17747,3898 ,1787 ,1080 ,602  ,306  ,139  ,61   ,25   ,17   ,12   ,11   ,10   ,10   ,10   ,24   };
-#ifndef USE_BRAM
+#ifndef ON_BOARD
 TrieNode node_pool[65536];
 extern TrieNode *_nodes[8];
 #endif
@@ -103,11 +103,11 @@ int _blk_pop(int stage, int len) {
 void memhelper_init() {
     int cnt = 0;
     int begin = 0;
-#ifndef USE_BRAM
+#ifndef ON_BOARD
     int nodes_begin = 0;
 #endif
     for (int i = 0; i < 8; ++i) {
-#ifndef USE_BRAM
+#ifndef ON_BOARD
         _nodes[i] = &node_pool[nodes_begin];
         nodes_begin += node_blk_cnt[i][0];
 #endif

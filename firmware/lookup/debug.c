@@ -4,18 +4,18 @@
 #include <stdio.h>
 // #include <assert.h>
 
-#ifndef USE_BRAM
+#ifndef ON_BOARD
 extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 #define nodes(i) _nodes[i]
-extern leaf_t leafs_entryid[LEAF_COUNT];
+extern nexthop_id_t leafs[LEAF_COUNT];
 extern NextHopEntry next_hops[ENTRY_COUNT];
 #else
 #define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
-#define leafs ((volatile leaf_t *)LEAF_ADDRESS)
+#define leafs ((volatile nexthop_id_t *)LEAF_ADDRESS)
 #define next_hops ((volatile NextHopEntry *)NEXT_HOP_ADDRESS)
 #endif
 
-extern leaf_t entry_count;
+extern nexthop_id_t entry_count;
 extern int node_root;
 
 // void print_ip(in6_addr ip) {
@@ -68,7 +68,7 @@ void print(uint32_t nid, int dep) {
 //     addr = LEAF_ADDRESS;
 //     for (int i = 0; i < LEAF_COUNT; ++i) {
 //         if (is_leaf_used(i)) {
-//             _write_u32s(f, addr, (uint32_t *)&leafs_entryid[i], 1);
+//             _write_u32s(f, addr, (uint32_t *)&leafs[i], 1);
 //         }
 //         addr += 4;
 //     }

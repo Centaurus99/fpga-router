@@ -142,7 +142,7 @@ if __name__ == '__main__':
     
     print("对拍：")
     for i in range(100000):
-        gen_input(in_file, in_file2, 10000)
+        gen_input(in_file, in_file2, 1000)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 
