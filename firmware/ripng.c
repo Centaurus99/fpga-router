@@ -25,7 +25,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                 continue;
             }
             uint8_t port = dma_get_receive_port();
-            LeafInfo *leafinfo = NULL;
+            LeafInfo leafinfo;
             for (uint32_t i = 0; i < ripng_num; i++) {
                 if (in6_addr_equal(ripentry[i].addr, request_for_all.addr) && ripentry[i].metric == request_for_all.metric && ripentry[i].prefix_len == request_for_all.prefix_len) {
                     // TODO: send all of your route tables
@@ -33,12 +33,10 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                     return;
                 } else {
                     // 查路由表并修改 RIPNG 的 metric
-                    LeafNode leaf;
-                    if (!prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leaf)) {
+                    if (!prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)) {
                         ripentry[i].metric = METRIC_INF;
                     } else {
-                        leafinfo = &leafs_info[leaf.leaf_id];
-                        ripentry[i].metric = leafinfo->metric;
+                        ripentry[i].metric = leafinfo.metric;
                     }
                 }
             }
