@@ -1,8 +1,8 @@
-#include <lookup.h>
-#include <memhelper.h>
-#include <inout.h>
 #include <dma.h>
 #include <gpio.h>
+#include <inout.h>
+#include <lookup.h>
+#include <memhelper.h>
 #include <printf.h>
 #include <router.h>
 #include <stdint.h>
@@ -254,12 +254,6 @@ void init_direct_route() {
     entry.if_index = 3;
     entry.nexthop.s6_addr32[1] = 0x030a9704;
     entry.nexthop.s6_addr32[3] = 0x66560000;
-    update(1, entry);
-    entry.addr.s6_addr32[0] = 0;
-    entry.addr.s6_addr32[1] = 0;
-    entry.addr.s6_addr32[2] = 0;
-    entry.addr.s6_addr32[3] = 0;
-    entry.len = 0;
     update(1, entry);
 }
 

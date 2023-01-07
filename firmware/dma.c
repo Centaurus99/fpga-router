@@ -31,17 +31,26 @@ void dma_send_finish() {
 bool dma_read_need() {
 #ifdef _DEBUG
     if (DMA_CTRL & DMA_REG_WAIT_CPU) {
-        printf("DMA Read: len = %d data = ", DMA_LEN);
+        printf("PORT[%x] Read: len = %d data = ", dma_get_receive_port(), DMA_LEN);
         for (int i = 0; i < DMA_LEN; i++) {
             printf("%02x ", DMA_PTR[i]);
         }
         printf(".\r\n");
+        return 1;
+    } else {
+        return 0;
     }
 #endif
     return (DMA_CTRL & DMA_REG_WAIT_CPU);
 }
 
-void dma_read_finish() { DMA_CTRL = DMA_REG_WAIT_CPU; }
+void dma_read_finish() {
+    DMA_CTRL = DMA_REG_WAIT_CPU;
+}
+
+uint8_t dma_get_receive_port() {
+    return *DMA_PTR;
+}
 
 void dma_set_out_port(uint8_t port) {
     if (port > 3) {

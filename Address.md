@@ -99,11 +99,12 @@ Thinpad 工程
 注：
 
 - 前四字节为长度
+- 读取到的第一个字节为接口号（覆盖目的 MAC 地址）
+- 若读取时 `ETHERTYPE` 非 IPv6 (`0x86dd`) ，则视为请求回发 ICMP 信息，`ETHERTYPE` 为 Type 和 Code。
 - 写入后，会自动将 `ETHERTYPE` 填为 IPv6 (`0x86dd`) 。
 - 若写入时将 MAC 源地址设为路由器对应接口的 MAC 地址，则会不经过转发逻辑，直接从对应接口发出。
 - 若写入时将 IPv6 目的地址设为组播地址，则会不经过转发逻辑，直接从对应接口发出。若未如上设置接口，则会发回 CPU。
 - 若写入时将 IPv6 目的地址设为 loopback 地址（`::1`），则会发回 CPU。
-- 若读取时 `ETHERTYPE` 非 IPv6 (`0x86dd`) ，则视为请求回发 ICMP 信息，`ETHERTYPE` 为 Type 和 Code。
 
 #### SRAM
 

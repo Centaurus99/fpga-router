@@ -28,12 +28,6 @@ typedef struct {
 void init_port_config();
 
 /**
- * 根据链路层目的 MAC 地址判断数据包的接收端口
- * @return 接收端口号, 若无法判断则返回 0
- */
-uint8_t get_receive_port();
-
-/**
  * 根据 ICMP 错误类型生成 ICMP 错误包
  */
 void icmp_error_gen();

@@ -582,11 +582,14 @@ module forwarding_table #(
                                         s_leaf_state <= ST_READ;
                                     end else begin
                                         // 未匹配上, 回发 Destination Unreachable Message
-                                        debug_no_match_error            <= 1'b1;
-                                        s_leaf_reg.beat.data.ethertype  <= ETHERTYPE_ICMP_DUM;
-                                        s_leaf_reg.beat.meta.dest       <= ID_CPU;
+                                        debug_no_match_error <= 1'b1;
+                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                        s_leaf_reg.beat.data.dst <= {
+                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                        };
                                         s_leaf_reg.beat.meta.dont_touch <= 1'b1;
-                                        s_leaf_state                    <= ST_INIT;
+                                        s_leaf_state <= ST_INIT;
                                     end
                                 end
                             end
@@ -729,11 +732,14 @@ module forwarding_table #(
                                         s_leaf_state   <= ST_ADDR;
                                     end else begin
                                         // 未匹配上, 回发 Destination Unreachable Message
-                                        debug_no_match_error            <= 1'b1;
-                                        s_leaf_reg.beat.data.ethertype  <= ETHERTYPE_ICMP_DUM;
-                                        s_leaf_reg.beat.meta.dest       <= ID_CPU;
+                                        debug_no_match_error <= 1'b1;
+                                        s_leaf_reg.beat.data.ethertype <= ETHERTYPE_ICMP_DUM;
+                                        s_leaf_reg.beat.meta.dest <= ID_CPU;
+                                        s_leaf_reg.beat.data.dst <= {
+                                            45'b0, s_buf_skid[PIPELINE_LENGTH].beat.meta.id
+                                        };
                                         s_leaf_reg.beat.meta.dont_touch <= 1'b1;
-                                        s_leaf_state                    <= ST_INIT;
+                                        s_leaf_state <= ST_INIT;
                                     end
                                 end
                             end
