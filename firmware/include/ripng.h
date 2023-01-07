@@ -17,11 +17,9 @@ typedef struct {
     uint8_t metric;
 } RipngEntry;
 
-void _ripng(uint8_t *packet, uint32_t length);
+void receive_ripng(uint8_t *packet, uint32_t length);
 
-void receive_ripngentry(RipngEntry *);
-
-void send_ripngentries();
+void send_all_ripngentries(uint8_t *packet, uint8_t port);
 
 #define RIPNGPORT 0x0209 // 521
 
@@ -33,5 +31,9 @@ void send_ripngentries();
 #define RIPNG_RESPONSE 0x2
 
 #define METRIC_INF 0x10
+
+#define MTU 1500
+
+#define MAXRipngEntryNum RipngEntryNum(MTU)
 
 #endif
