@@ -36,9 +36,11 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                     return;
                 } else {
                     // 查路由表并修改 RIPNG 的 metric
-                    if (prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, leafinfo) == -1) {
+                    LeafNode leaf;
+                    if (!prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leaf)) {
                         ripentry[i].metric = METRIC_INF;
                     } else {
+                        leafinfo = &leafs_info[leaf.leaf_id];
                         ripentry[i].metric = leafinfo->metric;
                     }
                 }
@@ -84,8 +86,6 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     }
 }
 
-extern LeafInfo *leafs_info;
-extern uint32_t leaf_count;
 
 void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port) {
     while (!dma_lock_request()) { // 先获得写入锁, 再写入数据

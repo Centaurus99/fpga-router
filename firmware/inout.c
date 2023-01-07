@@ -11,7 +11,6 @@ int header;
 
 extern unsigned int forward_speed[2][4]; // Mb/s
 extern void draw_speed();
-extern Timer dpy_timer;
 
 void timer() {
     static unsigned int last = 0;
@@ -37,7 +36,7 @@ char _getchar() {
 #ifndef DISABLE_TIMER
         timer();
 #endif
-        timer_tick(&dpy_timer);
+        timer_tick_all();
         int d = GPIO_DATA;
         if (!(d & 0xff000000)) {
             return gpio_decode(d);
