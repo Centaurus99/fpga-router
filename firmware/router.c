@@ -111,8 +111,8 @@ void mainloop() {
                 // UDP 包
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
-                    if (udp->src == RIPNGPORT && udp->dest == RIPNGPORT) {
-                        _ripng((uint8_t *)DMA_PTR, DMA_LEN);
+                    if (udp->dest == RIPNGPORT) {
+                        receive_ripng((uint8_t *)DMA_PTR, DMA_LEN);
                     }
                 } else {
                     printf("Drop UDP Packet: checksum error\r\n");
