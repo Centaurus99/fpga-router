@@ -47,27 +47,29 @@ void icmp_error_gen() {
     // 将原始包保留至 ICMPv6 错误包的数据部分
     uint32_t len = (DMA_LEN + 48) > 1280 ? 1280 : (DMA_LEN + 48);
     DMA_LEN = len;
-    for (uint32_t i = len; i > 62; --i) {
+    for (uint32_t i = len - 1; i >= 62; --i) {
         DMA_PTR[i] = DMA_PTR[i - 48];
     }
 
     // 生成 ICMPv6 错误包
     uint8_t port = get_receive_port();
-    volatile uint8_t *pkt = (uint8_t *)DMA_PTR;
-    volatile EtherHeader *ether = (EtherHeader *)pkt;
-    volatile IP6Header *ip6 = (IP6Header *)&pkt[sizeof(EtherHeader)];
-    volatile ICMP6Header *icmp6 = (ICMP6Header *)&pkt[sizeof(EtherHeader) + sizeof(IP6Header)];
-    icmp6->type = ether->ethertype >> 8;
-    icmp6->code = ether->ethertype & 0xff;
+
+    EtherHeader *ether = ETHER_PTR(DMA_PTR);
+    IP6Header *ip6 = IP6_PTR(DMA_PTR);
+    ICMP6Header *icmp6 = ICMP6_PTR(DMA_PTR);
+    icmp6->type = ether->ethertype & 0xff;
+    icmp6->code = ether->ethertype >> 8;
     icmp6->checksum = 0;
     icmp6->icmp6_unused = 0;
 
     ip6->flow = IP6_DEFAULT_FLOW;
-    ip6->payload_len = len - sizeof(EtherHeader) - sizeof(IP6Header);
+    ip6->payload_len = __htons(len - sizeof(EtherHeader) - sizeof(IP6Header));
     ip6->next_header = IPPROTO_ICMPV6;
     ip6->hop_limit = IP6_DEFAULT_HOP_LIMIT;
     ip6->ip6_dst = ip6->ip6_src;
     ip6->ip6_src = GUA_IP(port);
+
+    validateAndFillChecksum((uint8_t *)ip6, len - sizeof(EtherHeader));
 
     dma_send_finish();
 }
@@ -85,7 +87,7 @@ void mainloop() {
         } else {
             // TODO: 根据不同类型的包做不同的处理
             IP6Header *ipv6 = IP6_PTR(pkt);
-            if (!validateAndFillChecksum((uint8_t *)(ipv6), len)) {
+            if (!validateAndFillChecksum((uint8_t *)(ipv6), len - sizeof(EtherHeader))) {
                 // TODO: 处理 checksum 异常
             } else {
                 if (ipv6->next_header == IPPROTO_UDP) {
