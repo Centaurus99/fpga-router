@@ -3,6 +3,7 @@
 #include <inout.h>
 #include <lookup.h>
 #include <printf.h>
+#include <ripng.h>
 #include <router.h>
 #include <stdint.h>
 #include <uart.h>
@@ -265,6 +266,13 @@ void dpy_led_timeout(Timer *t, int i) {
         GPIO_DPY += 1;
     } else {
         GPIO_DPY += 0x10;
+    }
+    timer_start(t, i);
+}
+
+void ripng_timeout(Timer *t, int i) {
+    for (uint8_t i = 0; i < 4; i ++) {
+
     }
     timer_start(t, i);
 }

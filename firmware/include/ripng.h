@@ -37,5 +37,7 @@ void debug_ripng();
 #define MTU 1500
 
 #define MAXRipngEntryNum RipngEntryNum(MTU)
+#define MAXRipngUDPLength MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)
+#define MAXRipngLength (uint32_t)(MAXRipngEntryNum * sizeof(RipngEntry) + (sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader) + sizeof(RipngHead)))
 
 #endif

@@ -7,9 +7,14 @@
 #include <stddef.h>
 #include <printf.h>
 #include <inout.h>
+#include <timer.h>
 
 const RipngEntry request_for_all = {
     .addr.__in6_u.__u6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x0f};
+
+const in6_addr ripng_multicast = {
+    .__in6_u.__u6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}
+};
 
 void receive_ripng(uint8_t *packet, uint32_t length) {
     // 此处处理 RIPNG 协议
@@ -119,11 +124,12 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
                 ipv6_header->ip6_dst = dest_ip;
                 udp_header->src = RIPNGPORT;
                 udp_header->dest = dest_port;
-                udp_header->length = 0;
+                udp_header->length = MAXRipngUDPLength;
                 riphead->command = RIPNG_RESPONSE;
                 riphead->version = 0x01;
                 riphead->zero = 0x0000;
                 udp_header->checksum = validateAndFillChecksum(packet, 0);
+                DMA_LEN = MAXRipngLength;
                 dma_set_out_port(port);
                 dma_send_finish();
                 // 重新尝试得到发送允许
@@ -143,4 +149,21 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
 
 void debug_ripng() {
     // TODO: 用于回复远程诊断
+}
+
+void ripng_timeout(Timer *t, int i) {
+    for (uint8_t i = 0; i < 4; i ++) {
+        send_all_ripngentries(DMA_PTR, i, ripng_multicast, RIPNGPORT);
+    }
+    timer_start(t, i);
+}
+
+void ripng_init() {
+    // FF02::9
+    while (!dma_lock_request()) {
+        continue;
+    }
+    if(dma_read_need()) {
+        dma_read_finish();
+    }
 }
