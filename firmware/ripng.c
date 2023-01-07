@@ -101,7 +101,6 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     }
 }
 
-
 void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port) {
     while (!dma_lock_request()) { // 先获得写入锁, 再写入数据
         continue;
@@ -139,7 +138,7 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
             ripentry[ripngentrynum - 1].addr = leafs_info[i].ip;
             ripentry[ripngentrynum - 1].route_tag = 0x0000;
             ripentry[ripngentrynum - 1].prefix_len = leafs_info[i].len;
-            ripentry[ripngentrynum - 1].metric = leafs_info[i].metric;
+            ripentry[ripngentrynum - 1].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
         }
     }
     dma_lock_release();
