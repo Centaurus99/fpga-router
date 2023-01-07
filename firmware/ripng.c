@@ -23,7 +23,7 @@ void _ripng(uint8_t *packet, uint32_t length) {
                     // 查路由表并修改 RIPNG 的 metric
                     
                     // 修改好了，send出去就行
-                    dma_send_allow()
+                    dma_send_allow();
                 }
             }
         } else if(riphead->command == RIPNG_RESPONSE) {
