@@ -119,5 +119,6 @@ localparam ICMP_TYPE_NA = 8'd136;
 // 使用 ETHERTYPE 标识回发 ICMP 错误类型
 // {8{ICMP_CODE}, 8{ICMP_TYPE}}
 localparam ETHERTYPE_ICMP_TEM = 16'h00_03;  // ICMP Time Exceeded Message
+localparam ETHERTYPE_ICMP_DUM = 16'h00_01;  // ICMP Destination Unreachable Message
 
 `endif
