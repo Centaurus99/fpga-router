@@ -120,6 +120,11 @@ void mainloop(bool release_lock) {
                     }
                 } else {
                     printf("Drop ICMPv6 Packet: checksum error\r\n");
+                    printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
+                    for (int i = 0; i < DMA_LEN; i++) {
+                        printf("%02x ", DMA_PTR[i]);
+                    }
+                    printf(".\r\n");
                 }
             } else if (ip6->next_header == IPPROTO_UDP) {
                 // UDP 包
@@ -131,6 +136,11 @@ void mainloop(bool release_lock) {
                     }
                 } else {
                     printf("Drop UDP Packet: checksum error\r\n");
+                    printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
+                    for (int i = 0; i < DMA_LEN; i++) {
+                        printf("%02x ", DMA_PTR[i]);
+                    }
+                    printf(".\r\n");
                 }
             } else {
                 // 其他包直接丢弃
