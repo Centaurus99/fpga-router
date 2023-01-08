@@ -23,19 +23,20 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     RipngHead *riphead = RipngHead_PTR(packet);
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     uint32_t ripng_num = RipngEntryNum(length);
+    uint8_t port = dma_get_receive_port();
+    LeafInfo leafinfo;
     // 校验 ripng 包的格式
     if (ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader) == length && riphead->version == 0x01 && riphead->zero == 0x0000) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
-            uint32_t ripng_num = RipngEntryNum(length);
             dma_lock_request();
             dma_send_request();
-            uint8_t port = dma_get_receive_port();
             LeafInfo leafinfo;
             for (uint32_t i = 0; i < ripng_num; i++) {
                 if (in6_addr_equal(ripentry[i].addr, request_for_all.addr) && ripentry[i].metric == request_for_all.metric && ripentry[i].prefix_len == request_for_all.prefix_len) {
                     // TODO: send all of your route tables
                     send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src);
+                    dma_lock_release();
                     return;
                 } else {
                     // 查路由表并修改 RIPNG 的 metric
@@ -55,6 +56,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
             udp_header->src = RIPNGPORT;
+            validateAndFillChecksum(packet, length);
             dma_send_finish();
             dma_lock_release();
         } else if (riphead->command == RIPNG_RESPONSE) {
@@ -63,7 +65,47 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                     if (ipv6_header->hop_limit == 0xff && udp_header->src == RIPNGPORT) {
                         // 收到广播的 Response，可用于更改路由表
                         for (uint32_t i = 0; i < ripng_num; i++) {
-                            
+                            if(ripentry[i].metric > METRIC_INF && ripentry[i].metric != 0xff) {
+                                printf("Invalid metric: %x", ripentry[i].metric);
+                                continue;
+                            }
+                            if(ripentry[i].prefix_len > 128) {
+                                printf("Invalid prefix len: %x", ripentry[i].prefix_len);
+                                continue;
+                            }
+                            if(! check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
+                                char ipbuffer[100];
+                                printip(&(ipv6_header->ip6_src), ipbuffer);
+                                printf("Invalid IP %s \r\n", ipbuffer);
+                                continue;
+                            }
+                            if(prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)){
+                                if(next_hops[leafinfo.nexthop_id].port == port) {
+                                    // 相同nexthop时，更新metric并重启计时器
+                                    if(leafinfo.metric + 1 >= METRIC_INF){
+                                        // 删除不可达的路由
+                                        RoutingTableEntry entry = {
+                                            .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
+                                        };
+                                        update(false, entry);
+                                    } else {
+                                        // 更新metric, HACK: 这里不知道怎么用leafinfo重启leaf的计时器
+                                        leafinfo.metric = ripentry[i].metric + 1;
+                                    }
+                                } else {
+                                    // 不同nexthop时，比较metric的大小，选取最优的metric
+                                    if(ripentry[i].metric + 1 < leafinfo.metric && ripentry[i].metric + 1 < METRIC_INF) {
+                                        // TODO: 应该能够根据port选取新的nexthop，这里我不太会
+                                        leafinfo.metric = ripentry[i].metric + 1;
+                                        // HACK: 同样不知道怎样重启计时器
+                                    } // else do nothing
+                                }
+                            } else {
+                                RoutingTableEntry entry = {
+                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
+                                };
+                                update(true, entry);
+                            }
                         }
                     } else {
                         // 收到一个错误的广播 Response
@@ -74,7 +116,47 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                     if (ipv6_header->hop_limit == 0xff) {
                         // 可以更新路由表
                         for (uint32_t i = 0; i < ripng_num; i++) {
-
+                            if(ripentry[i].metric > METRIC_INF && ripentry[i].metric != 0xff) {
+                                printf("Invalid metric: %x", ripentry[i].metric);
+                                continue;
+                            }
+                            if(ripentry[i].prefix_len > 128) {
+                                printf("Invalid prefix len: %x", ripentry[i].prefix_len);
+                                continue;
+                            }
+                            if(! check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
+                                char ipbuffer[100];
+                                printip(&(ipv6_header->ip6_src), ipbuffer);
+                                printf("Invalid IP %s \r\n", ipbuffer);
+                                continue;
+                            }
+                            if(prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)){
+                                if(next_hops[leafinfo.nexthop_id].port == port) {
+                                    // 相同nexthop时，更新metric并重启计时器
+                                    if(leafinfo.metric + 1 >= METRIC_INF){
+                                        // 删除不可达的路由
+                                        RoutingTableEntry entry = {
+                                            .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
+                                        };
+                                        update(false, entry);
+                                    } else {
+                                        // 更新metric, HACK: 这里不知道怎么用leafinfo重启leaf的计时器
+                                        leafinfo.metric = ripentry[i].metric + 1;
+                                    }
+                                } else {
+                                    // 不同nexthop时，比较metric的大小，选取最优的metric
+                                    if(ripentry[i].metric + 1 < leafinfo.metric && ripentry[i].metric + 1 < METRIC_INF) {
+                                        // TODO: 应该能够根据port选取新的nexthop，这里我不太会
+                                        leafinfo.metric = ripentry[i].metric + 1;
+                                        // HACK: 同样不知道怎样重启计时器
+                                    } // else do nothing
+                                }
+                            } else {
+                                RoutingTableEntry entry = {
+                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
+                                };
+                                update(true, entry);
+                            }
                         }
                     } else {
                         // 不可以更新路由表，只能用作诊断
@@ -98,7 +180,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
 }
 
 void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port) {
-    dma_lock_request();
+    // 本函数中默认已经获得lock_request并不释放
     dma_send_request();
     uint32_t ripngentrynum = 0;
     IP6Header *ipv6_header = IP6_PTR(packet);
@@ -111,15 +193,24 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
             if (ripngentrynum == MAXRipngEntryNum + 1) {
                 ipv6_header->ip6_src = GUA_IP(port);
                 ipv6_header->ip6_dst = dest_ip;
+                ipv6_header->next_header = IPPROTO_UDP;
+                ipv6_header->flow = 0x00600000;
+                ipv6_header->hop_limit = 0xff;
+                ipv6_header->payload_len = MAXRipngUDPLength; // HACK: 是不是要网络字节序？
+
                 udp_header->src = RIPNGPORT;
                 udp_header->dest = dest_port;
-                udp_header->length = MAXRipngUDPLength;
+                udp_header->length = MAXRipngUDPLength; // HACK: 是不是要网络字节序？
+
                 riphead->command = RIPNG_RESPONSE;
                 riphead->version = 0x01;
                 riphead->zero = 0x0000;
-                udp_header->checksum = validateAndFillChecksum(packet, 0);
+
+                validateAndFillChecksum(packet, MAXRipngLength);
                 DMA_LEN = MAXRipngLength;
+
                 dma_set_out_port(port);
+
                 dma_send_finish();
                 // 重新尝试得到发送允许
                 dma_send_request();
@@ -131,7 +222,6 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
             ripentry[ripngentrynum - 1].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
         }
     }
-    dma_lock_release();
 }
 
 void debug_ripng() {
@@ -139,16 +229,50 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
+    mainloop(false);
     for (uint8_t i = 0; i < 4; i ++) {
         send_all_ripngentries(DMA_PTR, i, ripng_multicast, RIPNGPORT);
     }
+    dma_lock_release();
     timer_start(t, i);
 }
 
 void ripng_init() {
     // FF02::9
-    dma_lock_request();
-    if(dma_read_need()) {
-        dma_read_finish();
+    mainloop(false);
+    uint8_t *packet = DMA_PTR;
+    IP6Header *ipv6_header = IP6_PTR(packet);
+    UDPHeader *udp_header = UDP_PTR(packet);
+    RipngHead *riphead = RipngHead_PTR(packet);
+    RipngEntry *ripentry = RipngEntries_PTR(packet);
+    for(uint8_t i = 0; i < 4;i ++){
+        dma_send_request();
+        ipv6_header->ip6_src = GUA_IP(i);
+        ipv6_header->ip6_dst = ripng_multicast;
+        ipv6_header->flow = 0x00600000;
+        ipv6_header->hop_limit = 0xff;
+        ipv6_header->payload_len = 0x2000; // HACK: 是不是要网络字节序？
+        ipv6_header->next_header = IPPROTO_UDP;
+
+        udp_header->src = RIPNGPORT;
+        udp_header->dest = RIPNGPORT;
+        udp_header->length = 0x2000; // HACK: 是不是要网络字节序？
+
+        riphead->command = RIPNG_REQUEST;
+        riphead->version = 0x01;
+        riphead->zero = 0x0000;
+
+        ripentry->addr = request_for_all.addr;
+        ripentry->metric = request_for_all.metric;
+        ripentry->route_tag = request_for_all.route_tag;
+        ripentry->prefix_len = request_for_all.prefix_len;
+
+        DMA_LEN = 86;
+        dma_set_out_port(i);
+        dma_send_finish();
     }
+    dma_lock_release();
+    Timer *ripng_timer = timer_init(RIPNG_UPDATE_TIME, 2);
+    timer_set_timeout(ripng_timer, ripng_timeout);
+    timer_start(ripng_timer, 1);
 }

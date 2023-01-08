@@ -3,6 +3,7 @@
 
 #include <header.h>
 #include <stdint.h>
+#include <timer.h>
 
 typedef struct {
     uint8_t command;
@@ -23,6 +24,10 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
 
 void debug_ripng();
 
+void ripng_init();
+
+void ripng_timeout(Timer *t, int i);
+
 #define RIPNGPORT 0x0209 // 521
 
 #define RipngEntryNum(len) (uint32_t)(((len) - sizeof(EtherHeader) - sizeof(IP6Header) - sizeof(UDPHeader) - sizeof(RipngHead)) / sizeof(RipngEntry))
@@ -37,7 +42,9 @@ void debug_ripng();
 #define MTU 1500
 
 #define MAXRipngEntryNum RipngEntryNum(MTU)
-#define MAXRipngUDPLength MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)
+#define MAXRipngUDPLength (uint16_t)(((uint16_t)MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)) << 8) + (((uint16_t)MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)) >> 8) 
 #define MAXRipngLength (uint32_t)(MAXRipngEntryNum * sizeof(RipngEntry) + (sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader) + sizeof(RipngHead)))
+
+#define RIPNG_UPDATE_TIME 3
 
 #endif
