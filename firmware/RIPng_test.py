@@ -111,6 +111,8 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='2004::', prefixlen=16, metric=4)                       # new
     )
 
+# exit()
+
 # RIPng request 
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
@@ -179,12 +181,12 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 # You can construct more frames to test your datapath.
 
-for i in range(999):
-    send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-            UDP() /
-            RIPng(cmd=2) /
-            RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+# for i in range(99):
+#     send_frame(0, Ether(src=MAC_TESTER0) /
+#             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+#             UDP() /
+#             RIPng(cmd=2) /
+#             RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
 
 send_frame(1, Ether(src=MAC_TESTER1) /
             IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /

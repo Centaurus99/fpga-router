@@ -136,6 +136,7 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
             // 更改udp层的包头
             udp_header->dest = __htons(RIPNGPORT);
             udp_header->src = __htons(RIPNGPORT);
+            udp_header->length = __htons(RipngUDPLength(answer_num));
             validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
             DMA_LEN = RipngETHLength(answer_num);
             dma_set_out_port(send_port);
