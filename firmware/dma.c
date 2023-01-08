@@ -37,7 +37,7 @@ void dma_send_finish() {
 bool dma_read_need() {
 #ifdef _DEBUG
     if (DMA_CTRL & DMA_REG_WAIT_CPU) {
-        printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
+        // printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
         // for (int i = 0; i < DMA_LEN; i++) {
         //     printf("%02x ", DMA_PTR[i]);
         // }
