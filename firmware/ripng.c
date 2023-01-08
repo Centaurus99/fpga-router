@@ -31,9 +31,15 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             dbgprintf("Recived RIPng Request\r\n");
             dma_lock_request();
             dma_send_request();
+            bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             if (ripng_num == 1 && in6_addr_equal(ripentry[0].addr, request_for_all.addr) && ripentry[0].metric == request_for_all.metric && ripentry[0].prefix_len == request_for_all.prefix_len) {
                 // 响应所有路由表
-                send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, !check_multicast_address(ipv6_header->ip6_dst));
+                send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua);
+                dma_lock_release();
+                return;
+            }
+            if (ripng_num == 0) {
+                // 无 entries, 不响应
                 dma_lock_release();
                 return;
             }
@@ -47,15 +53,15 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                 }
             }
             riphead->command = RIPNG_RESPONSE;
-            dma_set_out_port(port);
             // 更改ip层的包头
             ipv6_header->ip6_dst = ipv6_header->ip6_src;
-            ipv6_header->ip6_src = GUA_IP(port);
+            ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
             ipv6_header->hop_limit = 0xff;
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
             udp_header->src = __htons(RIPNGPORT);
             validateAndFillChecksum(packet, length);
+            dma_set_out_port(port);
             dma_send_finish();
             dma_lock_release();
         } else if (riphead->command == RIPNG_RESPONSE) {
