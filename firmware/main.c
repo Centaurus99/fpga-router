@@ -6,6 +6,7 @@
 #include <ripng.h>
 #include <router.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <uart.h>
 #include <vga.h>
 #include <timer.h>
@@ -283,6 +284,8 @@ void start(int argc, char *argv[]) {
     Timer *dpy_timer = timer_init(SECOND, 5);
     timer_set_timeout(dpy_timer, dpy_led_timeout);
     timer_start(dpy_timer, 1);
+    
+    ripng_init();
 
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
 

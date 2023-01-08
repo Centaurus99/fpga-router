@@ -85,7 +85,7 @@ void icmp_reply_gen() {
     dma_lock_release();
 }
 
-void mainloop() {
+void mainloop(bool release_lock) {
     if (dma_read_need()) {
         volatile EtherHeader *ether = ETHER_PTR(DMA_PTR);
         if (ether->ethertype != 0xdd86) {
@@ -119,6 +119,9 @@ void mainloop() {
                 printf("Drop Packet: ip6->next_header = %02x\r\n", ip6->next_header);
 #endif
             }
+        }
+        if(!release_lock){
+            dma_lock_request();
         }
         dma_read_finish();
     }
