@@ -31,7 +31,6 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
         if (riphead->command == RIPNG_REQUEST) {
             dma_lock_request();
             dma_send_request();
-            LeafInfo leafinfo;
             for (uint32_t i = 0; i < ripng_num; i++) {
                 if (in6_addr_equal(ripentry[i].addr, request_for_all.addr) && ripentry[i].metric == request_for_all.metric && ripentry[i].prefix_len == request_for_all.prefix_len) {
                     // TODO: send all of your route tables
@@ -40,10 +39,11 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                     return;
                 } else {
                     // 查路由表并修改 RIPNG 的 metric
-                    if (!prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)) {
+                    uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
+                    if (!lid) {
                         ripentry[i].metric = METRIC_INF;
                     } else {
-                        ripentry[i].metric = leafinfo.metric;
+                        ripentry[i].metric = leafs_info[lid].metric;
                     }
                 }
             }
@@ -79,25 +79,26 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid IP %s \r\n", ipbuffer);
                                 continue;
                             }
-                            if(prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)){
-                                if(next_hops[leafinfo.nexthop_id].port == port) {
+                            uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
+                            LeafInfo *info = &leafs_info[lid];
+                            if (lid) {
+                                if(next_hops[info->nexthop_id].port == port) {
                                     // 相同nexthop时，更新metric并重启计时器
-                                    if(leafinfo.metric + 1 >= METRIC_INF){
+                                    if(info->metric + 1 >= METRIC_INF){
                                         // 删除不可达的路由
                                         RoutingTableEntry entry = {
                                             .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
                                         };
                                         update(false, entry);
                                     } else {
-                                        // 更新metric, HACK: 这里不知道怎么用leafinfo重启leaf的计时器
-                                        leafinfo.metric = ripentry[i].metric + 1;
+                                        // 更新metric
+                                        update_leaf_info(lid, ripentry[i].metric + 1, 0xff, (in6_addr){0});
                                     }
                                 } else {
                                     // 不同nexthop时，比较metric的大小，选取最优的metric
-                                    if(ripentry[i].metric + 1 < leafinfo.metric && ripentry[i].metric + 1 < METRIC_INF) {
+                                    if(ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
                                         // TODO: 应该能够根据port选取新的nexthop，这里我不太会
-                                        leafinfo.metric = ripentry[i].metric + 1;
-                                        // HACK: 同样不知道怎样重启计时器
+                                        update_leaf_info(lid, ripentry[i].metric + 1, port, LOCAL_IP(port)); // FIXME port和nexthopip的设置
                                     } // else do nothing
                                 }
                             } else {
@@ -130,25 +131,25 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid IP %s \r\n", ipbuffer);
                                 continue;
                             }
-                            if(prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL, &leafinfo)){
-                                if(next_hops[leafinfo.nexthop_id].port == port) {
+                            uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
+                            LeafInfo *info = &leafs_info[lid];
+                            if (lid){
+                                if(next_hops[info->nexthop_id].port == port) {
                                     // 相同nexthop时，更新metric并重启计时器
-                                    if(leafinfo.metric + 1 >= METRIC_INF){
+                                    if(info->metric + 1 >= METRIC_INF){
                                         // 删除不可达的路由
                                         RoutingTableEntry entry = {
                                             .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1
                                         };
                                         update(false, entry);
                                     } else {
-                                        // 更新metric, HACK: 这里不知道怎么用leafinfo重启leaf的计时器
-                                        leafinfo.metric = ripentry[i].metric + 1;
+                                        // 更新metric
+                                        update_leaf_info(lid, ripentry[i].metric + 1, 0xff, (in6_addr){0});
                                     }
                                 } else {
                                     // 不同nexthop时，比较metric的大小，选取最优的metric
-                                    if(ripentry[i].metric + 1 < leafinfo.metric && ripentry[i].metric + 1 < METRIC_INF) {
-                                        // TODO: 应该能够根据port选取新的nexthop，这里我不太会
-                                        leafinfo.metric = ripentry[i].metric + 1;
-                                        // HACK: 同样不知道怎样重启计时器
+                                    if(ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
+                                        update_leaf_info(lid, ripentry[i].metric + 1, port, LOCAL_IP(port)); // FIXME port和nexthopip的设置
                                     } // else do nothing
                                 }
                             } else {

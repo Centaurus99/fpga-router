@@ -57,17 +57,17 @@ int node_root;
 
 TrieNode stk[33];
 
-nexthop_id_t _new_entry(const RoutingTableEntry entry) {
+nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     for (nexthop_id_t i = 0; i < entry_count; ++ i) {
-        if (next_hops[i].port == entry.if_index &&
-            in6_addr_equal(next_hops[i].ip, entry.nexthop) &&
-            next_hops[i].route_type == entry.route_type) { // TODO: 在输入中增加对route_type的支持
+        if (next_hops[i].port == port &&
+            in6_addr_equal(next_hops[i].ip, ip) &&
+            next_hops[i].route_type == route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
     }
-    next_hops[entry_count].port = entry.if_index;
-    next_hops[entry_count].ip = entry.nexthop;
-    next_hops[entry_count].route_type = entry.route_type;
+    next_hops[entry_count].port = port;
+    next_hops[entry_count].ip = ip;
+    next_hops[entry_count].route_type = route_type;
 
     // routing_table[entry_count] = entry;
     return entry_count++;
@@ -76,7 +76,7 @@ nexthop_id_t _new_entry(const RoutingTableEntry entry) {
 LeafNode _new_leaf_node(const RoutingTableEntry entry) {
     LeafNode ret;
     ret.leaf_id = ++leaf_count;
-    ret._nexthop_id = _new_entry(entry);
+    ret._nexthop_id = _new_entry(entry.if_index, entry.nexthop, entry.route_type);
     return ret;
 }
 
@@ -344,14 +344,18 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-void update_leaf_info(LeafNode leaf, uint8_t metric) {
-    assert_id(next_hops[leaf._nexthop_id].route_type != 0, 1);
-    leafs_info[leaf._leaf_id].metric = metric;
-    timer_stop(timeout_timer, leaf._leaf_id);
-    timer_start(timeout_timer, leaf._leaf_id);
+void update_leaf_info(uint32_t leaf_id, uint8_t metric, uint8_t port, const in6_addr nexthop) {
+    if (metric != 0xff)
+        leafs_info[leaf_id].metric = metric;
+    if (port != 0xff) {
+        nexthop_id_t nexthopid = _new_entry(port, nexthop, 1);
+        leafs_info[leaf_id].nexthop_id = nexthopid;
+    }
+    timer_stop(timeout_timer, leaf_id);
+    timer_start(timeout_timer, leaf_id);
 }
 
-bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
+int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
@@ -381,16 +385,14 @@ bool prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t 
             break;
         }
     }
-    if (leaf == NULL)  return false;
+    if (leaf == NULL)  return 0;
     if (nexthop != NULL)
         *nexthop = next_hops[leaf->_nexthop_id].ip;
     if (if_index != NULL)
         *if_index = next_hops[leaf->_nexthop_id].port;
     if (route_type != NULL)
         *route_type = next_hops[leaf->_nexthop_id].route_type;
-    if (leaf_info != NULL)
-        *leaf_info = leafs_info[leaf->_leaf_id];
-    return true;
+    return leaf->_nexthop_id;
 }
 
 void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode leaf) {
