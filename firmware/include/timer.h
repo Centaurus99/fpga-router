@@ -8,8 +8,8 @@
 
 #define SECOND 10000000
 
-#define ENTRY_TIMEOUT (200 * SECOND)
-#define RIPNG_UPDATE_TIME (3 * SECOND)
+#define ENTRY_TIMEOUT (60 * SECOND)
+#define RIPNG_UPDATE_TIME (10 * SECOND)
 
 typedef struct _Timer {
     void (*timeout)(struct _Timer*, int);
