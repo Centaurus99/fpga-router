@@ -111,7 +111,7 @@ void mainloop(bool release_lock) {
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
                     dbgprintf("UDP Packet: src = %04x, dest = %04x\r\n", udp->src, udp->dest);
-                    if (udp->dest == RIPNGPORT) {
+                    if (udp->dest == __htons(RIPNGPORT)) {
                         receive_ripng((uint8_t *)DMA_PTR, DMA_LEN);
                     }
                 } else {
