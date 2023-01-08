@@ -66,9 +66,9 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                 answer_entry->metric = METRIC_INF;
                 return true;
             } else {
+                // 更新metric，重置计时器
+                update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
                 if(entry->metric + 1 != info->metric) {
-                    // 更新metric
-                    update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
                     // 回发告知我们更新了metric
                     if (!same_place) {
                         answer_entry->addr = entry->addr;
