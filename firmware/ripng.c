@@ -111,22 +111,20 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
             dbgprintf("Recived RIPng Request\r\n");
-            dma_lock_request();
-            dma_send_request();
             bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             if (ripng_num == 1 && in6_addr_equal(ripentry[0].addr, request_for_all.addr) && ripentry[0].metric == request_for_all.metric && ripentry[0].prefix_len == request_for_all.prefix_len) {
                 // 响应所有路由表
                 dbgprintf("Response all entries\r\n");
-                send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua);
-                dma_lock_release();
+                send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua, 0);
                 return;
             }
             if (ripng_num == 0) {
                 // 无 entries, 不响应
                 dbgprintf("No entry no response\r\n");
-                dma_lock_release();
                 return;
             }
+            dma_lock_request();
+            dma_send_request();
             dbgprintf("Responsing\r\n");
             for (uint32_t i = 0; i < ripng_num; i++) {
                 // 查路由表并修改 RIPNG 的 metric
@@ -221,15 +219,23 @@ void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_
 }
 
 // 返回当前路由条数
-int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua) {
+int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, bool allow_interrupt) {
     // 本函数中默认已经获得lock_request并不释放
     dbgprintf("Sending all ripng entries\r\n");
-    dma_send_request();
+    if (!allow_interrupt) {
+        dma_lock_request();
+    }
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
     for (uint32_t i = 1; i <= leaf_count; i++) {
         if (leafs_info[i].valid) {
+            if (ripngentrynum == 0) {
+                if (allow_interrupt) {
+                    mainloop(false);
+                }
+                dma_send_request();
+            }
             ++cnt;
             ripentry[ripngentrynum].addr = leafs_info[i].ip;
             ripentry[ripngentrynum].route_tag = 0x0000;
@@ -241,8 +247,9 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
                 _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
                 dma_set_out_port(port);
                 dma_send_finish();
-                // 重新尝试得到发送允许
-                dma_send_request();
+                if (allow_interrupt) {
+                    dma_lock_release();
+                }
                 ripngentrynum -= MAXRipngEntryNum;
             }
         }
@@ -252,6 +259,7 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         dma_set_out_port(port);
         dma_send_finish();
     }
+    dma_lock_release();
     return cnt;
 }
 
@@ -260,13 +268,12 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
-    mainloop(false);
-    int cnt;
     for (uint8_t i = 0; i < 4; i++) {
-        cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
+        int cnt;
+        cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
+        printf("S%d:%d ", i, cnt);
     }
-    dma_lock_release();
-    printf("Sended %d routing entries\r\n", cnt);
+    printf("\r\n");
     timer_start(t, i);
 }
 

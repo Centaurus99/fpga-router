@@ -212,7 +212,7 @@ bool operate_c() {
         RoutingTableEntry *entry = checking_entry + i;
         printprefix(&(entry->addr), entry->len, ipbuffer);
         printip(&(entry->nexthop), ipbuffer + 100);
-        printf("Found %s if_index: %d %s route_type: %d metric: %d\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type, entry->metric);
+        printf("Found %s if_index: %d %s route_type: %d metric: %d\r\n", ipbuffer, entry->if_index, ipbuffer + 100, entry->route_type, entry->metric);
     }
     return 1;
 }
