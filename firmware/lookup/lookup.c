@@ -404,6 +404,7 @@ void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode 
     t->nexthop = next_hops[leaf._nexthop_id].ip;
     t->if_index = next_hops[leaf._nexthop_id].port;
     t->route_type = next_hops[leaf._nexthop_id].route_type;
+    t->metric = leafs_info[leaf._leaf_id].metric;
 }
 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
