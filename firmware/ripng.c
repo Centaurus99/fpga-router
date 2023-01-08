@@ -32,7 +32,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             for (uint32_t i = 0; i < ripng_num; i++) {
                 if (in6_addr_equal(ripentry[i].addr, request_for_all.addr) && ripentry[i].metric == request_for_all.metric && ripentry[i].prefix_len == request_for_all.prefix_len) {
                     // TODO: send all of your route tables
-                    send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src);
+                    send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, 0);
                     dma_lock_release();
                     return;
                 } else {
@@ -174,49 +174,58 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     }
 }
 
-void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port) {
-    // 本函数中默认已经获得lock_request并不释放
-    dma_send_request();
-    uint32_t ripngentrynum = 0;
+void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, uint8_t EntryNum) {
     IP6Header *ipv6_header = IP6_PTR(packet);
     UDPHeader *udp_header = UDP_PTR(packet);
     RipngHead *riphead = RipngHead_PTR(packet);
+
+    ipv6_header->flow = IP6_DEFAULT_FLOW;
+    ipv6_header->payload_len = __htons(RipngUDPLength(EntryNum));
+    ipv6_header->next_header = IPPROTO_UDP;
+    ipv6_header->hop_limit = 0xff;
+    ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
+    ipv6_header->ip6_dst = dest_ip;
+
+    udp_header->src = RIPNGPORT;
+    udp_header->dest = dest_port;
+    udp_header->length = __htons(RipngUDPLength(EntryNum));
+
+    riphead->command = RIPNG_RESPONSE;
+    riphead->version = 0x01;
+    riphead->zero = 0x0000;
+
+    DMA_LEN = RipngETHLength(EntryNum);
+    validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(EntryNum));
+}
+
+void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua) {
+    // 本函数中默认已经获得lock_request并不释放
+    dma_send_request();
+    uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     for (uint32_t i = 1; i <= leaf_count; i++) {
         if (leafs_info[i].valid) {
+            ripentry[ripngentrynum].addr = leafs_info[i].ip;
+            ripentry[ripngentrynum].route_tag = 0x0000;
+            ripentry[ripngentrynum].prefix_len = leafs_info[i].len;
+            ripentry[ripngentrynum].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
             ripngentrynum += 1;
-            if (ripngentrynum == MAXRipngEntryNum + 1) {
-                ipv6_header->ip6_src = GUA_IP(port);
-                ipv6_header->ip6_dst = dest_ip;
-                ipv6_header->next_header = IPPROTO_UDP;
-                ipv6_header->flow = 0x00600000;
-                ipv6_header->hop_limit = 0xff;
-                ipv6_header->payload_len = __htons(RipngUDPLength(MAXRipngEntryNum)); // HACK: 是不是要网络字节序？
 
-                udp_header->src = RIPNGPORT;
-                udp_header->dest = dest_port;
-                udp_header->length = __htons(RipngUDPLength(MAXRipngEntryNum)); // HACK: 是不是要网络字节序？
-
-                riphead->command = RIPNG_RESPONSE;
-                riphead->version = 0x01;
-                riphead->zero = 0x0000;
-
-                DMA_LEN = RipngETHLength(MAXRipngEntryNum);
-                validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(MAXRipngEntryNum));
-
+            if (ripngentrynum == MAXRipngEntryNum) {
+                _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
                 dma_set_out_port(port);
-
                 dma_send_finish();
                 // 重新尝试得到发送允许
                 dma_send_request();
                 ripngentrynum -= MAXRipngEntryNum;
             }
-            ripentry[ripngentrynum - 1].addr = leafs_info[i].ip;
-            ripentry[ripngentrynum - 1].route_tag = 0x0000;
-            ripentry[ripngentrynum - 1].prefix_len = leafs_info[i].len;
-            ripentry[ripngentrynum - 1].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
         }
     }
+    if (ripngentrynum > 0) {
+        _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
+        dma_set_out_port(port);
+    }
+    dma_send_finish();
 }
 
 void debug_ripng() {
@@ -226,7 +235,7 @@ void debug_ripng() {
 void ripng_timeout(Timer *t, int i) {
     mainloop(false);
     for (uint8_t i = 0; i < 4; i++) {
-        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, RIPNGPORT);
+        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, RIPNGPORT, 0);
     }
     dma_lock_release();
     timer_start(t, i);
