@@ -307,7 +307,7 @@ void start(int argc, char *argv[]) {
             }
 
             printf("%s\r\n", info);
-            display();
+            // display();
         }
     }
 }

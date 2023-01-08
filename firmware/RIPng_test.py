@@ -19,6 +19,7 @@ from scapy.contrib.ripng import *
 import binascii
 import sys
 import struct
+import time
 
 # The broadcast MAC address.
 # Also used when we do not know the router's MAC address when sending IP packets.
@@ -87,6 +88,56 @@ def getll(mac):
 
 def getnsma(a):
     return inet_ntop(socket.AF_INET6, in6_getnsma(inet_pton(socket.AF_INET6, a)))
+
+def routes_in_pcap(path):
+    pkt = rdpcap(path)
+    routes = []
+    for p in pkt:
+        if p.haslayer(RIPng):
+            p = p['RIPng']
+            while p.payload:
+                p = p.payload
+                routes.append((p.prefix_or_nh, p.prefixlen))
+                # print(p.prefix_or_nh, p.prefixlen)
+    return routes
+
+# routes = routes_in_pcap('RIPresponse.pcapng')
+# with open('lookup/fib_shuffled.txt', 'r') as f:
+#     for line in f.readlines()[:1000]:
+#         prefix = line.strip().split(' ')[0]
+#         len = int(line.strip().split(' ')[1])
+#         if (prefix, len) not in routes:
+#             print(prefix, len)
+            # send_frame(0, Ether(src=MAC_TESTER0) /
+            # IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+            # UDP() /
+            # RIPng(cmd=2) /
+            # RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=1))
+# exit()
+
+# FROM FIB SHUFFLED
+
+cnt = 0
+p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
+
+sent = []
+with open('lookup/fib_shuffled.txt', 'r') as f:
+    for line in f.readlines()[:40000]:
+        prefix = line.strip().split(' ')[0]
+        len = int(line.strip().split(' ')[1])
+        # assert((prefix, len) not in sent)
+        # sent.append((prefix, len))
+        p /= RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=4)
+        cnt += 1
+        if cnt >= 71:
+            cnt = 0
+            send_frame(0, p)
+            p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
+            # time.sleep(0.15)
+if cnt > 0:
+    send_frame(0, p)
+exit()
+# FROM FIB SHUFFLED END
 
 # ping
 send_frame(0, Ether(src=MAC_TESTER0) /
