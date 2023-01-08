@@ -1,3 +1,5 @@
+    j TEST_DMA
+
 DIRECT_ROUTE:
     li s0, 0x40000000
     li t0, 0x00000004
@@ -226,9 +228,9 @@ TEST_DMA:
 
 .TEST3:
     li s0, 0x68000000
-    lw s1, 0(s0)
+    lhu s1, 0(s0)
     li s2, 0
-    addi s0, s0, 0x4
+    addi s0, s0, 0x2
 .loop:
     lbu s3, 0(s0)
     addi s0, s0, 1
@@ -236,7 +238,7 @@ TEST_DMA:
     bne s2, s1, .loop
 
 .TEST4:
-    li t1, 0xc
+    li t1, 0x1c
     sb t1, 0(t0)    # Read & Write
 
 .DONE:

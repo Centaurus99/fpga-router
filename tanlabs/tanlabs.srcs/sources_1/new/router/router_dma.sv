@@ -48,13 +48,13 @@ module router_dma #(
     input  wire       tx8_ready
 );
     reg         bram_cpu_en;
-    reg         bram_cpu_we;
+    reg  [ 3:0] bram_cpu_we;
     reg  [ 9:0] bram_cpu_addr;
     reg  [31:0] bram_cpu_din;
     wire [31:0] bram_cpu_dout;
 
     reg         bram_router_en;
-    reg         bram_router_we;
+    reg  [ 3:0] bram_router_we;
     reg  [ 9:0] bram_router_addr;
     reg  [31:0] bram_router_din;
     wire [31:0] bram_router_dout;
@@ -63,14 +63,14 @@ module router_dma #(
     router_dma_data router_dma_data_read (
         .clka (cpu_clk),        // input wire clka
         .ena  (bram_cpu_en),    // input wire ena
-        .wea  (bram_cpu_we),    // input wire [0 : 0] wea
+        .wea  (bram_cpu_we),    // input wire [3 : 0] wea
         .addra(bram_cpu_addr),  // input wire [9 : 0] addra
         .dina (bram_cpu_din),   // input wire [31 : 0] dina
         .douta(bram_cpu_dout),  // output wire [31 : 0] douta
 
         .clkb (eth_clk),           // input wire clkb
         .enb  (bram_router_en),    // input wire enb
-        .web  (bram_router_we),    // input wire [0 : 0] web
+        .web  (bram_router_we),    // input wire [3 : 0] web
         .addrb(bram_router_addr),  // input wire [9 : 0] addrb
         .dinb (bram_router_din),   // input wire [31 : 0] dinb
         .doutb(bram_router_dout)   // output wire [31 : 0] doutb
@@ -106,7 +106,7 @@ module router_dma #(
     always_ff @(posedge cpu_clk) begin
         if (cpu_reset) begin
             dma_cpu_state <= CPU_IDLE;
-            bram_cpu_we   <= 1'b0;
+            bram_cpu_we   <= 4'b0000;
             wb_ack_o      <= 1'b0;
         end else begin
             case (dma_cpu_state)
@@ -120,7 +120,7 @@ module router_dma #(
                     if (wb_we_i == 1'b0) begin
                         dma_cpu_state <= CPU_READ;
                     end else begin
-                        bram_cpu_we   <= 1'b1;
+                        bram_cpu_we   <= 4'b1111;
                         dma_cpu_state <= CPU_WRITE;
                     end
                 end
@@ -130,7 +130,7 @@ module router_dma #(
                 end
                 CPU_WRITE: begin
                     wb_ack_o      <= 1'b0;
-                    bram_cpu_we   <= 1'b0;
+                    bram_cpu_we   <= 4'b0000;
                     dma_cpu_state <= CPU_IDLE;
                 end
                 default: begin
@@ -141,21 +141,21 @@ module router_dma #(
     end
 
     /* =========== Router Domain =========== */
-    wire [31:0] rx_data;
-    wire [ 3:0] rx_keep;
+    wire [15:0] rx_data;
+    wire [ 1:0] rx_keep;
     wire        rx_last;
     reg         rx_ready;
-    wire [ 3:0] rx_user;
+    wire [ 1:0] rx_user;
     wire        rx_valid;
 
-    reg  [31:0] tx_data;
-    reg  [ 3:0] tx_keep;
+    reg  [15:0] tx_data;
+    reg  [ 1:0] tx_keep;
     reg         tx_last;
     wire        tx_ready;
-    reg  [ 3:0] tx_user;
+    reg  [ 1:0] tx_user;
     reg         tx_valid;
 
-    axis_dwidth_converter_8_32 dma_rx_axis_dwidth_converter_8_32 (
+    axis_dwidth_converter_8_16 dma_rx_axis_dwidth_converter_8_16 (
         .aclk   (eth_clk),    // input wire aclk
         .aresetn(~eth_reset), // input wire aresetn
 
@@ -168,22 +168,22 @@ module router_dma #(
 
         .m_axis_tvalid(rx_valid),  // output wire m_axis_tvalid
         .m_axis_tready(rx_ready),  // input wire m_axis_tready
-        .m_axis_tdata (rx_data),   // output wire [31 : 0] m_axis_tdata
-        .m_axis_tkeep (rx_keep),   // output wire [3 : 0] m_axis_tkeep
+        .m_axis_tdata (rx_data),   // output wire [15 : 0] m_axis_tdata
+        .m_axis_tkeep (rx_keep),   // output wire [1 : 0] m_axis_tkeep
         .m_axis_tlast (rx_last),   // output wire m_axis_tlast
-        .m_axis_tuser (rx_user)    // output wire [3 : 0] m_axis_tuser
+        .m_axis_tuser (rx_user)    // output wire [1 : 0] m_axis_tuser
     );
 
-    axis_dwidth_converter_32_8 dma_tx_axis_dwidth_converter_32_8 (
+    axis_dwidth_converter_16_8 dma_tx_axis_dwidth_converter_16_8 (
         .aclk   (eth_clk),    // input wire aclk
         .aresetn(~eth_reset), // input wire aresetn
 
         .s_axis_tvalid(tx_valid),  // input wire s_axis_tvalid
         .s_axis_tready(tx_ready),  // output wire s_axis_tready
-        .s_axis_tdata (tx_data),   // input wire [31 : 0] s_axis_tdata
-        .s_axis_tkeep (tx_keep),   // input wire [3 : 0] s_axis_tkeep
+        .s_axis_tdata (tx_data),   // input wire [15 : 0] s_axis_tdata
+        .s_axis_tkeep (tx_keep),   // input wire [1 : 0] s_axis_tkeep
         .s_axis_tlast (tx_last),   // input wire s_axis_tlast
-        .s_axis_tuser (tx_user),   // input wire [3 : 0] s_axis_tuser
+        .s_axis_tuser (tx_user),   // input wire [1 : 0] s_axis_tuser
 
         .m_axis_tvalid(tx8_valid),  // output wire m_axis_tvalid
         .m_axis_tready(tx8_ready),  // input wire m_axis_tready
@@ -206,10 +206,28 @@ module router_dma #(
         RT_WRITE_END
 
     } dma_router_state_t;
-    dma_router_state_t dma_router_state;
+    dma_router_state_t        dma_router_state;
 
+    reg                       router_we;
+    reg                [10:0] router_addr;
+    reg                [10:0] router_addr_reg;
+    reg                [15:0] router_din;
+    reg                [15:0] router_dout;
     always_comb begin
-        bram_router_en = 1'b1;
+        bram_router_en   = 1'b1;
+        bram_router_addr = router_addr[10:1];
+        if (router_addr[0] == 1'b0) begin
+            bram_router_din = {16'b0, router_din};
+            bram_router_we  = {2'b00, router_we, router_we};
+        end else begin
+            bram_router_din = {router_din, 16'b0};
+            bram_router_we  = {router_we, router_we, 2'b00};
+        end
+        if (router_addr_reg[0] == 1'b0) begin
+            router_dout = bram_router_dout[15:0];
+        end else begin
+            router_dout = bram_router_dout[31:16];
+        end
     end
 
     reg [11:0] length;
@@ -221,9 +239,10 @@ module router_dma #(
             dma_router_read_fin_o <= 1'b0;
 
             dma_router_state      <= RT_IDLE;
-            bram_router_we        <= 1'b0;
-            bram_router_addr      <= '0;
-            bram_router_din       <= '0;
+            router_we             <= 1'b0;
+            router_addr           <= '0;
+            router_addr_reg       <= '0;
+            router_din            <= '0;
 
             rx_ready              <= 1'b0;
 
@@ -239,14 +258,15 @@ module router_dma #(
             dma_router_request_o  <= 1'b0;
             dma_router_sent_fin_o <= 1'b0;
             dma_router_read_fin_o <= 1'b0;
-            bram_router_we        <= 1'b0;
+            router_we             <= 1'b0;
+            router_addr_reg       <= router_addr;
             case (dma_router_state)
                 RT_IDLE: begin
                     // RT_IDLE 状态 addr 须为 0
                     if (!dma_router_request_o && !dma_router_sent_fin_o && !dma_router_read_fin_o) begin
                         if (dma_wait_router_i) begin
                             // 先处理读取
-                            bram_router_addr <= 1'b1;  // 流水线读取, 预先读取下一个数据
+                            router_addr <= 1'b1;  // 流水线读取, 预先读取下一个数据
                             dma_router_state <= RT_READ_START;
                         end else if (!dma_wait_cpu_i && !dma_cpu_lock_i && rx_valid) begin
                             // 再处理写入
@@ -257,33 +277,31 @@ module router_dma #(
                 end
 
                 RT_READ_START: begin
-                    length           <= bram_router_dout;
+                    length           <= router_dout;
                     dma_router_state <= RT_READ_BRAM;
                 end
                 RT_READ_BRAM: begin
                     if (length) begin
                         tx_valid <= 1'b1;
-                        tx_data  <= bram_router_dout;
-                        if (length > 4) begin
+                        tx_data  <= router_dout;
+                        if (length > 2) begin
                             tx_last <= 1'b0;
-                            tx_keep <= 4'b1111;
-                            length  <= length - 4;
+                            tx_keep <= 2'b11;
+                            length  <= length - 2;
                         end else begin
                             tx_last <= 1'b1;
                             unique case (length)
-                                1: tx_keep <= 4'b0001;
-                                2: tx_keep <= 4'b0011;
-                                3: tx_keep <= 4'b0111;
-                                4: tx_keep <= 4'b1111;
+                                1: tx_keep <= 2'b01;
+                                2: tx_keep <= 2'b11;
                             endcase
                             length <= '0;
                         end
-                        bram_router_addr <= bram_router_addr + 1;
+                        router_addr      <= router_addr + 1;
                         dma_router_state <= RT_READ_TX;
                     end else begin
                         dma_router_read_fin_o <= 1'b1;
-                        bram_router_addr      <= '0;
-                        bram_router_we        <= 1'b0;
+                        router_addr           <= '0;
+                        router_we             <= 1'b0;
                         dma_router_state      <= RT_IDLE;
                     end
                 end
@@ -306,37 +324,35 @@ module router_dma #(
                 end
                 RT_WRITE_RX: begin
                     if (rx_valid) begin
-                        bram_router_din  <= rx_data;
-                        bram_router_we   <= 1'b1;
-                        bram_router_addr <= bram_router_addr + 1;
+                        router_din  <= rx_data;
+                        router_we   <= 1'b1;
+                        router_addr <= router_addr + 1;
                         if (rx_last) begin
                             unique case (rx_keep)
-                                4'b0001: length <= length + 1;
-                                4'b0011: length <= length + 2;
-                                4'b0111: length <= length + 3;
-                                4'b1111: length <= length + 4;
+                                2'b01: length <= length + 1;
+                                2'b11: length <= length + 2;
                             endcase
                             rx_ready         <= 1'b0;
                             dma_router_state <= RT_WRITE_END;
                         end else begin
-                            length <= length + 4;
+                            length <= length + 2;
                         end
                     end else begin
-                        bram_router_we <= 1'b0;
+                        router_we <= 1'b0;
                     end
                 end
                 RT_WRITE_END: begin
-                    bram_router_din       <= length;
-                    bram_router_we        <= 1'b1;
-                    bram_router_addr      <= '0;
+                    router_din            <= length;
+                    router_we             <= 1'b1;
+                    router_addr           <= '0;
                     length                <= '0;
                     dma_router_sent_fin_o <= 1'b1;
                     dma_router_state      <= RT_IDLE;
                 end
 
                 default: begin
-                    bram_router_addr <= '0;
-                    bram_router_we   <= 1'b0;
+                    router_addr      <= '0;
+                    router_we        <= 1'b0;
                     dma_router_state <= RT_IDLE;
                 end
             endcase
