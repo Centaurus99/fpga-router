@@ -102,13 +102,6 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32, metric=6) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20, metric=16))
 
-# RIPng request all
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng(cmd=1) /
-            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
-
 # RIPng request 
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
@@ -126,7 +119,8 @@ send_frame(1, Ether(src=MAC_TESTER1) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=4) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32, metric=1))
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32, metric=1) /
+            RIPngEntry(prefix_or_nh='2403:2333::', prefixlen=32, metric=2))
 
 # RIPng request 2
 send_frame(0, Ether(src=MAC_TESTER0) /
@@ -138,6 +132,13 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='2a0e:aa06:497:a01::', prefixlen=64) /
             RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
+
+# RIPng request all
+send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng(cmd=1) /
+            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
 
 # RIP test (bad, source address is GUA).
 send_frame(0, Ether(src=MAC_TESTER0) /

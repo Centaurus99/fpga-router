@@ -115,9 +115,9 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, nexthop); // FIXME port和nexthopip的设置
                                     }                                                                 // else do nothing
                                 }
-                            } else {
+                            } else if (ripentry[i].metric + 1 < METRIC_INF) {
                                 RoutingTableEntry entry = {
-                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = nexthop, .route_type = 1};
+                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = nexthop, .route_type = 1, .metric = ripentry[i].metric + 1};
                                 update(true, entry);
                             }
                         }
@@ -139,10 +139,10 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid prefix len: %x", ripentry[i].prefix_len);
                                 continue;
                             }
-                            if (!check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
+                            if (check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
                                 char ipbuffer[100];
-                                printip(&(ipv6_header->ip6_src), ipbuffer);
-                                printf("Invalid IP %s \r\n", ipbuffer);
+                                printip(&(ripentry[i].addr), ipbuffer);
+                                printf("Invalid ripentry IP %s \r\n", ipbuffer);
                                 continue;
                             }
                             if (ripentry[i].metric == 0xff) {
@@ -173,9 +173,9 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, nexthop); // FIXME port和nexthopip的设置
                                     }                                                                 // else do nothing
                                 }
-                            } else {
+                            } else if (ripentry[i].metric + 1 < METRIC_INF) {
                                 RoutingTableEntry entry = {
-                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = nexthop, .route_type = 1};
+                                    .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = nexthop, .route_type = 1, .metric = ripentry[i].metric + 1};
                                 update(true, entry);
                             }
                         }
