@@ -86,6 +86,9 @@ void icmp_reply_gen() {
 }
 
 void mainloop(bool release_lock) {
+    if (!release_lock) {
+        dma_lock_request();
+    }
     if (dma_read_need()) {
         volatile EtherHeader *ether = ETHER_PTR(DMA_PTR);
         if (ether->ethertype != 0xdd86) {
@@ -120,7 +123,7 @@ void mainloop(bool release_lock) {
 #endif
             }
         }
-        if(!release_lock){
+        if (!release_lock) {
             dma_lock_request();
         }
         dma_read_finish();
