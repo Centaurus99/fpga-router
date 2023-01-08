@@ -85,12 +85,12 @@ def getnsma(a):
 
 # ping
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            IPv6(src=getll(MAC_TESTER0), dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
 # ping 2
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            IPv6(src=getll(MAC_TESTER0), dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
 # RIPng response

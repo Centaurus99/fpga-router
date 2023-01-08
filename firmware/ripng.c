@@ -10,7 +10,7 @@
 #include <timer.h>
 
 const RipngEntry request_for_all = {
-    .addr.s6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x0f};
+    .addr.s6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x10};
 
 const in6_addr ripng_multicast = {
     .s6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}};
@@ -91,15 +91,18 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             if (ripng_num == 1 && in6_addr_equal(ripentry[0].addr, request_for_all.addr) && ripentry[0].metric == request_for_all.metric && ripentry[0].prefix_len == request_for_all.prefix_len) {
                 // 响应所有路由表
+                dbgprintf("Response all entries\r\n");
                 send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua);
                 dma_lock_release();
                 return;
             }
             if (ripng_num == 0) {
                 // 无 entries, 不响应
+                dbgprintf("No entry no response\r\n");
                 dma_lock_release();
                 return;
             }
+            dbgprintf("Responsing\r\n");
             for (uint32_t i = 0; i < ripng_num; i++) {
                 // 查路由表并修改 RIPNG 的 metric
                 LeafNode *leaf = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
@@ -224,12 +227,12 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
-    mainloop(false);
-    for (uint8_t i = 0; i < 4; i++) {
-        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
-    }
-    dma_lock_release();
-    timer_start(t, i);
+    // mainloop(false);
+    // for (uint8_t i = 0; i < 4; i++) {
+    //     send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
+    // }
+    // dma_lock_release();
+    // timer_start(t, i);
 }
 
 void ripng_init() {
