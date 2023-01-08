@@ -3,6 +3,11 @@
 #include <router.h>
 #include <uart.h>
 
+#define now_time (*(volatile uint32_t *)0x200BFF8)
+
+uint32_t read_count, write_count;
+uint32_t last_read_count, last_write_count, last_time;
+
 const mac_addr mac_zero = {
     .mac_addr16 = {0x0000, 0x0000, 0x0000}};
 
@@ -31,23 +36,24 @@ void dma_send_finish() {
     // }
     // printf(".\r\n");
 #endif
+    ++write_count;
     DMA_CTRL = DMA_REG_WAIT_ROUTER;
 }
 
 bool dma_read_need() {
-#ifdef _DEBUG
     if (DMA_CTRL & DMA_REG_WAIT_CPU) {
+#ifdef _DEBUG
         // printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
         // for (int i = 0; i < DMA_LEN; i++) {
         //     printf("%02x ", DMA_PTR[i]);
         // }
         // printf(".\r\n");
+#endif
+        ++read_count;
         return 1;
     } else {
         return 0;
     }
-#endif
-    return (DMA_CTRL & DMA_REG_WAIT_CPU);
 }
 
 void dma_read_finish() {
@@ -134,4 +140,20 @@ void dma_demo() {
         }
     }
     printf("Exit Demo.\r\n");
+}
+
+void dma_counter_init() {
+    read_count = 0;
+    write_count = 0;
+    last_read_count = 0;
+    last_write_count = 0;
+    last_time = now_time;
+}
+
+void dma_counter_print() {
+    printf("rx: %u, tx: %u, t: %u ", read_count - last_read_count, write_count - last_write_count, now_time - last_time);
+    printf("(%u, %u, %u)\r\n", read_count, write_count, now_time);
+    last_read_count = read_count;
+    last_write_count = write_count;
+    last_time = now_time;
 }

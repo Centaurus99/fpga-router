@@ -58,7 +58,7 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                     .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2};
                 update(false, table_entry);
                 // 回发告知我们删除了这个路由
-                if(! same_place) {
+                if (!same_place) {
                     answer_entry->addr = entry->addr;
                     answer_entry->route_tag = entry->route_tag;
                     answer_entry->prefix_len = entry->prefix_len;
@@ -69,7 +69,7 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                 // 更新metric
                 update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
                 // 回发告知我们更新了metric
-                if(! same_place) {
+                if (!same_place) {
                     answer_entry->addr = entry->addr;
                     answer_entry->route_tag = entry->route_tag;
                     answer_entry->prefix_len = entry->prefix_len;
@@ -83,7 +83,7 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                 dbgprintf("\tripentry from another nexthop is smaller so update\r\n");
                 update_leaf_info(leaf, entry->metric + 1, port, *(nexthop), 2);
                 // 回发告知我们更新了路由信息
-                if(! same_place) {
+                if (!same_place) {
                     answer_entry->addr = entry->addr;
                     answer_entry->route_tag = entry->route_tag;
                     answer_entry->prefix_len = entry->prefix_len;
@@ -98,7 +98,7 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
             .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
         update(true, table_entry);
         // 回发告知我们更新了路由信息
-        if(! same_place) {
+        if (!same_place) {
             answer_entry->addr = entry->addr;
             answer_entry->route_tag = entry->route_tag;
             answer_entry->prefix_len = entry->prefix_len;
@@ -115,16 +115,16 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     in6_addr nexthop = ipv6_header->ip6_src;
     uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
-        if(update_with_ripngentry(&ripentry[i], &ripentry[answer_num], &nexthop, port, i == answer_num)) {
+        if (update_with_ripngentry(&ripentry[i], &ripentry[answer_num], &nexthop, port, i == answer_num)) {
             answer_num += 1;
         }
     }
     // 更改ip层的包头
-    if(answer_num != 0) {
+    if (answer_num != 0) {
         dbgprintf("response answer %x", answer_num);
         // 有需要回复的包
-        for(uint8_t send_port = 0; send_port < 4; send_port ++){
-            if(send_port == port) {
+        for (uint8_t send_port = 0; send_port < 4; send_port++) {
+            if (send_port == port) {
                 continue;
             }
             dma_send_request();
@@ -307,12 +307,14 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
+    dma_counter_print();
     for (uint8_t i = 0; i < 4; i++) {
         int cnt;
         cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
         printf("S%d:%d ", i, cnt);
     }
     printf("\r\n");
+    dma_counter_print();
     timer_start(t, i);
 }
 

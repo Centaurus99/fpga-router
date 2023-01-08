@@ -72,4 +72,14 @@ void dma_set_out_port(uint8_t port);
  */
 void dma_demo();
 
+/**
+ * DMA 统计计数器初始化
+ */
+void dma_counter_init();
+
+/**
+ * DMA 输出统计计数器
+ */
+void dma_counter_print();
+
 #endif

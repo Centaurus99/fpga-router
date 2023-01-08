@@ -268,6 +268,7 @@ void start(int argc, char *argv[]) {
     }
     init_uart();
     init_port_config();
+    dma_counter_init();
 
     lookup_init();
     init_direct_route();
