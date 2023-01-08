@@ -69,11 +69,11 @@ INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Contr
 pout = RawPcapWriter('in_frames.pcap', DLT_EN10MB)  # for wireshark
 
 def send_frame(iface, f):
-    print('Writing frame (interface #{}):'.format(iface))
-    f.show()
-    data = bytes(f)
-    pout.write(data[:12] + struct.pack('>HH',
-               0x8100, 1000 + iface) + data[12:])
+    # print('Writing frame (interface #{}):'.format(iface))
+    # f.show()
+    # data = bytes(f)
+    # pout.write(data[:12] + struct.pack('>HH',
+    #            0x8100, 1000 + iface) + data[12:])
     sendp(f, iface=INTERFACES[iface])
 
 
@@ -179,15 +179,15 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 # You can construct more frames to test your datapath.
 
-# for i in range(100):
-#     send_frame(0, Ether(src=MAC_TESTER0) /
-#             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-#             UDP() /
-#             RIPng(cmd=2) /
-#             RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+for i in range(999):
+    send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+            UDP() /
+            RIPng(cmd=2) /
+            RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
 
-# send_frame(1, Ether(src=MAC_TESTER1) /
-#             IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
-#             UDP() /
-#             RIPng(cmd=1) /
-#             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+send_frame(1, Ether(src=MAC_TESTER1) /
+            IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng(cmd=1) /
+            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))

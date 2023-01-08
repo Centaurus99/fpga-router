@@ -90,7 +90,7 @@ int free_blk_top[9][17], blk_begin[9][17];
 
 void _blk_push(int stage, int len, int id) {
     // printf("PUSH %d %d %d\n", stage, len, id);
-    assert(free_blk_top[stage][len] < (stage < 8 ? node_blk_cnt[stage][len]: leaf_blk_cnt[len]));
+    assert_id(free_blk_top[stage][len] < (stage < 8 ? node_blk_cnt[stage][len]: leaf_blk_cnt[len]), 4);
     free_blk[stage][len][free_blk_top[stage][len]++] = id;
 }
 int _blk_pop(int stage, int len) {
@@ -139,10 +139,10 @@ void memhelper_init() {
 int node_malloc(int stage, int len) {
     int id = _blk_pop(stage, len);
     while (id == -1) { // 挤到更大的块里
-        assert(len < 16);
+        assert_id(len < 16, 0x13);
         id = _blk_pop(stage, ++len); // TODO: 记录一下，如果这种小占大的把大的给占满了 应该把小的再挪回去
     }
-    assert(blk_begin[stage][len] + id*len + len <= node_blk_cnt[stage][0]);
+    assert_id(blk_begin[stage][len] + id*len + len <= node_blk_cnt[stage][0], 0x23);
 #ifdef TRACE
     printf("N %d %d +\n", stage, len);
 #endif
@@ -153,7 +153,7 @@ void node_free(int stage, int begin, int len) {
     // printf("NF %d %d %d %d\n",stage,begin,len);
     while (len < 16 && begin >= blk_begin[stage][len+1]) ++len; // 找到真正的块大小
     int id = (begin - blk_begin[stage][len]) / len;
-    assert(id < node_blk_cnt[stage][len]);
+    assert_id(id < node_blk_cnt[stage][len], 0x33);
 #ifdef TRACE
     printf("N %d %d -\n", stage, len);
 #endif
@@ -165,10 +165,10 @@ void node_free(int stage, int begin, int len) {
 int leaf_malloc(int len) {
     int id = _blk_pop(8, len);
     while (id == -1) { // 挤到更大的块里
-        assert(len < 16);
+        assert_id(len < 16, 0x43);
         id = _blk_pop(8, ++len); // TODO: 记录一下，如果这种小占大的把大的给占满了 应该把小的再挪回去
     }
-    assert(blk_begin[8][len] + id*len + len < 65535);
+    assert_id(blk_begin[8][len] + id*len + len < 65535, 4);
 #ifdef TRACE
     printf("L %d +\n", len);
 #endif
@@ -179,7 +179,7 @@ void leaf_free(int begin, int len) {
     while (len < 16 && begin >= blk_begin[8][len+1]) ++len;
     // printf("%d %d\n",begin ,len);
     int id = (begin - blk_begin[8][len]) / len;
-    assert(id < leaf_blk_cnt[len]);
+    assert_id(id < leaf_blk_cnt[len], 4);
 #ifdef TRACE
     printf("L %d -\n", len);
 #endif
