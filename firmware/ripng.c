@@ -66,16 +66,18 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                 answer_entry->metric = METRIC_INF;
                 return true;
             } else {
-                // 更新metric
-                update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
-                // 回发告知我们更新了metric
-                if (!same_place) {
-                    answer_entry->addr = entry->addr;
-                    answer_entry->route_tag = entry->route_tag;
-                    answer_entry->prefix_len = entry->prefix_len;
-                }
-                answer_entry->metric = entry->metric + 1;
-                return true;
+                if(entry->metric + 1 != info->metric) {
+                    // 更新metric
+                    update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
+                    // 回发告知我们更新了metric
+                    if (!same_place) {
+                        answer_entry->addr = entry->addr;
+                        answer_entry->route_tag = entry->route_tag;
+                        answer_entry->prefix_len = entry->prefix_len;
+                    }
+                    answer_entry->metric = entry->metric + 1;
+                    return true;
+                } // else all the same, do nothing
             }
         } else {
             // 不同nexthop时，比较metric的大小，选取最优的metric
