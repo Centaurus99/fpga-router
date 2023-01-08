@@ -52,6 +52,11 @@ void icmp_error_gen() {
     ip6->ip6_dst = ip6->ip6_src;
     ip6->ip6_src = GUA_IP(port);
 
+    // 若发回给链路本地地址, 则使用收包接口
+    if (check_linklocal_address(ip6->ip6_dst)) {
+        dma_set_out_port(dma_get_receive_port());
+    }
+
     validateAndFillChecksum((uint8_t *)ip6, len - sizeof(EtherHeader));
 
     dma_send_finish();
