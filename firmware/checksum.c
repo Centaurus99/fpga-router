@@ -3,7 +3,7 @@
 #include <header.h>
 #include <stdint.h>
 
-bool validateAndFillChecksum(uint8_t *packet, uint32_t len) {
+bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
     IP6Header *ip6 = (IP6Header *)packet;
 
     uint32_t now_sum = 0;

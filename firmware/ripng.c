@@ -49,8 +49,7 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
                 dbgprintf("ripentry metric is inf so delete\r\n");
                 // 删除不可达的路由
                 RoutingTableEntry table_entry = {
-                    .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 1
-                };
+                    .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 1};
                 update(false, table_entry);
             } else {
                 // 更新metric
@@ -66,14 +65,12 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
     } else if (entry->metric + 1 < METRIC_INF) {
         dbgprintf("Not in routing table so add\r\n");
         RoutingTableEntry table_entry = {
-            .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop,
-            .route_type = 1, .metric = entry->metric + 1
-        };
+            .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 1, .metric = entry->metric + 1};
         update(true, table_entry);
     }
 }
 
-void receive_ripng(uint8_t *packet, uint32_t length) {
+void receive_ripng(uint8_t *packet, uint16_t length) {
     // 此处处理 RIPNG 协议
     IP6Header *ipv6_header = IP6_PTR(packet);
     UDPHeader *udp_header = UDP_PTR(packet);

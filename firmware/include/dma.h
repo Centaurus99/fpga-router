@@ -9,9 +9,9 @@
 #define DMA_BASE_ADDR 0x68000000
 
 #define DMA_CTRL (*(volatile uint8_t *)(DMA_CTRL_ADDR + 0))
-#define DMA_LEN (*(volatile uint32_t *)(DMA_BASE_ADDR + 0))
+#define DMA_LEN (*(volatile uint16_t *)(DMA_BASE_ADDR + 0))
 
-#define DMA_PTR ((volatile uint8_t *)(DMA_BASE_ADDR + 4))
+#define DMA_PTR ((volatile uint8_t *)(DMA_BASE_ADDR + 2))
 
 // DMA 控制寄存器的定义
 #define DMA_REG_RELEASE_LOCK 0x10 /* 等待 Router 读取 */

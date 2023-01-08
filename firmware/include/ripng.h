@@ -18,7 +18,7 @@ typedef struct {
     uint8_t metric;
 } RipngEntry;
 
-void receive_ripng(uint8_t *packet, uint32_t length);
+void receive_ripng(uint8_t *packet, uint16_t length);
 
 void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua);
 
