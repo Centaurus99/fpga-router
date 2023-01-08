@@ -110,7 +110,7 @@ void mainloop(bool release_lock) {
                 // UDP 包
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
-                    if (udp->dest == RIPNGPORT) {
+                    if (udp->dest == __htons(RIPNGPORT)) {
                         receive_ripng((uint8_t *)DMA_PTR, DMA_LEN);
                     }
                 } else {

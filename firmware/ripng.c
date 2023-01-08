@@ -56,7 +56,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             ipv6_header->hop_limit = 0xff;
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
-            udp_header->src = RIPNGPORT;
+            udp_header->src = __htons(RIPNGPORT);
             validateAndFillChecksum(packet, length);
             dma_send_finish();
             dma_lock_release();
@@ -64,7 +64,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
             dbgprintf("Recived RIPng Response\r\n");
             if (check_linklocal_address(ipv6_header->ip6_src) && !check_own_address(ipv6_header->ip6_src)) {
                 if (ipv6_header->ip6_dst.s6_addr[0] == 0xff) {
-                    if (ipv6_header->hop_limit == 0xff && udp_header->src == RIPNGPORT) {
+                    if (ipv6_header->hop_limit == 0xff && udp_header->src == __htons(RIPNGPORT)) {
                         // 收到广播的 Response，可用于更改路由表
                         in6_addr nexthop = ipv6_header->ip6_src;
                         for (uint32_t i = 0; i < ripng_num; i++) {
@@ -208,7 +208,7 @@ void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_
     ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
     ipv6_header->ip6_dst = dest_ip;
 
-    udp_header->src = RIPNGPORT;
+    udp_header->src = __htons(RIPNGPORT);
     udp_header->dest = dest_port;
     udp_header->length = __htons(RipngUDPLength(EntryNum));
 
@@ -257,7 +257,7 @@ void debug_ripng() {
 void ripng_timeout(Timer *t, int i) {
     mainloop(false);
     for (uint8_t i = 0; i < 4; i++) {
-        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, RIPNGPORT, 0);
+        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
     }
     dma_lock_release();
     timer_start(t, i);
@@ -279,8 +279,8 @@ void ripng_init() {
         ipv6_header->ip6_src = LOCAL_IP(i);
         ipv6_header->ip6_dst = ripng_multicast;
 
-        udp_header->src = RIPNGPORT;
-        udp_header->dest = RIPNGPORT;
+        udp_header->src = __htons(RIPNGPORT);
+        udp_header->dest = __htons(RIPNGPORT);
         udp_header->length = __htons(RipngUDPLength(1));
 
         riphead->command = RIPNG_REQUEST;
