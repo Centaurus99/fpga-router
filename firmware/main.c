@@ -281,9 +281,9 @@ void start(int argc, char *argv[]) {
     lookup_init();
     init_direct_route();
     display();
-    Timer *dpy_timer = timer_init(SECOND, 5);
-    timer_set_timeout(dpy_timer, dpy_led_timeout);
-    timer_start(dpy_timer, 1);
+    // Timer *dpy_timer = timer_init(SECOND, 5);
+    // timer_set_timeout(dpy_timer, dpy_led_timeout);
+    // timer_start(dpy_timer, 1);
     
     ripng_init();
 

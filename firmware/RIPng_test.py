@@ -88,6 +88,11 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
+# ping 2
+send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
+            ICMPv6EchoRequest())
+
 # RIPng response
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=255) /
@@ -116,7 +121,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
 
 # RIPng response 2
-send_frame(0, Ether(src=MAC_TESTER1) /
+send_frame(1, Ether(src=MAC_TESTER1) /
             IPv6(src=getll(MAC_TESTER1), dst=IP_RIP, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
@@ -136,7 +141,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIP test (bad, source address is GUA).
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=IP_TESTER1, dst=IP_RIP, hlim=1) /
+            IPv6(src=IP_TESTER0, dst=IP_RIP, hlim=1) /
             UDP() /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /

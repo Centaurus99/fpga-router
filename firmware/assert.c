@@ -4,13 +4,13 @@
 
 void assert(bool c) {
     if (!c) {
-        printf("Assertion failed!");
+        printf("Assertion failed!\r\n");
     }
 }
 
 void assert_id(bool c, unsigned char id) {
     if (!c) {
-        printf("Assertion failed! id = %d", id);
+        printf("Assertion failed! id = %d\r\n", id);
         GPIO_DPY = id;
     }
 }

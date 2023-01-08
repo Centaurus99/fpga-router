@@ -25,11 +25,11 @@ void dma_send_request() {
 
 void dma_send_finish() {
 #ifdef _DEBUG
-    printf("DMA Send: len = %d data = ", DMA_LEN);
-    for (int i = 0; i < DMA_LEN; i++) {
-        printf("%02x ", DMA_PTR[i]);
-    }
-    printf(".\r\n");
+    // printf("DMA Send: len = %d data = ", DMA_LEN);
+    // for (int i = 0; i < DMA_LEN; i++) {
+    //     printf("%02x ", DMA_PTR[i]);
+    // }
+    // printf(".\r\n");
 #endif
     DMA_CTRL = DMA_REG_WAIT_ROUTER;
 }
