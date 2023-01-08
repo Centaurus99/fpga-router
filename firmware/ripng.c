@@ -44,6 +44,10 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
     LeafNode *leaf = prefix_query(entry->addr, entry->prefix_len, NULL, NULL, NULL);
     if (leaf != NULL) {
         LeafInfo *info = &leafs_info[leaf->_leaf_id];
+        if(next_hops[info->nexthop_id].route_type == 0 || next_hops[info->nexthop_id].route_type == 1) {
+            dbgprintf("\treject static or linklocal nexthop update\r\n");
+            return;
+        }
         dbgprintf("\tIn routing table\r\n");
         if (next_hops[info->nexthop_id].port == port && in6_addr_equal(*nexthop, next_hops[info->nexthop_id].ip)) {
             // 相同nexthop时，更新metric并重启计时器
@@ -51,7 +55,7 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
                 dbgprintf("\tripentry metric is inf so delete\r\n");
                 // 删除不可达的路由
                 RoutingTableEntry table_entry = {
-                    .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 1};
+                    .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2};
                 update(false, table_entry);
             } else {
                 // 更新metric
@@ -67,7 +71,7 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
     } else if (entry->metric + 1 < METRIC_INF) {
         dbgprintf("\tNot in routing table so add\r\n");
         RoutingTableEntry table_entry = {
-            .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 1, .metric = entry->metric + 1};
+            .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
         update(true, table_entry);
     }
 }
