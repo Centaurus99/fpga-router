@@ -44,7 +44,7 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
     LeafNode *leaf = prefix_query(entry->addr, entry->prefix_len, NULL, NULL, NULL);
     if (leaf != NULL) {
         LeafInfo *info = &leafs_info[leaf->_leaf_id];
-        if(next_hops[info->nexthop_id].route_type == 0 || next_hops[info->nexthop_id].route_type == 1) {
+        if (next_hops[info->nexthop_id].route_type == 0 || next_hops[info->nexthop_id].route_type == 1) {
             dbgprintf("\treject static or linklocal nexthop update\r\n");
             return;
         }
@@ -74,6 +74,27 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
             .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
         update(true, table_entry);
     }
+}
+
+void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ipv6_header, UDPHeader *udp_header, RipngEntry *ripentry) {
+    dma_lock_request();
+    dma_send_request();
+    bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
+    in6_addr nexthop = ipv6_header->ip6_src;
+    for (uint32_t i = 0; i < ripng_num; i++) {
+        update_with_ripngentry(&ripentry[i], &nexthop, port);
+    }
+    // 更改ip层的包头
+    ipv6_header->ip6_dst = ripng_multicast;
+    ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
+    ipv6_header->hop_limit = 0xff;
+    // 更改udp层的包头
+    udp_header->dest = __htons(RIPNGPORT);
+    udp_header->src = __htons(RIPNGPORT);
+    validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
+    dma_set_out_port(port);
+    dma_send_finish();
+    dma_lock_release();
 }
 
 void receive_ripng(uint8_t *packet, uint16_t length) {
@@ -134,10 +155,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                 if (ipv6_header->ip6_dst.s6_addr[0] == 0xff) {
                     if (ipv6_header->hop_limit == 0xff && udp_header->src == __htons(RIPNGPORT)) {
                         // 收到广播的 Response，可用于更改路由表
-                        in6_addr nexthop = ipv6_header->ip6_src;
-                        for (uint32_t i = 0; i < ripng_num; i++) {
-                            update_with_ripngentry(&ripentry[i], &nexthop, port);
-                        }
+                        update_with_response_packet(port, ripng_num, ipv6_header, udp_header, ripentry);
                     } else {
                         // 收到一个错误的广播 Response
                         printf("Drop Packet: Boardcast Ripng Response with hop limit %x src %x \r\n", riphead->command);
@@ -146,10 +164,17 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                     // 收到单播的 Response
                     if (ipv6_header->hop_limit == 0xff) {
                         // 可以更新路由表
+                        dma_lock_request();
+                        dma_send_request();
+                        bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
                         in6_addr nexthop = ipv6_header->ip6_src;
                         for (uint32_t i = 0; i < ripng_num; i++) {
                             update_with_ripngentry(&ripentry[i], &nexthop, port);
                         }
+                        validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
+                        dma_set_out_port(port);
+                        dma_send_finish();
+                        dma_lock_release();
                     } else {
                         // 不可以更新路由表，只能用作诊断
                         debug_ripng();
