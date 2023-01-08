@@ -345,13 +345,13 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop) {
+void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type) {
     assert_id(metric < 16 && metric > 0, 3);
     uint32_t lid = leaf->_leaf_id;
     if (metric != 0xff)
         leafs_info[lid].metric = metric;
     if (port != 0xff) {
-        nexthop_id_t nexthopid = _new_entry(port, nexthop, 1);
+        nexthop_id_t nexthopid = _new_entry(port, nexthop, route_type);
         leafs_info[lid].nexthop_id = nexthopid;
         leaf->_nexthop_id = nexthopid;
     }

@@ -102,7 +102,7 @@ extern uint32_t leaf_count;
  */
 void update(bool insert, const RoutingTableEntry entry);
 
-void update_leaf_info(LeafNode *leafS, uint8_t metric, uint8_t port, const in6_addr nexthop);
+void update_leaf_info(LeafNode *leafS, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type);
 
 /**
  * @brief 进行一次路由表的查询，len=255时，按照最长前缀匹配原则；否则按照 len 匹配

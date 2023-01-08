@@ -59,13 +59,13 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
                 update(false, table_entry);
             } else {
                 // 更新metric
-                update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0});
+                update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
             }
         } else {
             // 不同nexthop时，比较metric的大小，选取最优的metric
             if (entry->metric + 1 < info->metric && entry->metric + 1 < METRIC_INF) {
                 dbgprintf("\tripentry from another nexthop is smaller so update\r\n");
-                update_leaf_info(leaf, entry->metric + 1, port, *(nexthop));
+                update_leaf_info(leaf, entry->metric + 1, port, *(nexthop), 2);
             } // else do nothing
         }
     } else if (entry->metric + 1 < METRIC_INF) {
