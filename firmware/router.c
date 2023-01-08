@@ -79,6 +79,11 @@ void icmp_reply_gen() {
     icmp6->code = 0;
     icmp6->checksum = 0;
 
+    // 若发回给链路本地地址, 则使用收包接口
+    if (check_linklocal_address(ip6->ip6_dst)) {
+        dma_set_out_port(dma_get_receive_port());
+    }
+
     validateAndFillChecksum((uint8_t *)ip6, DMA_LEN - sizeof(EtherHeader));
 
     dma_send_finish();
