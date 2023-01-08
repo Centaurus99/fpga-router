@@ -101,6 +101,7 @@ int _blk_pop(int stage, int len) {
 }
 
 void memhelper_init() {
+    assert_id(sizeof(LeafNode) * leaf_blk_cnt[0] < 0x80500000 - 0x80400000, 0xfd);
     int cnt = 0;
     int begin = 0;
 #ifndef ON_BOARD

@@ -68,7 +68,7 @@ nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     next_hops[entry_count].port = port;
     next_hops[entry_count].ip = ip;
     next_hops[entry_count].route_type = route_type;
-
+    assert_id(entry_count < 256, 0xfe);
     // routing_table[entry_count] = entry;
     return entry_count++;
 }
@@ -76,6 +76,7 @@ nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
 LeafNode _new_leaf_node(const RoutingTableEntry entry) {
     LeafNode ret;
     ret.leaf_id = ++leaf_count;
+    assert_id(leaf_count < 131072, 0xff);
     ret._nexthop_id = _new_entry(entry.if_index, entry.nexthop, entry.route_type);
     return ret;
 }
@@ -368,7 +369,7 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
         int l = dep + STRIDE - 1;
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
             if (VEC_BT(now->leaf_vec, pfx)) {
-                // dbgprintf("Match on l=%d\n", l);
+                dbgprintf("Match on l=%d %d\n", l, pfx);
                 if (len == 255 || len == l) {
                     leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                     break;
@@ -380,8 +381,8 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
             if (VEC_BT(now->tag, 7)) {
                 if (len == 255 || len == dep + STRIDE) {
                     leaf = &leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
-                    break;
                 }
+                break;
             } else {
                 now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
             }
