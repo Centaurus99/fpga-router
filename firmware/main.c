@@ -11,8 +11,8 @@
 #include <uart.h>
 #include <vga.h>
 
-#define EXTRAM_START 0x80400000
-#define EXTRAM_END 0x807fffff
+#define EXTRAM_START (uint32_t *)0x80400000
+#define EXTRAM_END (uint32_t *)0x80800000
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
@@ -263,7 +263,7 @@ void start(int argc, char *argv[]) {
     for (uint32_t *p = _bss_begin; p != _bss_end; ++p) {
         *p = 0;
     }
-    for(uint32_t *p = EXTRAM_START; p <= EXTRAM_END; p++) {
+    for(uint32_t *p = EXTRAM_START; p != EXTRAM_END; ++p) {
         *p = 0;
     }
     init_uart();

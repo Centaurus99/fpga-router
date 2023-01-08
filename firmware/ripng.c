@@ -15,7 +15,7 @@ const RipngEntry request_for_all = {
 const in6_addr ripng_multicast = {
     .s6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}};
 
-bool update_with_ripngentry(RipngEntry *entry,RipngEntry *answer_entry, in6_addr *nexthop, uint8_t port, bool same_place) {
+bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_addr *nexthop, uint8_t port, bool same_place) {
     if (entry->metric > METRIC_INF && entry->metric != 0xff) {
         printf("Invalid metric: %x", entry->metric);
         return false;
@@ -75,7 +75,7 @@ bool update_with_ripngentry(RipngEntry *entry,RipngEntry *answer_entry, in6_addr
                     answer_entry->prefix_len = entry->prefix_len;
                 }
                 answer_entry->metric = entry->metric + 1;
-                return true
+                return true;
             }
         } else {
             // 不同nexthop时，比较metric的大小，选取最优的metric
@@ -106,13 +106,12 @@ bool update_with_ripngentry(RipngEntry *entry,RipngEntry *answer_entry, in6_addr
         answer_entry->metric = entry->metric + 1;
         return true;
     }
-    return false
+    return false;
 }
 
 void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ipv6_header, UDPHeader *udp_header, RipngEntry *ripentry) {
     dma_lock_request();
     dma_send_request();
-    bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
     in6_addr nexthop = ipv6_header->ip6_src;
     uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
@@ -123,16 +122,21 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     // 更改ip层的包头
     if(answer_num != 0) {
         // 有需要回复的包
-        bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
-        ipv6_header->ip6_dst = ripng_multicast;
-        ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
-        ipv6_header->hop_limit = 0xff;
-        // 更改udp层的包头
-        udp_header->dest = __htons(RIPNGPORT);
-        udp_header->src = __htons(RIPNGPORT);
-        validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
-        dma_set_out_port(port);
-        dma_send_finish();
+        for(uint8_t send_port = 0; send_port < 4; send_port ++){
+            if(send_port == port) {
+                continue;
+            }
+            bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
+            ipv6_header->ip6_dst = ripng_multicast;
+            ipv6_header->ip6_src = use_gua ? GUA_IP(send_port) : LOCAL_IP(send_port);
+            ipv6_header->hop_limit = 0xff;
+            // 更改udp层的包头
+            udp_header->dest = __htons(RIPNGPORT);
+            udp_header->src = __htons(RIPNGPORT);
+            validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
+            dma_set_out_port(send_port);
+            dma_send_finish();
+        }
     }
     dma_lock_release();
 }
