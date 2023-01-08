@@ -144,6 +144,8 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPng(cmd=1) /
             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
 
+exit()
+
 # RIP test (bad, source address is GUA).
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=IP_RIP, hlim=1) /
