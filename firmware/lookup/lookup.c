@@ -296,7 +296,8 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
         int l = len - dep;
         uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
         if (VEC_BT(now->leaf_vec, pfx)) { // remove
-            uint32_t lid = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._leaf_id;
+            assert_id(next_hops[leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._nexthop_id].route_type != 0, 1);
+            uint32_t lid = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._leaf_id;    
             _remove_leaf(dep, now, pfx);
             return lid;
         }
@@ -335,7 +336,7 @@ void update(bool insert, const RoutingTableEntry entry) {
         if (entry.route_type != 0)
             timer_start(timeout_timer, leaf._leaf_id);
     } else {
-        assert_id(entry.route_type != 0, 1);
+        // assert_id(entry.route_type != 0, 1);
         uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
         if (lid != -1) {
             leafs_info[lid].valid = false;
@@ -361,13 +362,13 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
 LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
-    // print(node_root, 0);
-    for (int dep = 0; dep < len; dep += STRIDE) {
+    for (int dep = 0; dep <= len; dep += STRIDE) {
         uint32_t idx = INDEX(addr, dep, STRIDE);
         // 在当前层匹配一个最长的前缀
         int l = dep + STRIDE - 1;
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
             if (VEC_BT(now->leaf_vec, pfx)) {
+                // dbgprintf("Match on l=%d\n", l);
                 if (len == 255 || len == l) {
                     leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                     break;
