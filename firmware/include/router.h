@@ -34,11 +34,25 @@ void icmp_error_gen();
 
 /**
  * 路由器收发包维护程序主循环
+ *
+ * \param release_lock 为 False 时, 结束后不释放 DMA 锁, 并确保已获得 DMA 锁
  */
 void mainloop(bool release_lock);
 
+/**
+ * 检查是否为链路本地地址
+ *
+ * \param addr IPv6 地址
+ * \return 是否为链路本地地址
+ */
 bool check_linklocal_address(in6_addr addr);
 
+/**
+ * 检查是否为路由器本机的链路本地地址
+ *
+ * \param addr IPv6 地址
+ * \return 是否为路由器本机的链路本地地址
+ */
 bool check_own_address(in6_addr addr);
 
 #endif
