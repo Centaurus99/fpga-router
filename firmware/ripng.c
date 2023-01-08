@@ -121,19 +121,23 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     }
     // 更改ip层的包头
     if(answer_num != 0) {
+        dbgprintf("response answer %x", answer_num);
         // 有需要回复的包
         for(uint8_t send_port = 0; send_port < 4; send_port ++){
             if(send_port == port) {
                 continue;
             }
+            dma_send_request();
             bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             ipv6_header->ip6_dst = ripng_multicast;
             ipv6_header->ip6_src = use_gua ? GUA_IP(send_port) : LOCAL_IP(send_port);
             ipv6_header->hop_limit = 0xff;
+            ipv6_header->payload_len = __htons(RipngUDPLength(answer_num));
             // 更改udp层的包头
             udp_header->dest = __htons(RIPNGPORT);
             udp_header->src = __htons(RIPNGPORT);
             validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
+            DMA_LEN = RipngETHLength(answer_num);
             dma_set_out_port(send_port);
             dma_send_finish();
         }
