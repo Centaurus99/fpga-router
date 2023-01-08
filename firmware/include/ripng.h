@@ -47,6 +47,4 @@ void ripng_timeout(Timer *t, int i);
 #define RipngIP6Length(num) ((uint16_t)(RipngUDPLength(num) + sizeof(IP6Header)))
 #define RipngETHLength(num) ((uint16_t)(RipngIP6Length(num) + sizeof(EtherHeader)))
 
-#define RIPNG_UPDATE_TIME (3 * SECOND)
-
 #endif
