@@ -227,12 +227,12 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
-    // mainloop(false);
-    // for (uint8_t i = 0; i < 4; i++) {
-    //     send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
-    // }
-    // dma_lock_release();
-    // timer_start(t, i);
+    mainloop(false);
+    for (uint8_t i = 0; i < 4; i++) {
+        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0);
+    }
+    dma_lock_release();
+    timer_start(t, i);
 }
 
 void ripng_init() {
