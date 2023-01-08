@@ -345,11 +345,12 @@ void update(bool insert, const RoutingTableEntry entry) {
 }
 
 void update_leaf_info(uint32_t leaf_id, uint8_t metric, uint8_t port, const in6_addr nexthop) {
+    assert_id(metric < 16 && metric > 0, 3);
     if (metric != 0xff)
         leafs_info[leaf_id].metric = metric;
     if (port != 0xff) {
         nexthop_id_t nexthopid = _new_entry(port, nexthop, 1);
-        leafs_info[leaf_id].nexthop_id = nexthopid;
+        leafs_info[leaf_id].nexthop_id = nexthopid; // FIXME: nexthop id in tree should be update too!!!
     }
     timer_stop(timeout_timer, leaf_id);
     timer_start(timeout_timer, leaf_id);
