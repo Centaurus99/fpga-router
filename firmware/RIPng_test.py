@@ -33,6 +33,9 @@ MAC_OTHERS = '40:41:42:43:44:45'
 IFACE_DEFAULT_ROUTE = 3
 MAC_DEFAULT_ROUTE = '54:45:53:54:5f:33'
 
+# FIXME: change this to your own link-local IP
+LL_TESTER0 = 'fe80::540e:add7:2714:9cf2'
+LL_TESTER1 = 'fe80::b015:b6df:4d93:77dd'
 
 # You may need to change these IP addresses.
 # The following configuration assumes that
@@ -57,6 +60,8 @@ IP_TEST_DST_NO_MAC = IP_PREFIX + '0::100'
 # Forward destination. Route should not exist.
 IP_TEST_DST_NO_ROUTE = 'fd00::1'
 IP_RIP = 'ff02::9'  # RIP multicast group address.
+
+# FIXME: change this to your own interfaces
 INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Controller #3']
 
 # frames.txt format:
@@ -85,17 +90,17 @@ def getnsma(a):
 
 # ping
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=getnsma(IP_DUT0)) /
+            IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
 # ping 2
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=getnsma(IP_DUT0)) /
+            IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
 # RIPng response
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=255) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=1) /             # new
@@ -108,7 +113,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIPng request 
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
             UDP() /
             RIPng(cmd=1) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
@@ -119,19 +124,19 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIPng response 2 (unicast)
 send_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=getll(MAC_TESTER1), dst=IP_DUT1, hlim=255) /
+            IPv6(src=LL_TESTER1, dst=IP_DUT1, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=10) /   # not update
             RIPngEntry(prefix_or_nh='2002:fabc:e000::', prefixlen=35, metric=1) / # update
             RIPngEntry(prefix_or_nh='2005:1234:5678::', prefixlen=46, metric=5) / # new
-            RIPngEntry(prefix_or_nh=getll(MAC_TESTER0), prefixlen=0, metric=255)/  # set nexthop
+            RIPngEntry(prefix_or_nh=LL_TESTER0, prefixlen=0, metric=255)/  # set nexthop
             RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=74, metric=10)       # port is not same so dont update
         )     
 
 # RIPng response 3
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=255) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2333:3444:4555::', prefixlen=0, metric=255)/           # set nexthop
@@ -139,12 +144,12 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIPng request all
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
             UDP() /
             RIPng(cmd=1) /
             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
 
-exit()
+# exit()
 
 # RIP test (bad, source address is GUA).
 send_frame(0, Ether(src=MAC_TESTER0) /
@@ -157,7 +162,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIP test (wrong checksum).
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
             UDP(chksum=0x2222) /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
@@ -166,7 +171,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIP test (no checksum, illegal in IPv6).
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
             UDP(chksum=0x0000) /
             RIPng() /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
@@ -174,5 +179,15 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 # You can construct more frames to test your datapath.
 
-pout.close()
-exit(0)
+for i in range(100):
+    send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+            UDP() /
+            RIPng(cmd=2) /
+            RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+
+send_frame(1, Ether(src=MAC_TESTER1) /
+            IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng(cmd=1) /
+            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
