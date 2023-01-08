@@ -231,7 +231,7 @@ void debug_ripng() {
 void ripng_timeout(Timer *t, int i) {
     mainloop(false);
     for (uint8_t i = 0; i < 4; i ++) {
-        send_all_ripngentries(DMA_PTR, i, ripng_multicast, RIPNGPORT);
+        send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, RIPNGPORT);
     }
     dma_lock_release();
     timer_start(t, i);
@@ -240,11 +240,10 @@ void ripng_timeout(Timer *t, int i) {
 void ripng_init() {
     // FF02::9
     mainloop(false);
-    uint8_t *packet = DMA_PTR;
-    IP6Header *ipv6_header = IP6_PTR(packet);
-    UDPHeader *udp_header = UDP_PTR(packet);
-    RipngHead *riphead = RipngHead_PTR(packet);
-    RipngEntry *ripentry = RipngEntries_PTR(packet);
+    IP6Header *ipv6_header = IP6_PTR(DMA_PTR); 
+    UDPHeader *udp_header = UDP_PTR(DMA_PTR);
+    RipngHead *riphead = RipngHead_PTR(DMA_PTR);
+    RipngEntry *ripentry = RipngEntries_PTR(DMA_PTR);
     for(uint8_t i = 0; i < 4;i ++){
         dma_send_request();
         ipv6_header->ip6_src = GUA_IP(i);
