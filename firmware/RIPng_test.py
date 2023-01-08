@@ -20,8 +20,6 @@ import binascii
 import sys
 import struct
 
-SEND_FRAMES = len(sys.argv) >= 2 and sys.argv[1] == 'send'
-
 # The broadcast MAC address.
 # Also used when we do not know the router's MAC address when sending IP packets.
 MAC_BROADCAST = 'ff:ff:ff:ff:ff:ff'
@@ -85,18 +83,36 @@ def getll(mac):
 def getnsma(a):
     return inet_ntop(socket.AF_INET6, in6_getnsma(inet_pton(socket.AF_INET6, a)))
 
-# Neighbor Solicitation test.
+# ping
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=IP_TESTER0, dst=getnsma(IP_DUT0)) /
             ICMPv6EchoRequest())
 
+# RIPng response
 send_frame(0, Ether(src=MAC_TESTER0) /
             IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
             UDP() /
-            RIPng() /
+            RIPng(cmd=2) /
+            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=1) /
+            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32, metric=2) /
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20, metric=16))
+
+# RIPng request all
+send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng(cmd=1) /
+            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+
+# RIPng request 
+send_frame(0, Ether(src=MAC_TESTER0) /
+            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            UDP() /
+            RIPng(cmd=1) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+            RIPngEntry(prefix_or_nh='2a0e:aa06:497:a01::', prefixlen=64) /
+            RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
+            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
 
 # RIP test (bad, source address is GUA).
 send_frame(0, Ether(src=MAC_TESTER0) /
@@ -116,15 +132,15 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 
-# RIP test (no checksum, illegal in IPv6).
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
-            UDP(chksum=0x0000) /
-            RIPng() /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
-# You can construct more frames to test your datapath.
+# # RIP test (no checksum, illegal in IPv6).
+# send_frame(0, Ether(src=MAC_TESTER0) /
+#             IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+#             UDP(chksum=0x0000) /
+#             RIPng() /
+#             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+#             RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+#             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+# # You can construct more frames to test your datapath.
 
 pout.close()
 exit(0)
