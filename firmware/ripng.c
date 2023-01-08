@@ -15,14 +15,14 @@ const RipngEntry request_for_all = {
 const in6_addr ripng_multicast = {
     .s6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}};
 
-void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) {
+bool update_with_ripngentry(RipngEntry *entry,RipngEntry *answer_entry, in6_addr *nexthop, uint8_t port, bool same_place) {
     if (entry->metric > METRIC_INF && entry->metric != 0xff) {
         printf("Invalid metric: %x", entry->metric);
-        return;
+        return false;
     }
     if (entry->prefix_len > 128) {
         printf("Invalid prefix len: %x", entry->prefix_len);
-        return;
+        return false;
     }
     char ipbuffer[200];
     printip(&(entry->addr), ipbuffer);
@@ -34,11 +34,11 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         } else {
             printf("Invalid nexthop RTE: route tag %x prefix length %x", entry->route_tag, entry->metric);
         }
-        return;
+        return false;
     }
     if (check_linklocal_address(entry->addr) || entry->addr.s6_addr[0] == 0xff) {
         printf("Invalid RIP entry IP %s \r\n", ipbuffer);
-        return;
+        return false;
     }
     dbgprintf("\tValid ripentry: %s/%d metric=%d to %d %s\r\n", ipbuffer, entry->prefix_len, entry->metric, port, &ipbuffer[100]);
     LeafNode *leaf = prefix_query(entry->addr, entry->prefix_len, NULL, NULL, NULL);
@@ -46,7 +46,7 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         LeafInfo *info = &leafs_info[leaf->_leaf_id];
         if (next_hops[info->nexthop_id].route_type == 0 || next_hops[info->nexthop_id].route_type == 1) {
             dbgprintf("\treject static or linklocal nexthop update\r\n");
-            return;
+            return false;
         }
         dbgprintf("\tIn routing table\r\n");
         if (next_hops[info->nexthop_id].port == port && in6_addr_equal(*nexthop, next_hops[info->nexthop_id].ip)) {
@@ -57,15 +57,39 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
                 RoutingTableEntry table_entry = {
                     .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2};
                 update(false, table_entry);
+                // 回发告知我们删除了这个路由
+                if(! same_place) {
+                    answer_entry->addr = entry->addr;
+                    answer_entry->route_tag = entry->route_tag;
+                    answer_entry->prefix_len = entry->prefix_len;
+                }
+                answer_entry->metric = METRIC_INF;
+                return true;
             } else {
                 // 更新metric
                 update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
+                // 回发告知我们更新了metric
+                if(! same_place) {
+                    answer_entry->addr = entry->addr;
+                    answer_entry->route_tag = entry->route_tag;
+                    answer_entry->prefix_len = entry->prefix_len;
+                }
+                answer_entry->metric = entry->metric + 1;
+                return true
             }
         } else {
             // 不同nexthop时，比较metric的大小，选取最优的metric
             if (entry->metric + 1 < info->metric && entry->metric + 1 < METRIC_INF) {
                 dbgprintf("\tripentry from another nexthop is smaller so update\r\n");
                 update_leaf_info(leaf, entry->metric + 1, port, *(nexthop), 2);
+                // 回发告知我们更新了路由信息
+                if(! same_place) {
+                    answer_entry->addr = entry->addr;
+                    answer_entry->route_tag = entry->route_tag;
+                    answer_entry->prefix_len = entry->prefix_len;
+                }
+                answer_entry->metric = entry->metric + 1;
+                return true;
             } // else do nothing
         }
     } else if (entry->metric + 1 < METRIC_INF) {
@@ -73,7 +97,16 @@ void update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         RoutingTableEntry table_entry = {
             .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
         update(true, table_entry);
+        // 回发告知我们更新了路由信息
+        if(! same_place) {
+            answer_entry->addr = entry->addr;
+            answer_entry->route_tag = entry->route_tag;
+            answer_entry->prefix_len = entry->prefix_len;
+        }
+        answer_entry->metric = entry->metric + 1;
+        return true;
     }
+    return false
 }
 
 void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ipv6_header, UDPHeader *udp_header, RipngEntry *ripentry) {
@@ -81,19 +114,26 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     dma_send_request();
     bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
     in6_addr nexthop = ipv6_header->ip6_src;
+    uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
-        update_with_ripngentry(&ripentry[i], &nexthop, port);
+        if(update_with_ripngentry(&ripentry[i], &ripentry[answer_num], &nexthop, port, i == answer_num)) {
+            answer_num += 1;
+        }
     }
     // 更改ip层的包头
-    ipv6_header->ip6_dst = ripng_multicast;
-    ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
-    ipv6_header->hop_limit = 0xff;
-    // 更改udp层的包头
-    udp_header->dest = __htons(RIPNGPORT);
-    udp_header->src = __htons(RIPNGPORT);
-    validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
-    dma_set_out_port(port);
-    dma_send_finish();
+    if(answer_num != 0) {
+        // 有需要回复的包
+        bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
+        ipv6_header->ip6_dst = ripng_multicast;
+        ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
+        ipv6_header->hop_limit = 0xff;
+        // 更改udp层的包头
+        udp_header->dest = __htons(RIPNGPORT);
+        udp_header->src = __htons(RIPNGPORT);
+        validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
+        dma_set_out_port(port);
+        dma_send_finish();
+    }
     dma_lock_release();
 }
 
@@ -162,17 +202,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                     // 收到单播的 Response
                     if (ipv6_header->hop_limit == 0xff) {
                         // 可以更新路由表
-                        dma_lock_request();
-                        dma_send_request();
-                        bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
-                        in6_addr nexthop = ipv6_header->ip6_src;
-                        for (uint32_t i = 0; i < ripng_num; i++) {
-                            update_with_ripngentry(&ripentry[i], &nexthop, port);
-                        }
-                        validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
-                        dma_set_out_port(port);
-                        dma_send_finish();
-                        dma_lock_release();
+                        update_with_response_packet(port, ripng_num, ipv6_header, udp_header, ripentry);
                     } else {
                         // 不可以更新路由表，只能用作诊断
                         debug_ripng();
