@@ -45,7 +45,15 @@ void mainloop(bool release_lock);
  * \param addr IPv6 地址
  * \return 是否为链路本地地址
  */
-bool check_linklocal_address(in6_addr addr);
+bool check_linklocal_address(const in6_addr addr);
+
+/**
+ * 检查是否为广播地址
+ *
+ * \param addr IPv6 地址
+ * \return 是否为广播地址
+ */
+bool check_multicast_address(const in6_addr addr);
 
 /**
  * 检查是否为路由器本机的链路本地地址
@@ -53,6 +61,6 @@ bool check_linklocal_address(in6_addr addr);
  * \param addr IPv6 地址
  * \return 是否为路由器本机的链路本地地址
  */
-bool check_own_address(in6_addr addr);
+bool check_own_address(const in6_addr addr);
 
 #endif

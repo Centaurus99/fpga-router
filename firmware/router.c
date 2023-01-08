@@ -130,10 +130,14 @@ void mainloop(bool release_lock) {
     }
 }
 
-bool check_linklocal_address(in6_addr addr) {
+bool check_linklocal_address(const in6_addr addr) {
     return (addr.s6_addr16[0] & 0xc0ff) == 0x80fe;
 }
 
-bool check_own_address(in6_addr addr) {
+bool check_multicast_address(const in6_addr addr) {
+    return addr.s6_addr[0] == 0xff;
+}
+
+bool check_own_address(const in6_addr addr) {
     return in6_addr_equal(addr, LOCAL_IP(0)) || in6_addr_equal(addr, LOCAL_IP(1)) || in6_addr_equal(addr, LOCAL_IP(2)) || in6_addr_equal(addr, LOCAL_IP(3));
 }
