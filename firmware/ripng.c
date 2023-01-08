@@ -23,7 +23,6 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     uint32_t ripng_num = RipngEntryNum(length);
     uint8_t port = dma_get_receive_port();
-    LeafInfo leafinfo;
     // 校验 ripng 包的格式
     if (ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader) == length && riphead->version == 0x01 && riphead->zero == 0x0000) {
         // 校验命令 command 是否正确
@@ -192,18 +191,18 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
                 ipv6_header->next_header = IPPROTO_UDP;
                 ipv6_header->flow = 0x00600000;
                 ipv6_header->hop_limit = 0xff;
-                ipv6_header->payload_len = MAXRipngUDPLength; // HACK: 是不是要网络字节序？
+                ipv6_header->payload_len = __htons(RipngUDPLength(MAXRipngEntryNum)); // HACK: 是不是要网络字节序？
 
                 udp_header->src = RIPNGPORT;
                 udp_header->dest = dest_port;
-                udp_header->length = MAXRipngUDPLength; // HACK: 是不是要网络字节序？
+                udp_header->length = __htons(RipngUDPLength(MAXRipngEntryNum)); // HACK: 是不是要网络字节序？
 
                 riphead->command = RIPNG_RESPONSE;
                 riphead->version = 0x01;
                 riphead->zero = 0x0000;
 
-                validateAndFillChecksum(packet, MAXRipngLength);
-                DMA_LEN = MAXRipngLength;
+                DMA_LEN = RipngETHLength(MAXRipngEntryNum);
+                validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(MAXRipngEntryNum));
 
                 dma_set_out_port(port);
 
@@ -251,7 +250,7 @@ void ripng_init() {
 
         udp_header->src = RIPNGPORT;
         udp_header->dest = RIPNGPORT;
-        udp_header->length = __htons(RipngLength(1));
+        udp_header->length = __htons(RipngUDPLength(1));
 
         riphead->command = RIPNG_REQUEST;
         riphead->version = 0x01;
