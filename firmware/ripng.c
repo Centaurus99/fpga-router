@@ -80,10 +80,10 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid prefix len: %x", ripentry[i].prefix_len);
                                 continue;
                             }
-                            if (!check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
+                            if (check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
                                 char ipbuffer[100];
-                                printip(&(ipv6_header->ip6_src), ipbuffer);
-                                printf("Invalid IP %s \r\n", ipbuffer);
+                                printip(&(ripentry[i].addr), ipbuffer);
+                                printf("Invalid RIP entry IP %s \r\n", ipbuffer);
                                 continue;
                             }
                             if (ripentry[i].metric == 0xff) {
@@ -232,6 +232,13 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
     for (uint32_t i = 1; i <= leaf_count; i++) {
         if (leafs_info[i].valid) {
             ripentry[ripngentrynum].addr = leafs_info[i].ip;
+#ifdef _DEBUG
+            char buf[100];
+            printip(&leafs_info[i].ip, buf);
+            printf("send ripng entry %s/%d\r\n", buf, leafs_info[i].len);
+            printf("%08x %08x %08x %08x\r\n", ripentry[ripngentrynum].addr.s6_addr32[0], ripentry[ripngentrynum].addr.s6_addr32[1],
+                   ripentry[ripngentrynum].addr.s6_addr32[2], ripentry[ripngentrynum].addr.s6_addr32[3]);
+#endif
             ripentry[ripngentrynum].route_tag = 0x0000;
             ripentry[ripngentrynum].prefix_len = leafs_info[i].len;
             ripentry[ripngentrynum].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
@@ -303,4 +310,10 @@ void ripng_init() {
     Timer *ripng_timer = timer_init(RIPNG_UPDATE_TIME, 2);
     timer_set_timeout(ripng_timer, ripng_timeout);
     timer_start(ripng_timer, 1);
+
+#ifdef _DEBUG
+    char buf[100];
+    printip(&LOCAL_IP(0), buf);
+    printf("LOCAL IP 0: %s\r\n", buf);
+#endif
 }

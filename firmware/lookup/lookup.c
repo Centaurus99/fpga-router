@@ -80,11 +80,11 @@ LeafNode _new_leaf_node(const RoutingTableEntry entry) {
     return ret;
 }
 
-inline void _copy_leaf(int src, int dst) {
+void _copy_leaf(int src, int dst) {
     leafs[dst] = leafs[src];
 }
 
-inline void _set_leaf(int i, const LeafNode leaf) {
+void _set_leaf(int i, const LeafNode leaf) {
     leafs[i] = leaf;
 }
 

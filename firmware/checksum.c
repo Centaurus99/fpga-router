@@ -90,7 +90,7 @@ bool validateAndFillChecksum(uint8_t *packet, uint32_t len) {
         }
 
     } else {
-        assert(false);
+        assert_id(false, 2);
     }
     return true;
 }

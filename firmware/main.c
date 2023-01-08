@@ -231,6 +231,7 @@ bool operate_q() {
 
 void init_direct_route() {
     RoutingTableEntry entry;
+    entry.metric = 1;
     entry.addr.s6_addr32[0] = 0x06aa0e2a;
     entry.addr.s6_addr32[1] = 0x000a9704;
     entry.addr.s6_addr32[2] = 0x00000000;
@@ -281,9 +282,9 @@ void start(int argc, char *argv[]) {
     lookup_init();
     init_direct_route();
     display();
-    Timer *dpy_timer = timer_init(SECOND, 5);
-    timer_set_timeout(dpy_timer, dpy_led_timeout);
-    timer_start(dpy_timer, 1);
+    // Timer *dpy_timer = timer_init(SECOND, 5);
+    // timer_set_timeout(dpy_timer, dpy_led_timeout);
+    // timer_start(dpy_timer, 1);
     
     ripng_init();
 
