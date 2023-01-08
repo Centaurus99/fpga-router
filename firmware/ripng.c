@@ -24,9 +24,12 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     uint32_t ripng_num = RipngEntryNum(length);
     uint8_t port = dma_get_receive_port();
     // 校验 ripng 包的格式
-    if (ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader) == length && riphead->version == 0x01 && riphead->zero == 0x0000) {
+    dbgprintf("Receive RIPng, length: %d, should be %d\r\n", length, ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader));
+    if (ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader) == length 
+        && riphead->version == 0x01 && riphead->zero == 0x0000) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
+
             dma_lock_request();
             dma_send_request();
             for (uint32_t i = 0; i < ripng_num; i++) {

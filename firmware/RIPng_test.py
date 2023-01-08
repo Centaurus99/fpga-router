@@ -90,7 +90,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
 
 # RIPng response
 send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=1) /
+            IPv6(src=getll(MAC_TESTER0), dst=IP_RIP, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=1) /

@@ -113,5 +113,10 @@ int fctprintf(void (*out)(char character, void* arg), void* arg, const char* for
 }
 #endif
 
+#ifdef _DEBUG
+#define dbgprintf(...) printf(__VA_ARGS__)
+#else
+#define dbgprintf(...) ;
+#endif
 
 #endif  // _PRINTF_H_
