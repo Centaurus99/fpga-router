@@ -20,7 +20,7 @@ typedef struct {
 
 void receive_ripng(uint8_t *packet, uint16_t length);
 
-void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua);
+int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua);
 
 void debug_ripng();
 

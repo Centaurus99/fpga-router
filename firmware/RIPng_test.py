@@ -47,10 +47,10 @@ LL_TESTER1 = 'fe80::b015:b6df:4d93:77dd'
 IP_PREFIX = '2a0e:aa06:497:'
 IP_TESTER0 = IP_PREFIX + '0::2333'
 IP_TESTER1 = IP_PREFIX + '1::3444'
-IP_DUT0 = 'fe80::8e1f:64ff:fe69:1030'  # Device under test.
+IP_DUT0 = 'fe80::1'  # Device under test.
 IP_DUT0_GUA = IP_PREFIX + '0::1'
-IP_DUT1 = 'fe80::8e1f:64ff:fe69:1031'
-IP_DUT3 = 'fe80::8e1f:64ff:fe69:1033'
+IP_DUT1 = 'fe80::1'
+IP_DUT3 = 'fe80::1'
 # The IP address of the default route.
 IP_DEFAULT_ROUTE = 'fe80::5645:53ff:fe54:5f33'
 IP_TEST_NDP = 'fe80::8888'
@@ -179,15 +179,15 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
 # You can construct more frames to test your datapath.
 
-for i in range(100):
-    send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-            UDP() /
-            RIPng(cmd=2) /
-            RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+# for i in range(100):
+#     send_frame(0, Ether(src=MAC_TESTER0) /
+#             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+#             UDP() /
+#             RIPng(cmd=2) /
+#             RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
 
-send_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng(cmd=1) /
-            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+# send_frame(1, Ether(src=MAC_TESTER1) /
+#             IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
+#             UDP() /
+#             RIPng(cmd=1) /
+#             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
