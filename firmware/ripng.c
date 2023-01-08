@@ -80,10 +80,10 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid prefix len: %x", ripentry[i].prefix_len);
                                 continue;
                             }
-                            if (!check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
+                            if (check_linklocal_address(ripentry[i].addr) || ripentry[i].addr.s6_addr[0] == 0xff) {
                                 char ipbuffer[100];
-                                printip(&(ipv6_header->ip6_src), ipbuffer);
-                                printf("Invalid IP %s \r\n", ipbuffer);
+                                printip(&(ripentry[i].addr), ipbuffer);
+                                printf("Invalid RIP entry IP %s \r\n", ipbuffer);
                                 continue;
                             }
                             if (ripentry[i].metric == 0xff) {
@@ -310,4 +310,10 @@ void ripng_init() {
     Timer *ripng_timer = timer_init(RIPNG_UPDATE_TIME, 2);
     timer_set_timeout(ripng_timer, ripng_timeout);
     timer_start(ripng_timer, 1);
+
+#ifdef _DEBUG
+    char buf[100];
+    printip(&LOCAL_IP(0), buf);
+    printf("LOCAL IP 0: %s\r\n", buf);
+#endif
 }
