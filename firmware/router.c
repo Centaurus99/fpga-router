@@ -23,9 +23,9 @@ void init_port_config() {
         }
         gua_ip[7] += port;
     }
-    // for (uint8_t port = 0; port < 4; ++port) {
-    //     LOCAL_IP(port) = all_link_local_ip;
-    // }
+    for (uint8_t port = 0; port < 4; ++port) {
+        LOCAL_IP(port) = all_link_local_ip;
+    }
 }
 
 void icmp_error_gen() {
