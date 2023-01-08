@@ -44,7 +44,7 @@ LL_TESTER1 = 'fe80::b015:b6df:4d93:77dd'
 #   3. The IP addresses of Interface 2 of the router are link-local and prefix:2::1/64.
 #   4. The IP addresses of Interface 3 of the router are link-local and prefix:3::1/64.
 #   5. There exists a 2000::/3 route (not default route), and its next hop is Interface 3, TESTER3.
-IP_PREFIX = '2a0e:aa06:497:0a0'
+IP_PREFIX = '2a0e:aa06:497:'
 IP_TESTER0 = IP_PREFIX + '0::2333'
 IP_TESTER1 = IP_PREFIX + '1::3444'
 IP_DUT0 = 'fe80::8e1f:64ff:fe69:1030'  # Device under test.
