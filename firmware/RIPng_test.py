@@ -100,7 +100,7 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=3) /
             RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32, metric=6) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20, metric=16))
+            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20, metric=15))
 
 # RIPng request 
 send_frame(0, Ether(src=MAC_TESTER0) /
