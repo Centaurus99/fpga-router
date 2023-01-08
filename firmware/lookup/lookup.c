@@ -344,19 +344,21 @@ void update(bool insert, const RoutingTableEntry entry) {
     }
 }
 
-void update_leaf_info(uint32_t leaf_id, uint8_t metric, uint8_t port, const in6_addr nexthop) {
+void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop) {
     assert_id(metric < 16 && metric > 0, 3);
+    uint32_t lid = leaf->_leaf_id;
     if (metric != 0xff)
-        leafs_info[leaf_id].metric = metric;
+        leafs_info[lid].metric = metric;
     if (port != 0xff) {
         nexthop_id_t nexthopid = _new_entry(port, nexthop, 1);
-        leafs_info[leaf_id].nexthop_id = nexthopid; // FIXME: nexthop id in tree should be update too!!!
+        leafs_info[lid].nexthop_id = nexthopid;
+        leaf->_nexthop_id = nexthopid;
     }
-    timer_stop(timeout_timer, leaf_id);
-    timer_start(timeout_timer, leaf_id);
+    timer_stop(timeout_timer, lid);
+    timer_start(timeout_timer, lid);
 }
 
-int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
+LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     // print(node_root, 0);
@@ -386,14 +388,14 @@ int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *
             break;
         }
     }
-    if (leaf == NULL)  return 0;
+    if (leaf == NULL)  return NULL;
     if (nexthop != NULL)
         *nexthop = next_hops[leaf->_nexthop_id].ip;
     if (if_index != NULL)
         *if_index = next_hops[leaf->_nexthop_id].port;
     if (route_type != NULL)
         *route_type = next_hops[leaf->_nexthop_id].route_type;
-    return leaf->_nexthop_id;
+    return leaf;
 }
 
 void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode leaf) {

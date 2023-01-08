@@ -220,7 +220,7 @@ bool operate_q() {
         return 0;
     }
     len = _getdec();
-    if (prefix_query(addr, len, &nexthop, &if_index, &route_type)) {
+    if (prefix_query(addr, len, &nexthop, &if_index, &route_type) != NULL) {
         printip(&nexthop, ipbuffer);
         sprintf(info, "%08x %08x %08x %08x %d %d", nexthop.s6_addr32[0], nexthop.s6_addr32[1], nexthop.s6_addr32[2], nexthop.s6_addr32[3], if_index, route_type);
     } else {

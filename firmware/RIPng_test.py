@@ -113,9 +113,10 @@ send_frame(0, Ether(src=MAC_TESTER0) /
             RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
             RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
 
-# RIPng response 2
+# RIPng response 2 (unicast)
+# update 2402:f000:: 's metric
 send_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=getll(MAC_TESTER1), dst=IP_RIP, hlim=255) /
+            IPv6(src=getll(MAC_TESTER1), dst=IP_DUT1, hlim=255) /
             UDP() /
             RIPng(cmd=2) /
             RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=4) /
