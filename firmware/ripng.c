@@ -117,7 +117,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
             udp_header->src = __htons(RIPNGPORT);
-            validateAndFillChecksum(packet, length);
+            validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
             dma_set_out_port(port);
             dma_send_finish();
             dma_lock_release();
