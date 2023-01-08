@@ -42,9 +42,11 @@ void ripng_timeout(Timer *t, int i);
 #define MTU 1500
 
 #define MAXRipngEntryNum RipngEntryNum(MTU)
-#define MAXRipngUDPLength (uint16_t)(((uint16_t)MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)) << 8) + (((uint16_t)MAXRipngEntryNum * sizeof(RipngEntry) + sizeof(UDPHeader) + sizeof(RipngHead)) >> 8)
-#define MAXRipngLength (uint32_t)(MAXRipngEntryNum * sizeof(RipngEntry) + (sizeof(EtherHeader) + sizeof(IP6Header) + sizeof(UDPHeader) + sizeof(RipngHead)))
+#define RipngLength(num) ((uint16_t)(num * sizeof(RipngEntry) + sizeof(RipngHead)))
+#define RipngUDPLength(num) ((uint16_t)(RipngLength(num) + sizeof(UDPHeader)))
+#define RipngIP6Length(num) ((uint16_t)(RipngUDPLength(num) + sizeof(IP6Header)))
+#define RipngETHLength(num) ((uint16_t)(RipngIP6Length(num) + sizeof(EtherHeader)))
 
-#define RIPNG_UPDATE_TIME 3
+#define RIPNG_UPDATE_TIME (3 * SECOND)
 
 #endif

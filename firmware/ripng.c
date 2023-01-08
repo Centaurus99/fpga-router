@@ -241,27 +241,26 @@ void ripng_init() {
     RipngEntry *ripentry = RipngEntries_PTR(DMA_PTR);
     for (uint8_t i = 0; i < 4; i++) {
         dma_send_request();
-        ipv6_header->ip6_src = GUA_IP(i);
-        ipv6_header->ip6_dst = ripng_multicast;
-        ipv6_header->flow = 0x00600000;
-        ipv6_header->hop_limit = 0xff;
-        ipv6_header->payload_len = 0x2000; // HACK: 是不是要网络字节序？
+        ipv6_header->flow = IP6_DEFAULT_FLOW;
+        ipv6_header->payload_len = __htons(RipngUDPLength(1));
         ipv6_header->next_header = IPPROTO_UDP;
+        ipv6_header->hop_limit = 0xff;
+        ipv6_header->ip6_src = LOCAL_IP(i);
+        ipv6_header->ip6_dst = ripng_multicast;
 
         udp_header->src = RIPNGPORT;
         udp_header->dest = RIPNGPORT;
-        udp_header->length = 0x2000; // HACK: 是不是要网络字节序？
+        udp_header->length = __htons(RipngLength(1));
 
         riphead->command = RIPNG_REQUEST;
         riphead->version = 0x01;
         riphead->zero = 0x0000;
 
-        ripentry->addr = request_for_all.addr;
-        ripentry->metric = request_for_all.metric;
-        ripentry->route_tag = request_for_all.route_tag;
-        ripentry->prefix_len = request_for_all.prefix_len;
+        *ripentry = request_for_all;
 
-        DMA_LEN = 86;
+        DMA_LEN = RipngETHLength(1);
+        validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(1));
+
         dma_set_out_port(i);
         dma_send_finish();
     }
