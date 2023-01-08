@@ -5,11 +5,11 @@
 #include <printf.h>
 #include <ripng.h>
 #include <router.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <timer.h>
 #include <uart.h>
 #include <vga.h>
-#include <timer.h>
 
 extern uint32_t _bss_begin[];
 extern uint32_t _bss_end[];
@@ -232,33 +232,17 @@ bool operate_q() {
 void init_direct_route() {
     RoutingTableEntry entry;
     entry.metric = 1;
-    entry.addr.s6_addr32[0] = 0x06aa0e2a;
-    entry.addr.s6_addr32[1] = 0x000a9704;
-    entry.addr.s6_addr32[2] = 0x00000000;
-    entry.addr.s6_addr32[3] = 0x00000000;
     entry.len = 64;
-    entry.if_index = 0;
-    entry.nexthop.s6_addr32[0] = 0x06aa0e2a;
-    entry.nexthop.s6_addr32[1] = 0x000a9704;
+    entry.nexthop.s6_addr32[0] = 0x00000000;
+    entry.nexthop.s6_addr32[1] = 0x00000000;
     entry.nexthop.s6_addr32[2] = 0x00000000;
-    entry.nexthop.s6_addr32[3] = 0x33230000;
+    entry.nexthop.s6_addr32[3] = 0x00000000;
     entry.route_type = 0;
-    update(1, entry);
-    entry.addr.s6_addr32[1] = 0x010a9704;
-    entry.if_index = 1;
-    entry.nexthop.s6_addr32[1] = 0x010a9704;
-    entry.nexthop.s6_addr32[3] = 0x44340000;
-    update(1, entry);
-    entry.addr.s6_addr32[1] = 0x020a9704;
-    entry.if_index = 2;
-    entry.nexthop.s6_addr32[1] = 0x020a9704;
-    entry.nexthop.s6_addr32[3] = 0x55450000;
-    update(1, entry);
-    entry.addr.s6_addr32[1] = 0x030a9704;
-    entry.if_index = 3;
-    entry.nexthop.s6_addr32[1] = 0x030a9704;
-    entry.nexthop.s6_addr32[3] = 0x66560000;
-    update(1, entry);
+    for (uint8_t port = 0; port < 4; ++port) {
+        entry.if_index = port;
+        entry.addr = GUA_IP(port);
+        update(1, entry);
+    }
 }
 
 extern void test();
@@ -285,7 +269,7 @@ void start(int argc, char *argv[]) {
     // Timer *dpy_timer = timer_init(SECOND, 5);
     // timer_set_timeout(dpy_timer, dpy_led_timeout);
     // timer_start(dpy_timer, 1);
-    
+
     ripng_init();
 
     printf("INITIALIZED, %d\n", sizeof(TrieNode));
