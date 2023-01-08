@@ -231,6 +231,7 @@ bool operate_q() {
 
 void init_direct_route() {
     RoutingTableEntry entry;
+    entry.metric = 1;
     entry.addr.s6_addr32[0] = 0x06aa0e2a;
     entry.addr.s6_addr32[1] = 0x000a9704;
     entry.addr.s6_addr32[2] = 0x00000000;

@@ -226,6 +226,13 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
     for (uint32_t i = 1; i <= leaf_count; i++) {
         if (leafs_info[i].valid) {
             ripentry[ripngentrynum].addr = leafs_info[i].ip;
+#ifdef _DEBUG
+            char buf[100];
+            printip(&leafs_info[i].ip, buf);
+            printf("send ripng entry %s/%d\r\n", buf, leafs_info[i].len);
+            printf("%08x %08x %08x %08x\r\n", ripentry[ripngentrynum].addr.s6_addr32[0], ripentry[ripngentrynum].addr.s6_addr32[1],
+                   ripentry[ripngentrynum].addr.s6_addr32[2], ripentry[ripngentrynum].addr.s6_addr32[3]);
+#endif
             ripentry[ripngentrynum].route_tag = 0x0000;
             ripentry[ripngentrynum].prefix_len = leafs_info[i].len;
             ripentry[ripngentrynum].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;

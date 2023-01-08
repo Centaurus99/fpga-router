@@ -6,7 +6,7 @@ QEMU = qemu-system-riscv32
 
 DEFINES = -DPRINTF_DISABLE_SUPPORT_FLOAT -DPRINTF_DISABLE_SUPPORT_EXPONENTIAL \
           -DPRINTF_DISABLE_SUPPORT_LONG_LONG
-CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-sections -O2 -Wall \
+CFLAGS = -fno-builtin -nostdlib -nostdinc -static -Wl,--gc-sections,--print-gc-sections -Wall \
          -Iinclude -Ilookup $(DEFINES) -march=rv32i -mabi=ilp32 -DRV32 -g
 LDFLAGS = -z separate-code -g
 
