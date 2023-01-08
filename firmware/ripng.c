@@ -24,28 +24,26 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
     uint32_t ripng_num = RipngEntryNum(length);
     uint8_t port = dma_get_receive_port();
     // 校验 ripng 包的格式
-    dbgprintf("Receive RIPng, length: %d, should be %d\r\n", length, ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader));
-    if (ripng_num * sizeof(RipngEntry) + sizeof(RipngHead) + sizeof(UDPHeader) + sizeof(IP6Header) + sizeof(EtherHeader) == length 
-        && riphead->version == 0x01 && riphead->zero == 0x0000) {
+    dbgprintf("Receive RIPng, length: %d, should be %d\r\n", length, RipngETHLength(ripng_num));
+    if (RipngETHLength(ripng_num) == length && riphead->version == 0x01) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
             dbgprintf("Recived RIPng Request\r\n");
             dma_lock_request();
             dma_send_request();
+            if (ripng_num == 1 && in6_addr_equal(ripentry[0].addr, request_for_all.addr) && ripentry[0].metric == request_for_all.metric && ripentry[0].prefix_len == request_for_all.prefix_len) {
+                // 响应所有路由表
+                send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, !check_multicast_address(ipv6_header->ip6_dst));
+                dma_lock_release();
+                return;
+            }
             for (uint32_t i = 0; i < ripng_num; i++) {
-                if (in6_addr_equal(ripentry[i].addr, request_for_all.addr) && ripentry[i].metric == request_for_all.metric && ripentry[i].prefix_len == request_for_all.prefix_len) {
-                    // TODO: send all of your route tables
-                    send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, 0);
-                    dma_lock_release();
-                    return;
+                // 查路由表并修改 RIPNG 的 metric
+                uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
+                if (!lid) {
+                    ripentry[i].metric = METRIC_INF;
                 } else {
-                    // 查路由表并修改 RIPNG 的 metric
-                    uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
-                    if (!lid) {
-                        ripentry[i].metric = METRIC_INF;
-                    } else {
-                        ripentry[i].metric = leafs_info[lid].metric;
-                    }
+                    ripentry[i].metric = leafs_info[lid].metric;
                 }
             }
             riphead->command = RIPNG_RESPONSE;
@@ -82,14 +80,14 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid IP %s \r\n", ipbuffer);
                                 continue;
                             }
-                            if(ripentry[i].metric == 0xff) {
-                                if(ripentry[i].prefix_len == 0x00 && ripentry[i].route_tag == 0x0000) {
+                            if (ripentry[i].metric == 0xff) {
+                                if (ripentry[i].prefix_len == 0x00 && ripentry[i].route_tag == 0x0000) {
                                     nexthop = ripentry[i].addr;
                                 } else {
                                     printf("Invalid nexthop RTE: route tag %x prefix length %x", ripentry[i].route_tag, ripentry[i].metric);
                                 }
                                 continue;
-                             }
+                            }
                             uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
                             LeafInfo *info = &leafs_info[lid];
                             if (lid) {
@@ -109,7 +107,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                     if (ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
                                         // TODO: 应该能够根据port选取新的nexthop，这里我不太会
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, nexthop); // FIXME port和nexthopip的设置
-                                    }                                                                        // else do nothing
+                                    }                                                                 // else do nothing
                                 }
                             } else {
                                 RoutingTableEntry entry = {
@@ -141,14 +139,14 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                 printf("Invalid IP %s \r\n", ipbuffer);
                                 continue;
                             }
-                            if(ripentry[i].metric == 0xff) {
-                                if(ripentry[i].prefix_len == 0x00 && ripentry[i].route_tag == 0x0000) {
+                            if (ripentry[i].metric == 0xff) {
+                                if (ripentry[i].prefix_len == 0x00 && ripentry[i].route_tag == 0x0000) {
                                     nexthop = ripentry[i].addr;
                                 } else {
                                     printf("Invalid nexthop RTE: route tag %x prefix length %x", ripentry[i].route_tag, ripentry[i].metric);
                                 }
                                 continue;
-                             }
+                            }
                             uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
                             LeafInfo *info = &leafs_info[lid];
                             if (lid) {
@@ -167,7 +165,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                     // 不同nexthop时，比较metric的大小，选取最优的metric
                                     if (ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, nexthop); // FIXME port和nexthopip的设置
-                                    }                                                                        // else do nothing
+                                    }                                                                 // else do nothing
                                 }
                             } else {
                                 RoutingTableEntry entry = {
@@ -246,8 +244,8 @@ void send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint
     if (ripngentrynum > 0) {
         _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
         dma_set_out_port(port);
+        dma_send_finish();
     }
-    dma_send_finish();
 }
 
 void debug_ripng() {
