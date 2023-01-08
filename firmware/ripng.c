@@ -83,7 +83,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                             if (lid) {
                                 if (next_hops[info->nexthop_id].port == port) {
                                     // 相同nexthop时，更新metric并重启计时器
-                                    if (info->metric + 1 >= METRIC_INF){
+                                    if (info->metric + 1 >= METRIC_INF) {
                                         // 删除不可达的路由
                                         RoutingTableEntry entry = {
                                             .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1};
@@ -97,7 +97,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                     if (ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
                                         // TODO: 应该能够根据port选取新的nexthop，这里我不太会
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, LOCAL_IP(port)); // FIXME port和nexthopip的设置
-                                    } // else do nothing
+                                    }                                                                        // else do nothing
                                 }
                             } else {
                                 RoutingTableEntry entry = {
@@ -130,10 +130,10 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                             }
                             uint32_t lid = prefix_query(ripentry[i].addr, ripentry[i].prefix_len, NULL, NULL, NULL);
                             LeafInfo *info = &leafs_info[lid];
-                            if (lid){
+                            if (lid) {
                                 if (next_hops[info->nexthop_id].port == port) {
                                     // 相同nexthop时，更新metric并重启计时器
-                                    if (info->metric + 1 >= METRIC_INF){
+                                    if (info->metric + 1 >= METRIC_INF) {
                                         // 删除不可达的路由
                                         RoutingTableEntry entry = {
                                             .addr = ripentry[i].addr, .len = ripentry[i].prefix_len, .if_index = port, .nexthop = LOCAL_IP(port), .route_type = 1};
@@ -146,7 +146,7 @@ void receive_ripng(uint8_t *packet, uint32_t length) {
                                     // 不同nexthop时，比较metric的大小，选取最优的metric
                                     if (ripentry[i].metric + 1 < info->metric && ripentry[i].metric + 1 < METRIC_INF) {
                                         update_leaf_info(lid, ripentry[i].metric + 1, port, LOCAL_IP(port)); // FIXME port和nexthopip的设置
-                                    } // else do nothing
+                                    }                                                                        // else do nothing
                                 }
                             } else {
                                 RoutingTableEntry entry = {
