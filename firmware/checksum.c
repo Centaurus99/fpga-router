@@ -51,7 +51,7 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
 
         if (udp_sum == 0) {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
+            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
 #endif
             return false;
         }
@@ -61,12 +61,12 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
         }
         if (now_sum == 0xffff) {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
+            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
 #endif
             return true;
         } else {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
+            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
 #endif
             return false;
         }
