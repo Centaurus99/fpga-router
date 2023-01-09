@@ -6,6 +6,12 @@
 #include <timer.h>
 
 typedef struct {
+    bool triggered_update;
+    bool checksum;
+} RIPNGMODE;
+RIPNGMODE ripng_mode;
+
+typedef struct {
     uint8_t command;
     uint8_t version;
     uint16_t zero;

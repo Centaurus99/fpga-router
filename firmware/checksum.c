@@ -2,8 +2,13 @@
 #include <checksum.h>
 #include <header.h>
 #include <stdint.h>
+#include <ripng.h>
 
 bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
+    if(! ripng_mode.checksum) {
+        return true;
+    }
+
     IP6Header *ip6 = (IP6Header *)packet;
 
     uint32_t now_sum = 0;

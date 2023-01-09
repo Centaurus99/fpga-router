@@ -15,7 +15,7 @@ const RipngEntry request_for_all = {
 const in6_addr ripng_multicast = {
     .s6_addr16 = {0x02ff, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0900}};
 
-bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_addr *nexthop, uint8_t port, bool same_place) {
+bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) {
     if (entry->metric > METRIC_INF && entry->metric != 0xff) {
         printf("Invalid metric: %x", entry->metric);
         return false;
@@ -58,24 +58,12 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                     .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2};
                 update(false, table_entry);
                 // 回发告知我们删除了这个路由
-                if (!same_place) {
-                    answer_entry->addr = entry->addr;
-                    answer_entry->route_tag = entry->route_tag;
-                    answer_entry->prefix_len = entry->prefix_len;
-                }
-                answer_entry->metric = METRIC_INF;
                 return true;
             } else {
                 // 更新metric，重置计时器
                 update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
                 if(entry->metric + 1 != info->metric) {
                     // 回发告知我们更新了metric
-                    if (!same_place) {
-                        answer_entry->addr = entry->addr;
-                        answer_entry->route_tag = entry->route_tag;
-                        answer_entry->prefix_len = entry->prefix_len;
-                    }
-                    answer_entry->metric = entry->metric + 1;
                     return true;
                 } // else all the same, do nothing
             }
@@ -85,12 +73,6 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
                 dbgprintf("\tripentry from another nexthop is smaller so update\r\n");
                 update_leaf_info(leaf, entry->metric + 1, port, *(nexthop), 2);
                 // 回发告知我们更新了路由信息
-                if (!same_place) {
-                    answer_entry->addr = entry->addr;
-                    answer_entry->route_tag = entry->route_tag;
-                    answer_entry->prefix_len = entry->prefix_len;
-                }
-                answer_entry->metric = entry->metric + 1;
                 return true;
             } // else do nothing
         }
@@ -100,12 +82,6 @@ bool update_with_ripngentry(RipngEntry *entry, RipngEntry *answer_entry, in6_add
             .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
         update(true, table_entry);
         // 回发告知我们更新了路由信息
-        if (!same_place) {
-            answer_entry->addr = entry->addr;
-            answer_entry->route_tag = entry->route_tag;
-            answer_entry->prefix_len = entry->prefix_len;
-        }
-        answer_entry->metric = entry->metric + 1;
         return true;
     }
     return false;
@@ -117,7 +93,13 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     in6_addr nexthop = ipv6_header->ip6_src;
     uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
-        if (update_with_ripngentry(&ripentry[i], &ripentry[answer_num], &nexthop, port, i == answer_num)) {
+        if (update_with_ripngentry(&ripentry[i], &nexthop, port) && ripng_mode.triggered_update) {
+            if(i != answer_num) {
+                ripentry[answer_num].addr = ripentry[i].addr;
+                ripentry[answer_num].route_tag = ripentry[i].route_tag;
+                ripentry[answer_num].prefix_len = ripentry[i].prefix_len;
+            }
+            ripentry[answer_num].metric = ripentry[i].metric + 1 < METRIC_INF ? ripentry[i].metric + 1 : METRIC_INF;
             answer_num += 1;
         }
     }
@@ -322,6 +304,9 @@ void ripng_timeout(Timer *t, int i) {
 
 void ripng_init() {
     // FF02::9
+    ripng_mode.triggered_update = true;
+    ripng_mode.checksum = true;
+
     mainloop(false);
     IP6Header *ipv6_header = IP6_PTR(DMA_PTR);
     UDPHeader *udp_header = UDP_PTR(DMA_PTR);
