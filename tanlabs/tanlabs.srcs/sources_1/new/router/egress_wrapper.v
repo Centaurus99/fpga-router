@@ -16,6 +16,8 @@ module egress_wrapper
     input wire s_valid,
     output wire s_ready,
 
+    output wire drop_led,
+
     output wire [7:0] m_data,
     output wire m_last,
     output wire m_user,
@@ -51,6 +53,7 @@ module egress_wrapper
         .s_ready(),
 
         .drop(prog_full),  // Drop this frame when the FIFO cannot hold a biggest frame.
+        .drop_led(drop_led),
 
         .m_data(filtered_data),
         .m_keep(filtered_keep),
