@@ -378,7 +378,7 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
 }
 
 LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     checker.receive_table_temp = now_time;
 #endif 
     LeafNode *leaf = NULL;
@@ -410,7 +410,7 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
             break;
         }
     }
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     checker.receive_table_time += now_time - checker.receive_table_temp;
 #endif 
     if (leaf == NULL)  return NULL;
