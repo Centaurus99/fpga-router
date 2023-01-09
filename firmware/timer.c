@@ -37,6 +37,8 @@ void timer_stop(Timer *t, uint32_t id) {
         t->head = t->nxt[id];
     if (t->tail == id)
         t->tail = t->pre[id];
+    if (t->iter == id)
+        t->iter = t->nxt[id];
 }
 
 // id should > 0
@@ -70,4 +72,12 @@ void timer_tick_all() {
     for (int i = 0; i < _timer_count; i++) {
         timer_tick(&_timers[i]);
     }
+}
+
+uint32_t timer_iterate_id(Timer *t, bool restart) {
+    if (restart) 
+        return t->iter = t->head;
+    else if (t->iter == 0)
+        return 0;
+    return t->iter = t->nxt[t->iter];
 }

@@ -291,22 +291,23 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
                 }
                 dma_send_request();
             }
-            ++cnt;
-            ripentry[ripngentrynum].addr = leafs_info[i].ip;
-            ripentry[ripngentrynum].route_tag = 0x0000;
-            ripentry[ripngentrynum].prefix_len = leafs_info[i].len;
-            ripentry[ripngentrynum].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
-            ripngentrynum += 1;
+            dma_send_request();
+        }
+        ++cnt;
+        ripentry[ripngentrynum].addr = leafs_info[i].ip;
+        ripentry[ripngentrynum].route_tag = 0x0000;
+        ripentry[ripngentrynum].prefix_len = leafs_info[i].len;
+        ripentry[ripngentrynum].metric = next_hops[leafs_info[i].nexthop_id].port == port ? METRIC_INF : leafs_info[i].metric;
+        ripngentrynum += 1;
 
-            if (ripngentrynum == MAXRipngEntryNum) {
-                _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
-                dma_set_out_port(port);
-                dma_send_finish();
-                if (allow_interrupt) {
-                    dma_lock_release();
-                }
-                ripngentrynum -= MAXRipngEntryNum;
+        if (ripngentrynum == MAXRipngEntryNum) {
+            _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
+            dma_set_out_port(port);
+            dma_send_finish();
+            if (allow_interrupt) {
+                dma_lock_release();
             }
+            ripngentrynum -= MAXRipngEntryNum;
         }
     }
     if (ripngentrynum > 0) {
