@@ -64,6 +64,8 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
         for l in open('data/direct_route.txt', 'r'):
             f.write(l)
         f.write('\n')
+        if query_after_update_complete > 0:
+            f.write('I 00000000 00000000 00000000 00000000 0 3 23333333 00000000 00000000 00000000 0\n')
         while N>0 or query_after_update_complete>0:
             c = random.randint(0, 4)
             if N and (c == 0 or not table):
