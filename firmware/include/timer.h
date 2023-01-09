@@ -15,7 +15,7 @@ typedef struct _Timer {
     void (*timeout)(struct _Timer*, int);
     uint32_t interval;
     uint32_t *nxt, *pre, *start_time;
-    uint32_t head, tail;
+    uint32_t head, tail, iter;
 } Timer;
 
 Timer* timer_init(uint32_t interval, uint32_t pool_size);
@@ -29,5 +29,7 @@ void timer_start(Timer *t, uint32_t id);
 void timer_tick(Timer *t);
 
 void timer_tick_all();
+
+uint32_t timer_iterate_id(Timer *t, bool restart);
 
 #endif

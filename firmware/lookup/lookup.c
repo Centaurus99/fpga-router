@@ -53,8 +53,8 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
 #endif
 nexthop_id_t entry_count;
 uint32_t leaf_count;
+uint32_t unused_leafid[LEAF_COUNT], unused_leafid_top;
 int node_root;
-
 TrieNode stk[33];
 
 nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
@@ -358,6 +358,15 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
     }
     timer_stop(timeout_timer, lid);
     timer_start(timeout_timer, lid);
+}
+
+uint32_t get_unused_leafid() {
+    assert_id(unused_leafid_top > 0, 0xff);
+    return unused_leafid[--unused_leafid_top];
+}
+
+void put_unused_leafid(uint32_t id) {
+    unused_leafid[unused_leafid_top++] = id;
 }
 
 LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
