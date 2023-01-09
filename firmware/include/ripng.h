@@ -5,11 +5,31 @@
 #include <stdint.h>
 #include <timer.h>
 
+#ifdef _DEBUG
+typedef struct {
+    uint32_t temp;
+    uint32_t time;
+    uint32_t receive_temp;
+    uint32_t receive_time;
+    uint32_t receive_request_temp;
+    uint32_t receive_request_time;
+    uint32_t receive_response_temp;
+    uint32_t receive_response_time;
+    uint32_t receive_checksum_temp;
+    uint32_t receive_checksum_time;
+    uint32_t receive_table_temp;
+    uint32_t receive_table_time;
+    uint32_t send_temp;
+    uint32_t send_time;
+} Ripng_time_checker;
+Ripng_time_checker checker;
+#endif
+
 typedef struct {
     bool triggered_update;
     bool checksum;
-} RIPNGMODE;
-RIPNGMODE ripng_mode;
+} Ripng_mode;
+Ripng_mode ripng_mode;
 
 typedef struct {
     uint8_t command;

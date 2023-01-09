@@ -6,6 +6,8 @@
 #include <printf.h>
 #include <lookup.h>
 
+#define now_time (*(volatile uint32_t *)0x200BFF8)
+
 #define SECOND 10000000
 
 #define ENTRY_TIMEOUT (100 * SECOND)

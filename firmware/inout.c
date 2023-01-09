@@ -14,7 +14,7 @@ extern void draw_speed();
 
 void timer() {
     static unsigned int last = 0;
-    unsigned int now = *(volatile unsigned int *)0x200BFF8;
+    unsigned int now = now_time;
     // printf("%d\n", now);
     if (now < last)
         last = now;
