@@ -41,6 +41,8 @@ void print(uint32_t nid, int dep) {
 //     }
 // }
 
+#ifdef LOOKUP_ONLY
+
 inline void _write_u32s(FILE *f, uint32_t addr, uint32_t *ptr, int len) {
     for (uint32_t i = 0; i < len; ++i) {
         if (*(ptr + i) != 0)
@@ -78,3 +80,5 @@ void export_mem() {
     
     fclose(f);
 }
+
+#endif
