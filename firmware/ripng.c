@@ -287,7 +287,7 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
-    for (uint32_t i=leafid_iterator(true); i; i=leafid_iterator(false)) {
+    for (uint32_t i = leafid_iterator(true); i; i = leafid_iterator(false)) {
         if (ripngentrynum == 0) {
             if (allow_interrupt) {
 #ifdef TIME_DEBUG
@@ -342,28 +342,28 @@ void ripng_timeout(Timer *t, int i) {
         int cnt;
         cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
         printf("S%d:%d ", i, cnt);
-#ifdef TIME_DEBUG
-        checker.time = now_time - checker.temp;
-        printf(
-            "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
-            checker.time,
-            checker.receive_time,
-            checker.send_time,
-            checker.receive_request_time,
-            checker.receive_response_time,
-            checker.receive_checksum_time,
-            checker.receive_table_time
-        );
-        checker.temp = now_time;
-        checker.time = 0;
-        checker.receive_time = 0;
-        checker.send_time = 0;
-        checker.receive_request_time = 0;
-        checker.receive_response_time = 0;
-        checker.receive_checksum_time = 0;
-        checker.receive_table_time = 0;
-#endif
     }
+#ifdef TIME_DEBUG
+    printf("\r\n");
+    checker.time = now_time - checker.temp;
+    printf(
+        "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
+        checker.time,
+        checker.receive_time,
+        checker.send_time,
+        checker.receive_request_time,
+        checker.receive_response_time,
+        checker.receive_checksum_time,
+        checker.receive_table_time);
+    checker.temp = now_time;
+    checker.time = 0;
+    checker.receive_time = 0;
+    checker.send_time = 0;
+    checker.receive_request_time = 0;
+    checker.receive_response_time = 0;
+    checker.receive_checksum_time = 0;
+    checker.receive_table_time = 0;
+#endif
     printf("\r\n");
     dma_counter_print();
 }
