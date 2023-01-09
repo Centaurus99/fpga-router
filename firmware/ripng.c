@@ -354,6 +354,7 @@ void ripng_timeout(Timer *t, int i) {
             checker.receive_checksum_time,
             checker.receive_table_time
         );
+        check.temp = now_time;
         checker.time = 0;
         checker.receive_time = 0;
         checker.send_time = 0;
