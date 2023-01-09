@@ -162,12 +162,17 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                 send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua, 0);
 #ifdef TIME_DEBUG
                 checker.receive_request_time += now_time - checker.receive_request_temp;
+                checker.receive_time += now_time - checker.receive_temp;
 #endif
                 return;
             }
             if (ripng_num == 0) {
                 // 无 entries, 不响应
                 dbgprintf("No entry no response\r\n");
+#ifdef TIME_DEBUG
+                checker.receive_request_time += now_time - checker.receive_request_temp;
+                checker.receive_time += now_time - checker.receive_temp;
+#endif
                 return;
             }
             dma_lock_request();
