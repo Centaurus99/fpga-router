@@ -62,7 +62,7 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
             } else {
                 // 更新metric，重置计时器
                 update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
-                if(entry->metric + 1 != info->metric) {
+                if (entry->metric + 1 != info->metric) {
                     // 回发告知我们更新了metric
                     return true;
                 } // else all the same, do nothing
@@ -94,7 +94,7 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
     uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
         if (update_with_ripngentry(&ripentry[i], &nexthop, port) && ripng_mode.triggered_update) {
-            if(i != answer_num) {
+            if (i != answer_num) {
                 ripentry[answer_num].addr = ripentry[i].addr;
                 ripentry[answer_num].route_tag = ripentry[i].route_tag;
                 ripentry[answer_num].prefix_len = ripentry[i].prefix_len;
@@ -131,6 +131,9 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
 }
 
 void receive_ripng(uint8_t *packet, uint16_t length) {
+#ifdef _DEBUG
+    checker.receive_temp += now_time;
+#endif
     // 此处处理 RIPNG 协议
     IP6Header *ipv6_header = IP6_PTR(packet);
     UDPHeader *udp_header = UDP_PTR(packet);
@@ -143,12 +146,18 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
     if (RipngETHLength(ripng_num) == length && riphead->version == 0x01) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
+#ifdef _DEBUG
+            checker.receive_request_temp = now_time;
+#endif
             dbgprintf("Recived RIPng Request\r\n");
             bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             if (ripng_num == 1 && in6_addr_equal(ripentry[0].addr, request_for_all.addr) && ripentry[0].metric == request_for_all.metric && ripentry[0].prefix_len == request_for_all.prefix_len) {
                 // 响应所有路由表
                 dbgprintf("Response all entries\r\n");
                 send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua, 0);
+#ifdef _DEBUG
+                checker.receive_request_time += now_time - checker.receive_request_temp;
+#endif
                 return;
             }
             if (ripng_num == 0) {
@@ -180,7 +189,13 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             dma_set_out_port(port);
             dma_send_finish();
             dma_lock_release();
+#ifdef _DEBUG
+            checker.receive_request_time += now_time - checker.receive_request_temp;
+#endif
         } else if (riphead->command == RIPNG_RESPONSE) {
+#ifdef _DEBUG
+            checker.receive_response_temp = now_time;
+#endif
             dbgprintf("Recived RIPng Response\r\n");
             if (check_linklocal_address(ipv6_header->ip6_src) && !check_own_address(ipv6_header->ip6_src)) {
                 if (ipv6_header->ip6_dst.s6_addr[0] == 0xff) {
@@ -207,6 +222,9 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                 printip(&(ipv6_header->ip6_src), ipbuffer);
                 printf("Drop Packet: Invalid Ripng from %s \r\n", ipbuffer);
             }
+#ifdef _DEBUG
+            checker.receive_response_time += now_time - checker.receive_response_temp;
+#endif
         } else {
             // 不合法的 ripng 指令
             printf("Drop Packet: Invalid Ripng command %x \r\n", riphead->command);
@@ -215,6 +233,9 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
         // 不合法的 ripng 包
         printf("Drop Packet: Invalid Ripng packet format \r\n");
     }
+#ifdef _DEBUG
+    checker.receive_time += now_time - checker.receive_temp;
+#endif
 }
 
 void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, uint8_t EntryNum) {
@@ -243,6 +264,11 @@ void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_
 
 // 返回当前路由条数
 int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, bool allow_interrupt) {
+#ifdef _DEBUG
+    if (allow_interrupt) {
+        checker.send_temp = now_time;
+    }
+#endif
     // 本函数中默认已经获得lock_request并不释放
     dbgprintf("Sending all ripng entries\r\n");
     if (!allow_interrupt) {
@@ -251,10 +277,19 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
-    for (uint32_t i=leafid_iterator(true); i; i=leafid_iterator(false)) {
-        if (ripngentrynum == 0) {
-            if (allow_interrupt) {
-                mainloop(false);
+    for (uint32_t i = 1; i <= leaf_count; i++) {
+        if (leafs_info[i].valid) {
+            if (ripngentrynum == 0) {
+                if (allow_interrupt) {
+#ifdef _DEBUG
+                    checker.send_time = now_time - checker.send_temp;
+#endif
+                    mainloop(false);
+#ifdef _DEBUG
+                    checker.send_temp = now_time;
+#endif
+                }
+                dma_send_request();
             }
             dma_send_request();
         }
@@ -281,6 +316,11 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         dma_send_finish();
     }
     dma_lock_release();
+#ifdef _DEBUG
+    if (allow_interrupt) {
+        checker.send_time = now_time - checker.send_temp;
+    }
+#endif
     return cnt;
 }
 
@@ -289,15 +329,35 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
+    timer_start(t, i);
     dma_counter_print();
     for (uint8_t i = 0; i < 4; i++) {
         int cnt;
         cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
         printf("S%d:%d ", i, cnt);
+#ifdef _DEBUG
+        checker.time = now_time - checker.temp;
+        printf(
+            "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
+            checker.time,
+            checker.receive_time,
+            checker.send_time,
+            checker.receive_request_time,
+            checker.receive_response_time,
+            checker.receive_checksum_time,
+            checker.receive_table_time
+        );
+        checker.time = 0;
+        checker.receive_time = 0;
+        checker.send_time = 0;
+        checker.receive_request_time = 0;
+        checker.receive_response_time = 0;
+        checker.receive_checksum_time = 0;
+        checker.receive_table_time = 0;
+#endif
     }
     printf("\r\n");
     dma_counter_print();
-    timer_start(t, i);
 }
 
 void ripng_init() {
