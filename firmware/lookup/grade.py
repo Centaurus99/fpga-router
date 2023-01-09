@@ -64,6 +64,8 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
         for l in open('data/direct_route.txt', 'r'):
             f.write(l)
         f.write('\n')
+        if query_after_update_complete > 0:
+            f.write('I 00000000 00000000 00000000 00000000 0 3 23333333 00000000 00000000 00000000 0\n')
         while N>0 or query_after_update_complete>0:
             c = random.randint(0, 4)
             if N and (c == 0 or not table):
@@ -101,9 +103,9 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
 def gen_ionly_input(in_file, N):
     random.shuffle(entrys)
     with open(in_file, 'w') as f:
-        # for l in open('data/direct_route.txt', 'r'):
-        #     f.write(l)
-        # f.write('\n')
+        for l in open('data/direct_route.txt', 'r'):
+            f.write(l)
+        f.write('\n')
         for i in range(N):
             e = entrys[i]
             f.write(f'I {to_u32s(e[0])} {e[1]} {e[3]} {to_u32s(e[2])} 2\n')
@@ -130,7 +132,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1:
         if (sys.argv[1] == 'gen_forsim'):
-            gen_input("data/forsim_input.txt", "data/forsim_input_readable.txt", 10, 20)
+            gen_input("data/forsim_input.txt", "data/forsim_input_readable.txt", 20, 20)
             sys.exit(0)
         elif sys.argv[1] == 'gen_ionly':
             gen_ionly_input('data/I_only_input.txt'.format(prefix), int(sys.argv[2]))
@@ -142,7 +144,7 @@ if __name__ == '__main__':
     
     print("对拍：")
     for i in range(100000):
-        gen_input(in_file, in_file2, 1000)
+        gen_input(in_file, in_file2, 5000)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 

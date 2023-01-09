@@ -2,8 +2,11 @@
 #include <memhelper.h>
 #include <stdio.h>
 #include <assert.h>
+
+#ifndef LOOKUP_ONLY
 #include <timer.h>
 #include <ripng.h>
+#endif
 
 #ifndef ENABLE_BITMANIP
 int popcnt(uint32_t x) {
@@ -44,9 +47,9 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
     #endif
 
     #define nodes(i) _nodes[i]
-    LeafNode leafs[LEAF_COUNT];
+    LeafNode leafs[LEAF_NODE_COUNT];
     NextHopEntry next_hops[ENTRY_COUNT];
-    LeafInfo leafs_info[LEAF_COUNT];
+    LeafInfo leafs_info[LEAF_INFO_COUNT];
 
 #else
     #define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
@@ -54,7 +57,7 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
 #endif
 nexthop_id_t entry_count;
 uint32_t leaf_count;
-uint32_t unused_leafid[LEAF_COUNT], unused_leafid_top;
+uint32_t unused_leafid[LEAF_INFO_COUNT], unused_leafid_top;
 int node_root;
 TrieNode stk[33];
 
@@ -70,7 +73,14 @@ void push_unused_leafid(uint32_t id) {
 nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     for (nexthop_id_t i = 0; i < entry_count; ++ i) {
         if (next_hops[i].port == port &&
+#ifndef LOOKUP_ONLY
             in6_addr_equal(next_hops[i].ip, ip) &&
+#else
+            next_hops[i].ip.s6_addr32[0] == ip.s6_addr32[0] &&
+            next_hops[i].ip.s6_addr32[1] == ip.s6_addr32[1] &&
+            next_hops[i].ip.s6_addr32[2] == ip.s6_addr32[2] &&
+            next_hops[i].ip.s6_addr32[3] == ip.s6_addr32[3] &&
+#endif
             next_hops[i].route_type == route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
@@ -324,6 +334,7 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
     return -1;
 }
 
+#ifndef LOOKUP_ONLY
 Timer *timeout_timer;
 
 void timeout_timeout(Timer *t, int i) {
@@ -340,6 +351,7 @@ void timeout_timeout(Timer *t, int i) {
 uint32_t leafid_iterator(bool restart) {
     return timer_iterate_id(timeout_timer, restart);
 }
+#endif
 
 void update(bool insert, const RoutingTableEntry entry) {
     if (insert) {
@@ -351,14 +363,18 @@ void update(bool insert, const RoutingTableEntry entry) {
         info->len = entry.len;
         info->ip = entry.addr;
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
+#ifndef LOOKUP_ONLY
         timer_start(timeout_timer, leaf._leaf_id);
+#endif
     } else {
         // assert_id(entry.route_type != 0, 1);
         uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
         if (lid != -1) {
             leafs_info[lid].valid = false;
             push_unused_leafid(lid);
+#ifndef LOOKUP_ONLY
             timer_stop(timeout_timer, lid);
+#endif
         }
     }
 }
@@ -373,8 +389,10 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
         leafs_info[lid].nexthop_id = nexthopid;
         leaf->_nexthop_id = nexthopid;
     }
+#ifndef LOOKUP_ONLY
     timer_stop(timeout_timer, lid);
     timer_start(timeout_timer, lid);
+#endif
 }
 
 LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
@@ -389,7 +407,6 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
         int l = dep + STRIDE - 1;
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
             if (VEC_BT(now->leaf_vec, pfx)) {
-                dbgprintf("Match on l=%d %d\n", l, pfx);
                 if (len == 255 || len == l) {
                     leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                     break;
@@ -435,6 +452,7 @@ void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
 void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip) {
     if (dep > 128) return;
+    if (dep == 0 && nid == 0)  nid = node_root;
     TrieNode *now = &NOW;
     // 在当前层匹配所有的前缀
     if (checking_all) {
@@ -513,9 +531,13 @@ void test() {
 }
 
 void lookup_init() {
+    assert(sizeof(TrieNode) == 16);
     memhelper_init();
-    for (int i = 1; i < LEAF_COUNT; ++i)
+    node_root = node_malloc(0, 1);
+    for (int i = 1; i < LEAF_INFO_COUNT; ++i)
         push_unused_leafid(i);
-    timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_COUNT);
+#ifndef LOOKUP_ONLY
+    timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_INFO_COUNT);
     timer_set_timeout(timeout_timer, timeout_timeout);
+#endif
 }

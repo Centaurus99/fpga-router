@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 #define NODE_COUNT_PER_STAGE  1024
-#define LEAF_COUNT  65536
+#define LEAF_NODE_COUNT  1048576
+#define LEAF_INFO_COUNT  165000
 #define ENTRY_COUNT  640
 #define STAGE_HEIGHT  4
 #define STRIDE  4
@@ -15,8 +16,8 @@
 #define NODE_ADDRESS(i) (0x40000000 + i * 0x01000000)
 #define LEAF_ADDRESS  0x80400000
 #define NEXT_HOP_ADDRESS  0x51000000
-#define LEAF_INFO_ADDRESS 0x80500000
-
+#define LEAF_INFO_ADDRESS 0x804c0000
+#define EXT_RAM_END 0x80800000
 
 #define BITINDEX(v)     ((v) & ((1 << STRIDE) - 1))
 #define NODEINDEX(v)    ((v) >> STRIDE)
@@ -30,6 +31,10 @@
 
 #define NOW nodes((dep) / STRIDE / STAGE_HEIGHT)[nid]
 #define STAGE(d) (((d) / STRIDE) / STAGE_HEIGHT)
+
+#ifdef LOOKUP_ONLY
+#define assert_id(a, b) assert(a)
+#endif
 
 typedef uint8_t nexthop_id_t;
 
@@ -61,11 +66,11 @@ typedef struct {
 
 // 现在结构体内也会对齐 所以可以都用u32
 typedef struct {
-    uint32_t vec;
-    uint32_t leaf_vec;
-    uint16_t child_base; // should be 16
-    uint16_t tag; // 低8位可用，第8位表示leaf-in-node优化
-    uint32_t leaf_base; // 16位可用
+    uint16_t vec;
+    uint16_t leaf_vec;
+    uint32_t tag; // 只有第8位可用，表示leaf-in-node优化
+    uint32_t child_base; // 19位可用
+    uint32_t leaf_base; // 19位可用
 } TrieNode;
 
 typedef union {
@@ -85,7 +90,7 @@ typedef struct {
 
 extern uint32_t leaf_count;
 #ifndef ON_BOARD
-    extern LeafInfo leafs_info[LEAF_COUNT];
+    extern LeafInfo leafs_info[LEAF_INFO_COUNT];
     extern NextHopEntry next_hops[ENTRY_COUNT];
 #else
     #define leafs_info ((LeafInfo *)LEAF_INFO_ADDRESS)

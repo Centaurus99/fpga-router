@@ -2,7 +2,7 @@
 
 Timer _timers[10];
 int _timer_count = 0;
-uint32_t timer_linked_list_pool[3][LEAF_COUNT * 2 + 10];
+uint32_t timer_linked_list_pool[3][LEAF_INFO_COUNT + 10];
 uint32_t pool_header = 0;
 
 bool _timer_expired(Timer *t, uint32_t id) {
