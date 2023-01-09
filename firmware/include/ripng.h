@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <timer.h>
 
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
 typedef struct {
     uint32_t temp;
     uint32_t time;

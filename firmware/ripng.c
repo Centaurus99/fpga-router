@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <timer.h>
 
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
 Ripng_time_checker checker;
 #endif
 Ripng_mode ripng_mode;
@@ -136,7 +136,7 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
 }
 
 void receive_ripng(uint8_t *packet, uint16_t length) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     checker.receive_temp = now_time;
 #endif
     // 此处处理 RIPNG 协议
@@ -151,7 +151,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
     if (RipngETHLength(ripng_num) == length && riphead->version == 0x01) {
         // 校验命令 command 是否正确
         if (riphead->command == RIPNG_REQUEST) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_request_temp = now_time;
 #endif
             dbgprintf("Recived RIPng Request\r\n");
@@ -160,14 +160,19 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                 // 响应所有路由表
                 dbgprintf("Response all entries\r\n");
                 send_all_ripngentries(packet, port, ipv6_header->ip6_src, udp_header->src, use_gua, 0);
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
                 checker.receive_request_time += now_time - checker.receive_request_temp;
+                checker.receive_time += now_time - checker.receive_temp;
 #endif
                 return;
             }
             if (ripng_num == 0) {
                 // 无 entries, 不响应
                 dbgprintf("No entry no response\r\n");
+#ifdef TIME_DEBUG
+                checker.receive_request_time += now_time - checker.receive_request_temp;
+                checker.receive_time += now_time - checker.receive_temp;
+#endif
                 return;
             }
             dma_lock_request();
@@ -194,11 +199,11 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             dma_set_out_port(port);
             dma_send_finish();
             dma_lock_release();
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_request_time += now_time - checker.receive_request_temp;
 #endif
         } else if (riphead->command == RIPNG_RESPONSE) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_response_temp = now_time;
 #endif
             dbgprintf("Recived RIPng Response\r\n");
@@ -227,7 +232,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
                 printip(&(ipv6_header->ip6_src), ipbuffer);
                 printf("Drop Packet: Invalid Ripng from %s \r\n", ipbuffer);
             }
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_response_time += now_time - checker.receive_response_temp;
 #endif
         } else {
@@ -238,7 +243,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
         // 不合法的 ripng 包
         printf("Drop Packet: Invalid Ripng packet format \r\n");
     }
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     checker.receive_time += now_time - checker.receive_temp;
 #endif
 }
@@ -269,7 +274,7 @@ void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_
 
 // 返回当前路由条数
 int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, bool allow_interrupt) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     if (allow_interrupt) {
         checker.send_temp = now_time;
     }
@@ -282,19 +287,16 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
-    for (uint32_t i = 1; i <= leaf_count; i++) {
-        if (leafs_info[i].valid) {
-            if (ripngentrynum == 0) {
-                if (allow_interrupt) {
-#ifdef _DEBUG
-                    checker.send_time = now_time - checker.send_temp;
+    for (uint32_t i = leafid_iterator(true); i; i = leafid_iterator(false)) {
+        if (ripngentrynum == 0) {
+            if (allow_interrupt) {
+#ifdef TIME_DEBUG
+                checker.send_time = now_time - checker.send_temp;
 #endif
-                    mainloop(false);
-#ifdef _DEBUG
-                    checker.send_temp = now_time;
+                mainloop(false);
+#ifdef TIME_DEBUG
+                checker.send_temp = now_time;
 #endif
-                }
-                dma_send_request();
             }
             dma_send_request();
         }
@@ -321,7 +323,7 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         dma_send_finish();
     }
     dma_lock_release();
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
     if (allow_interrupt) {
         checker.send_time = now_time - checker.send_temp;
     }
@@ -340,27 +342,28 @@ void ripng_timeout(Timer *t, int i) {
         int cnt;
         cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
         printf("S%d:%d ", i, cnt);
-#ifdef _DEBUG
-        checker.time = now_time - checker.temp;
-        printf(
-            "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
-            checker.time,
-            checker.receive_time,
-            checker.send_time,
-            checker.receive_request_time,
-            checker.receive_response_time,
-            checker.receive_checksum_time,
-            checker.receive_table_time
-        );
-        checker.time = 0;
-        checker.receive_time = 0;
-        checker.send_time = 0;
-        checker.receive_request_time = 0;
-        checker.receive_response_time = 0;
-        checker.receive_checksum_time = 0;
-        checker.receive_table_time = 0;
-#endif
     }
+#ifdef TIME_DEBUG
+    printf("\r\n");
+    checker.time = now_time - checker.temp;
+    printf(
+        "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
+        checker.time,
+        checker.receive_time,
+        checker.send_time,
+        checker.receive_request_time,
+        checker.receive_response_time,
+        checker.receive_checksum_time,
+        checker.receive_table_time);
+    checker.temp = now_time;
+    checker.time = 0;
+    checker.receive_time = 0;
+    checker.send_time = 0;
+    checker.receive_request_time = 0;
+    checker.receive_response_time = 0;
+    checker.receive_checksum_time = 0;
+    checker.receive_table_time = 0;
+#endif
     printf("\r\n");
     dma_counter_print();
 }

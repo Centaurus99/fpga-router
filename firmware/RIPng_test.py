@@ -101,153 +101,163 @@ def routes_in_pcap(path):
                 # print(p.prefix_or_nh, p.prefixlen)
     return routes
 
-pkt = rdpcap('error.pcap')[0]
-pkt['Ether'].src = MAC_TESTER0
-pkt['Ether'].dst = MAC_DUT0
-pkt.show()
-send_frame(0, pkt)
-exit()
-
-# routes = routes_in_pcap('RIPresponse.pcapng')
-# with open('lookup/fib_shuffled.txt', 'r') as f:
-#     for line in f.readlines()[:1000]:
-#         prefix = line.strip().split(' ')[0]
-#         len = int(line.strip().split(' ')[1])
-#         if (prefix, len) not in routes:
-#             print(prefix, len)
-            # send_frame(0, Ether(src=MAC_TESTER0) /
-            # IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-            # UDP() /
-            # RIPng(cmd=2) /
-            # RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=1))
+def checkerror():
+    pkt = rdpcap('error.pcap')[0]
+    pkt['Ether'].src = MAC_TESTER0
+    pkt['Ether'].dst = MAC_DUT0
+    pkt.show()
+    send_frame(0, pkt)
 # exit()
 
-# FROM FIB SHUFFLED
-
-# for i in range(100):
-#     cnt = 0
-#     p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
-#     sent = []
-#     with open('lookup/fib_shuffled.txt', 'r') as f:
-#         for line in f.readlines()[:40000]:
-#             prefix = line.strip().split(' ')[0]
-#             len = int(line.strip().split(' ')[1])
-#             # assert((prefix, len) not in sent)
-#             # sent.append((prefix, len))
-#             p /= RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=4)
-#             cnt += 1
-#             if cnt >= 71:
-#                 cnt = 0
-#                 send_frame(0, p)
-#                 p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
-#                 # time.sleep(0.15)
-#     if cnt > 0:
-#         send_frame(0, p)
-# exit()
-# FROM FIB SHUFFLED END
-
-# ping
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
-            ICMPv6EchoRequest())
-
-# ping 2
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
-            ICMPv6EchoRequest())
-
-# RIPng response
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-            UDP() /
-            RIPng(cmd=2) /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=1) /             # new
-            RIPngEntry(prefix_or_nh='2002:fabc:e000::', prefixlen=35, metric=2) /           # new
-            RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=74, metric=3) / # new
-            RIPngEntry(prefix_or_nh='2222:a000::', prefixlen=20, metric=15) /               # unable to reach
-            RIPngEntry(prefix_or_nh='2333:3444:4555::', prefixlen=0, metric=255)/           # set nexthop
-            RIPngEntry(prefix_or_nh='2004::', prefixlen=16, metric=4)                       # new
-    )
-
+def check_no_response():
+    routes = routes_in_pcap('RIPresponse.pcapng')
+    with open('lookup/fib_shuffled.txt', 'r') as f:
+        for line in f.readlines()[:1000]:
+            prefix = line.strip().split(' ')[0]
+            len = int(line.strip().split(' ')[1])
+            if (prefix, len) not in routes:
+                print(prefix, len)
+                send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+                UDP() /
+                RIPng(cmd=2) /
+                RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=1))
 # exit()
 
-# RIPng request 
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng(cmd=1) /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=76) /
-            RIPngEntry(prefix_or_nh='2a0e:aa06:497:a01::', prefixlen=64) /
-            RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
-            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
+def fib_shuffled(size):
+    for i in range(100):
+        cnt = 0
+        p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
+        sent = []
+        with open('lookup/fib_shuffled.txt', 'r') as f:
+            for line in f.readlines()[:size]:
+                prefix = line.strip().split(' ')[0]
+                len = int(line.strip().split(' ')[1])
+                # assert((prefix, len) not in sent)
+                # sent.append((prefix, len))
+                p /= RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=4)
+                cnt += 1
+                if cnt >= 71:
+                    cnt = 0
+                    send_frame(0, p)
+                    p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
+                    # time.sleep(0.15)
+        if cnt > 0:
+            send_frame(0, p)
 
-# RIPng response 2 (unicast)
-send_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=LL_TESTER1, dst=IP_DUT1, hlim=255) /
-            UDP() /
-            RIPng(cmd=2) /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=10) /   # not update
-            RIPngEntry(prefix_or_nh='2002:fabc:e000::', prefixlen=35, metric=1) / # update
-            RIPngEntry(prefix_or_nh='2005:1234:5678::', prefixlen=46, metric=5) / # new
-            RIPngEntry(prefix_or_nh=LL_TESTER0, prefixlen=0, metric=255)/  # set nexthop
-            RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=74, metric=10)       # port is not same so dont update
-        )     
+def validate():
+    # ping
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
+                ICMPv6EchoRequest())
 
-# RIPng response 3
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-            UDP() /
-            RIPng(cmd=2) /
-            RIPngEntry(prefix_or_nh='2333:3444:4555::', prefixlen=0, metric=255)/           # set nexthop
-            RIPngEntry(prefix_or_nh='2004::', prefixlen=16, metric=11))                     # update even if metric is bigger
+    # ping 2
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=getnsma(IP_DUT0)) /
+                ICMPv6EchoRequest())
 
-# RIPng request all
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng(cmd=1) /
-            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+    # RIPng response
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+                UDP() /
+                RIPng(cmd=2) /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=1) /             # new
+                RIPngEntry(prefix_or_nh='2002:fabc:e000::', prefixlen=35, metric=2) /           # new
+                RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=74, metric=3) / # new
+                RIPngEntry(prefix_or_nh='2222:a000::', prefixlen=20, metric=15) /               # unable to reach
+                RIPngEntry(prefix_or_nh='2333:3444:4555::', prefixlen=0, metric=255)/           # set nexthop
+                RIPngEntry(prefix_or_nh='2004::', prefixlen=16, metric=4)                       # new
+        )
 
-# exit()
+    # exit()
 
-# RIP test (bad, source address is GUA).
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=IP_TESTER0, dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng() /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+    # RIPng request 
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
+                UDP() /
+                RIPng(cmd=1) /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+                RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=76) /
+                RIPngEntry(prefix_or_nh='2a0e:aa06:497:a01::', prefixlen=64) /
+                RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
+                RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
 
-# RIP test (wrong checksum).
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
-            UDP(chksum=0x2222) /
-            RIPng() /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+    # RIPng response 2 (unicast)
+    send_frame(1, Ether(src=MAC_TESTER1) /
+                IPv6(src=LL_TESTER1, dst=IP_DUT1, hlim=255) /
+                UDP() /
+                RIPng(cmd=2) /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48, metric=10) /   # not update
+                RIPngEntry(prefix_or_nh='2002:fabc:e000::', prefixlen=35, metric=1) / # update
+                RIPngEntry(prefix_or_nh='2005:1234:5678::', prefixlen=46, metric=5) / # new
+                RIPngEntry(prefix_or_nh=LL_TESTER0, prefixlen=0, metric=255)/  # set nexthop
+                RIPngEntry(prefix_or_nh='2003:acdc:eeee:7777:aa80::', prefixlen=74, metric=10)       # port is not same so dont update
+            )     
 
-# RIP test (no checksum, illegal in IPv6).
-send_frame(0, Ether(src=MAC_TESTER0) /
-            IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
-            UDP(chksum=0x0000) /
-            RIPng() /
-            RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
-            RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
-            RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
-# You can construct more frames to test your datapath.
+    # RIPng response 3
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+                UDP() /
+                RIPng(cmd=2) /
+                RIPngEntry(prefix_or_nh='2333:3444:4555::', prefixlen=0, metric=255)/           # set nexthop
+                RIPngEntry(prefix_or_nh='2004::', prefixlen=16, metric=11))                     # update even if metric is bigger
 
-# for i in range(99):
-#     send_frame(0, Ether(src=MAC_TESTER0) /
-#             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
-#             UDP() /
-#             RIPng(cmd=2) /
-#             RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+    # RIPng request all
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
+                UDP() /
+                RIPng(cmd=1) /
+                RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
 
-send_frame(1, Ether(src=MAC_TESTER1) /
-            IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
-            UDP() /
-            RIPng(cmd=1) /
-            RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+    # exit()
+
+    # RIP test (bad, source address is GUA).
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=IP_TESTER0, dst=IP_RIP, hlim=1) /
+                UDP() /
+                RIPng() /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+                RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+                RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+
+    # RIP test (wrong checksum).
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
+                UDP(chksum=0x2222) /
+                RIPng() /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+                RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+                RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+
+    # RIP test (no checksum, illegal in IPv6).
+    send_frame(0, Ether(src=MAC_TESTER0) /
+                IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=1) /
+                UDP(chksum=0x0000) /
+                RIPng() /
+                RIPngEntry(prefix_or_nh='2001:da8:200::', prefixlen=48) /
+                RIPngEntry(prefix_or_nh='2402:f000::', prefixlen=32) /
+                RIPngEntry(prefix_or_nh='240a:a000::', prefixlen=20))
+    # You can construct more frames to test your datapath.
+
+    # for i in range(99):
+    #     send_frame(0, Ether(src=MAC_TESTER0) /
+    #             IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) /
+    #             UDP() /
+    #             RIPng(cmd=2) /
+    #             RIPngEntry(prefix_or_nh=f'2001:da8:{i}::', prefixlen=48, metric=4))
+
+    send_frame(1, Ether(src=MAC_TESTER1) /
+                IPv6(src=LL_TESTER1, dst=IP_RIP, hlim=1) /
+                UDP() /
+                RIPng(cmd=1) /
+                RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=16))
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print('arg!!!')
+        exit()
+    if sys.argv[1] == 'validate':
+        validate()
+    elif sys.argv[1] == 'fib':
+        fib_shuffled(int(sys.argv[2]) if len(sys.argv) > 2 else 10000)
