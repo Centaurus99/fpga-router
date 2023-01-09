@@ -19,13 +19,12 @@ grade: lookup lookup_bf
 forsim: lookup lookup_bf
 	rm -f data/test*
 	python grade.py gen_forsim
-	./lookup < data/forsim_input.txt > data/forsim_answer.txt
+	./lookup m < data/forsim_input.txt > data/forsim_answer.txt
 	cp mem.txt data/forsim_mem.txt
 
 	./lookup < data/direct_route.txt
 	cp mem.txt data/direct_route_mem.txt
 
-	cp -r data/ ../../tanlabs/tanlabs.srcs/sim_1/new/
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $^ -o $@

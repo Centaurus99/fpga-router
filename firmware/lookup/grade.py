@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1:
         if (sys.argv[1] == 'gen_forsim'):
-            gen_input("data/forsim_input.txt", "data/forsim_input_readable.txt", 10, 20)
+            gen_input("data/forsim_input.txt", "data/forsim_input_readable.txt", 20, 20)
             sys.exit(0)
         elif sys.argv[1] == 'gen_ionly':
             gen_ionly_input('data/I_only_input.txt'.format(prefix), int(sys.argv[2]))

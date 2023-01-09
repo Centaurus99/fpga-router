@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern void export_mem();
+
 char buffer[1024];
 
 int main(int argc, char *argv[])
@@ -56,8 +58,8 @@ int main(int argc, char *argv[])
             }
         }
     }
-    // if (argc > 1 && argv[1][0] == 'm') {
-    //     export_mem();
-    // }
+    if (argc > 1 && argv[1][0] == 'm') {
+        export_mem();
+    }
     return 0;
 }
