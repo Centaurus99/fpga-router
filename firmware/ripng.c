@@ -9,7 +9,9 @@
 #include <stddef.h>
 #include <timer.h>
 
+#ifdef _DEBUG
 Ripng_time_checker checker;
+#endif
 Ripng_mode ripng_mode;
 
 const RipngEntry request_for_all = {

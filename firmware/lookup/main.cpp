@@ -11,7 +11,7 @@ char buffer[1024];
 
 int main(int argc, char *argv[])
 {
-    memhelper_init();
+    lookup_init();
 
     uint32_t len, if_index, route_type;
     in6_addr addr, nexthop;
