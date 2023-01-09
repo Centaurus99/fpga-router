@@ -77,11 +77,9 @@ void timer_tick_all() {
 }
 
 uint32_t timer_iterate_id(Timer *t, bool restart) {
-    if (restart)
-        t->iter = t->head;
-    else {
-        assert(t->iter != 0);
-        t->iter = t->nxt[t->iter];
-    }
-    return t->iter;
+    if (restart) 
+        return t->iter = t->head;
+    else if (t->iter == 0)
+        return 0;
+    return t->iter = t->nxt[t->iter];
 }

@@ -135,4 +135,6 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
 
 void lookup_init();
 
+uint32_t leafid_iterator(bool restart);
+
 #endif
