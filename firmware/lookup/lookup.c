@@ -533,7 +533,7 @@ void test() {
 void lookup_init() {
     assert(sizeof(TrieNode) == 16);
     memhelper_init();
-    node_root = node_malloc(0, 1);
+    node_root = 0;
     for (int i = 1; i < LEAF_INFO_COUNT; ++i)
         push_unused_leafid(i);
 #ifndef LOOKUP_ONLY
