@@ -18,6 +18,8 @@ module frame_datapath_fifo
     input wire s_valid,
     output wire s_ready,
 
+    output wire drop_led,
+
     output wire [DATA_WIDTH - 1:0] m_data,
     output wire [DATA_WIDTH / 8 - 1:0] m_keep,
     output wire m_last,
@@ -60,6 +62,7 @@ module frame_datapath_fifo
                 .s_ready(),
 
                 .drop(prog_full),  // Drop this frame when the FIFO cannot hold a biggest frame.
+                .drop_led(drop_led),
 
                 .m_data(filtered_data),
                 .m_keep(filtered_keep),
@@ -101,6 +104,7 @@ module frame_datapath_fifo
             assign m_id = s_id;
             assign m_valid = s_valid;
             assign s_ready = m_ready;
+            assign drop_led = 1'b0;
         end
     endgenerate
 endmodule
