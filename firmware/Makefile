@@ -47,6 +47,11 @@ ifeq ($(DEBUG), y)
 	CFLAGS += -D_DEBUG
 endif
 
+override TIME_DEBUG ?= n
+ifeq ($(TIME_DEBUG), y)
+	CFLAGS += -DTIME_DEBUG
+endif
+
 override BOARD ?= S
 ifeq ($(BOARD), 0)
 	CFLAGS += -DTEST_DEFINENATION

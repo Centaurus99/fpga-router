@@ -20,7 +20,7 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
     uint8_t nxt_header = ip6->next_header;
     if (nxt_header == IPPROTO_UDP) {
         // UDP
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
         checker.receive_checksum_temp = now_time;
 #endif
         UDPHeader *udp = (UDPHeader *)&packet[sizeof(IP6Header)];
@@ -50,7 +50,7 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
         udp->checksum = __htons(real_sum);
 
         if (udp_sum == 0) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
 #endif
             return false;
@@ -60,12 +60,12 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
             now_sum = (now_sum >> 16) + (now_sum & 0xffff);
         }
         if (now_sum == 0xffff) {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
 #endif
             return true;
         } else {
-#ifdef _DEBUG
+#ifdef TIME_DEBUG
             checker.receive_checksum_time = now_time - checker.receive_checksum_temp;
 #endif
             return false;
