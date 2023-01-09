@@ -47,6 +47,21 @@ ifeq ($(DEBUG), y)
 	CFLAGS += -D_DEBUG
 endif
 
+override BOARD ?= S
+ifeq ($(BOARD), 0)
+	CFLAGS += -DTEST_DEFINENATION
+	CFLAGS += -DBOARD_0
+else ifeq ($(BOARD), 1)
+	CFLAGS += -DTEST_DEFINENATION
+	CFLAGS += -DBOARD_1
+else ifeq ($(BOARD), 2)
+	CFLAGS += -DTEST_DEFINENATION
+	CFLAGS += -DBOARD_2
+else ifeq ($(BOARD), S)
+	CFLAGS += -DTEST_DEFINENATION
+	CFLAGS += -DSINGLE_TEST
+endif
+
 HEADERS=$(wildcard include/*.h)
 SOURCES=$(wildcard *.c *.S)
 OBJECTS=$(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.S,%.o,$(wildcard *.S))
