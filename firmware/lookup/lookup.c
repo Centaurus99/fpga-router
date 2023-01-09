@@ -325,7 +325,11 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
         uint32_t idx = INDEX(addr, dep, STRIDE);
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
-                if (dep + STRIDE == len) _remove_lin(dep, now, idx);
+                if (dep + STRIDE == len) {
+                    uint32_t lid = leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1]._leaf_id;   
+                    _remove_lin(dep, now, idx);
+                    return lid;
+                }
             } else {
                 return remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
             }
@@ -539,7 +543,7 @@ void test() {
 void lookup_init() {
     assert(sizeof(TrieNode) == 16);
     memhelper_init();
-    node_root = node_malloc(0, 1);
+    node_root = 0;
     for (int i = 1; i < LEAF_INFO_COUNT; ++i)
         push_unused_leafid(i);
 #ifndef LOOKUP_ONLY
