@@ -22,7 +22,7 @@ module led_delayer(
                 begin
                     if (in_led[i])
                     begin
-                        counter <= 1250000;  // 10ms
+                        counter <= 12500000;  // 100ms
                     end
                     else if (counter != 0)
                     begin

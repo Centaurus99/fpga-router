@@ -1008,7 +1008,7 @@ module tanlabs #(
     // );
     reg [7:0] cpu_fifo_led;
     always_comb begin
-        unique case (cpu_fifo_count[12:10])
+        unique case (cpu_fifo_count[10:8])
             8'd0: cpu_fifo_led[7:1] = 7'b0000000;
             8'd1: cpu_fifo_led[7:1] = 7'b0000001;
             8'd2: cpu_fifo_led[7:1] = 7'b0000011;
