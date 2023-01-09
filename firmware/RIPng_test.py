@@ -124,7 +124,7 @@ def check_no_response():
                 RIPngEntry(prefix_or_nh=prefix, prefixlen=len, metric=1))
 # exit()
 
-def fib_shuffled(size):
+def fib_shuffled(size, ifid):
     for i in range(100):
         cnt = 0
         p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
@@ -139,11 +139,11 @@ def fib_shuffled(size):
                 cnt += 1
                 if cnt >= 71:
                     cnt = 0
-                    send_frame(0, p)
+                    send_frame(ifid, p)
                     p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
                     # time.sleep(0.15)
         if cnt > 0:
-            send_frame(0, p)
+            send_frame(ifid, p)
 
 def validate():
     # ping
@@ -260,4 +260,5 @@ if __name__ == '__main__':
     if sys.argv[1] == 'validate':
         validate()
     elif sys.argv[1] == 'fib':
-        fib_shuffled(int(sys.argv[2]) if len(sys.argv) > 2 else 10000)
+        fib_shuffled(int(sys.argv[2]) if len(sys.argv) > 2 else 10000,
+                     int(sys.argv[3]) if len(sys.argv) > 3 else 0)

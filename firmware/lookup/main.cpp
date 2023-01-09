@@ -5,11 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern void export_mem();
+
 char buffer[1024];
 
 int main(int argc, char *argv[])
 {
-    memhelper_init();
+    lookup_init();
 
     uint32_t len, if_index, route_type;
     in6_addr addr, nexthop;
@@ -56,8 +58,8 @@ int main(int argc, char *argv[])
             }
         }
     }
-    // if (argc > 1 && argv[1][0] == 'm') {
-    //     export_mem();
-    // }
+    if (argc > 1 && argv[1][0] == 'm') {
+        export_mem();
+    }
     return 0;
 }
