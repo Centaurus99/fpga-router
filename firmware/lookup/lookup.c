@@ -53,9 +53,18 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
 #endif
 nexthop_id_t entry_count;
 uint32_t leaf_count;
+uint32_t unused_leafid[LEAF_COUNT], unused_leafid_top;
 int node_root;
-
 TrieNode stk[33];
+
+uint32_t pop_unused_leafid() {
+    assert_id(unused_leafid_top > 0, 0xff);
+    return unused_leafid[--unused_leafid_top];
+}
+
+void push_unused_leafid(uint32_t id) {
+    unused_leafid[unused_leafid_top++] = id;
+}
 
 nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     for (nexthop_id_t i = 0; i < entry_count; ++ i) {
@@ -75,8 +84,7 @@ nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
 
 LeafNode _new_leaf_node(const RoutingTableEntry entry) {
     LeafNode ret;
-    ret.leaf_id = ++leaf_count;
-    assert_id(leaf_count < 131072, 0xff);
+    ret.leaf_id = pop_unused_leafid();
     ret._nexthop_id = _new_entry(entry.if_index, entry.nexthop, entry.route_type);
     return ret;
 }
@@ -318,10 +326,18 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
 Timer *timeout_timer;
 
 void timeout_timeout(Timer *t, int i) {
-    if (leafs_info[i].valid) {
-        leafs_info[i].valid = false;
-        remove_entry(0, node_root, leafs_info[i].ip, leafs_info[i].len);
+    assert_id(leafs_info[i].valid, 0x11);
+    if (next_hops[leafs_info[i].nexthop_id].route_type == 0 || next_hops[leafs_info[i].nexthop_id].route_type == 1) {
+        timer_start(t, i);
+        return;
     }
+    leafs_info[i].valid = false;
+    push_unused_leafid(i);
+    remove_entry(0, node_root, leafs_info[i].ip, leafs_info[i].len);
+}
+
+uint32_t leafid_iterator(bool restart) {
+    return timer_iterate_id(timeout_timer, restart);
 }
 
 void update(bool insert, const RoutingTableEntry entry) {
@@ -334,13 +350,13 @@ void update(bool insert, const RoutingTableEntry entry) {
         info->len = entry.len;
         info->ip = entry.addr;
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
-        if (entry.route_type != 0)
-            timer_start(timeout_timer, leaf._leaf_id);
+        timer_start(timeout_timer, leaf._leaf_id);
     } else {
         // assert_id(entry.route_type != 0, 1);
         uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
         if (lid != -1) {
             leafs_info[lid].valid = false;
+            push_unused_leafid(lid);
             timer_stop(timeout_timer, lid);
         }
     }
@@ -491,6 +507,8 @@ void test() {
 
 void lookup_init() {
     memhelper_init();
+    for (int i = 1; i < LEAF_COUNT; ++i)
+        push_unused_leafid(i);
     timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_COUNT);
     timer_set_timeout(timeout_timer, timeout_timeout);
 }
