@@ -21,20 +21,24 @@ int popcnt(uint32_t x) {
 extern int popcnt(uint32_t x);
 #endif
 
-static inline uint32_t INDEX (in6_addr addr, int s, int n) {
+static inline uint32_t INDEX (in6_addr addr, int d) {
     uint32_t res = 0;
-    int shift = 128 - s - n;
-    for (int i = 15; i >= 0; -- i) {
-        if (shift >= 0 && shift < 8)
-            res |= addr.s6_addr[i] >> shift;
-        else if (shift < 0 && shift > -8)
-            res |= (uint32_t)addr.s6_addr[i] << (-shift);
-        shift -= 8;
-        if (shift < -32) break;
-    }
-    res = res & ((1u << n) - 1);
-    // print_ip(addr);
-    // printf("%d %d %x\n", s, n, (uint32_t)res);
+    if (d&0b100)
+        return addr.s6_addr[d>>3] & 0xf;
+    else
+        return (addr.s6_addr[d>>3] >> 4) & 0xf;
+    // int shift = 128 - s - n;
+    // for (int i = 15; i >= 0; -- i) {
+    //     if (shift >= 0 && shift < 8)
+    //         res |= addr.s6_addr[i] >> shift;
+    //     else if (shift < 0 && shift > -8)
+    //         res |= (uint32_t)addr.s6_addr[i] << (-shift);
+    //     shift -= 8;
+    //     if (shift < -32) break;
+    // }
+    // res = res & ((1u << n) - 1);
+    // // print_ip(addr);
+    // // printf("%d %d %x\n", s, n, (uint32_t)res);
     return res;
 }
 
@@ -255,10 +259,11 @@ void _remove_lin(int dep, TrieNode *now, uint32_t idx) {
 }
 
 
-void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, LeafNode leaf) {
+void insert_entry(int dep, TrieNode *now, const in6_addr addr, int len, LeafNode leaf) {
+    uint32_t idx = INDEX(addr, dep);
     if (dep + STRIDE > len) {
         int l = len - dep;
-        uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
+        uint32_t pfx = (idx >> (4-l)) | (1 << l);
         // printf("INSERT %d %x\n", dep,pfx);
         if (VEC_BT(now->leaf_vec, pfx)) { // change
             _set_leaf(now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1, leaf);
@@ -266,7 +271,6 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, LeafNode leaf)
             _insert_leaf(dep, now, pfx, leaf);
         }
     } else {
-        uint32_t idx = INDEX(addr, dep, STRIDE);
         // printf("INSERT %d %x\n", dep,idx);
         // 如果now已经有这个子节点了 就直接改这个子节点
         if (VEC_BT(now->vec, idx)) {
@@ -310,11 +314,12 @@ void insert_entry(int dep, TrieNode *now, in6_addr addr, int len, LeafNode leaf)
 
 // HACK: 为了方便，即使是没有叶子的点也会保留在树里
 // 返回被删除的叶子的leaf_id
-uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
+uint32_t remove_entry(int dep, int nid, const in6_addr addr, int len) {
     TrieNode *now = &NOW;
+    uint32_t idx = INDEX(addr, dep);
     if (dep + STRIDE > len) {
         int l = len - dep;
-        uint32_t pfx = INDEX(addr, dep, l) | (1 << l);
+        uint32_t pfx = (idx >> (4-l)) | (1 << l);
         if (VEC_BT(now->leaf_vec, pfx)) { // remove
             assert_id(next_hops[leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._nexthop_id].route_type != 0, 1);
             uint32_t lid = leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._leaf_id;    
@@ -322,7 +327,6 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
             return lid;
         }
     } else {
-        uint32_t idx = INDEX(addr, dep, STRIDE);
         if (VEC_BT(now->vec, idx)) {
             if (VEC_BT(now->tag, 7)) { // 要删的是在LIN优化里的
                 if (dep + STRIDE == len) {
@@ -412,7 +416,7 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
     LeafNode *leaf = NULL;
     TrieNode *now = &nodes(0)[node_root];
     for (int dep = 0; dep <= len; dep += STRIDE) {
-        uint32_t idx = INDEX(addr, dep, STRIDE);
+        uint32_t idx = INDEX(addr, dep);
         // 在当前层匹配一个最长的前缀
         int l = dep + STRIDE - 1;
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
@@ -496,7 +500,7 @@ void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry 
             }
         }
     } else {
-        uint32_t idx = INDEX(addr, dep, STRIDE);
+        uint32_t idx = INDEX(addr, dep);
         uint32_t x = (idx>>1)|(1<<(STRIDE-1));
         for (int i = 0; i < STRIDE; ++i) {
             uint32_t pfx = x >> i;
