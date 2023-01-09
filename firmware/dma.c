@@ -2,8 +2,7 @@
 #include <printf.h>
 #include <router.h>
 #include <uart.h>
-
-#define now_time (*(volatile uint32_t *)0x200BFF8)
+#include <timer.h>
 
 uint32_t read_count, write_count;
 uint32_t last_read_count, last_write_count, last_time;
