@@ -132,7 +132,7 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
 
 void receive_ripng(uint8_t *packet, uint16_t length) {
 #ifdef _DEBUG
-    checker.receive_temp += now_time;
+    checker.receive_temp = now_time;
 #endif
     // 此处处理 RIPNG 协议
     IP6Header *ipv6_header = IP6_PTR(packet);
