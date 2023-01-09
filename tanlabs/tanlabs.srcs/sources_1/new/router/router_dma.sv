@@ -45,7 +45,9 @@ module router_dma #(
     output wire       tx8_last,
     output wire       tx8_user,
     output wire       tx8_valid,
-    input  wire       tx8_ready
+    input  wire       tx8_ready,
+
+    output reg drop_led
 );
     reg         bram_cpu_en;
     reg  [ 3:0] bram_cpu_we;
@@ -203,6 +205,7 @@ module router_dma #(
         RT_WRITE_INIT,
         RT_WRITE_CHECK,
         RT_WRITE_RX,
+        RT_WRITE_USER_ERR,
         RT_WRITE_END
 
     } dma_router_state_t;
@@ -254,12 +257,15 @@ module router_dma #(
 
             length                <= '0;
 
+            drop_led              <= 1'b0;
+
         end else begin
             dma_router_request_o  <= 1'b0;
             dma_router_sent_fin_o <= 1'b0;
             dma_router_read_fin_o <= 1'b0;
             router_we             <= 1'b0;
             router_addr_reg       <= router_addr;
+            drop_led              <= 1'b0;
             case (dma_router_state)
                 RT_IDLE: begin
                     // RT_IDLE 状态 addr 须为 0
@@ -320,25 +326,45 @@ module router_dma #(
                         length           <= '0;
                         rx_ready         <= 1'b1;
                         dma_router_state <= RT_WRITE_RX;
+                    end else begin
+                        dma_router_state <= RT_IDLE;
                     end
                 end
                 RT_WRITE_RX: begin
                     if (rx_valid) begin
-                        router_din  <= rx_data;
-                        router_we   <= 1'b1;
-                        router_addr <= router_addr + 1;
-                        if (rx_last) begin
-                            unique case (rx_keep)
-                                2'b01: length <= length + 1;
-                                2'b11: length <= length + 2;
-                            endcase
-                            rx_ready         <= 1'b0;
-                            dma_router_state <= RT_WRITE_END;
+                        if (rx_user) begin
+                            length    <= '0;
+                            router_we <= 1'b0;
+                            drop_led  <= 1'b1;
+                            if (rx_last) begin
+                                rx_ready         <= 1'b0;
+                                dma_router_state <= RT_WRITE_END;
+                            end else begin
+                                dma_router_state <= RT_WRITE_USER_ERR;
+                            end
                         end else begin
-                            length <= length + 2;
+                            router_din  <= rx_data;
+                            router_we   <= 1'b1;
+                            router_addr <= router_addr + 1;
+                            if (rx_last) begin
+                                unique case (rx_keep)
+                                    2'b01: length <= length + 1;
+                                    2'b11: length <= length + 2;
+                                endcase
+                                rx_ready         <= 1'b0;
+                                dma_router_state <= RT_WRITE_END;
+                            end else begin
+                                length <= length + 2;
+                            end
                         end
                     end else begin
                         router_we <= 1'b0;
+                    end
+                end
+                RT_WRITE_USER_ERR: begin
+                    if (rx_valid && rx_last) begin
+                        rx_ready         <= 1'b0;
+                        dma_router_state <= RT_WRITE_END;
                     end
                 end
                 RT_WRITE_END: begin

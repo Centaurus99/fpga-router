@@ -362,6 +362,7 @@ module frame_datapath #(
                         s3_reg.last                         <= 1;
                         s3_reg.keep[DATAW_WIDTH_V6/8-1:0]   <= '1;
                         s3_reg.data.ip6.p.ns_data.icmp_type <= ICMP_TYPE_NS;
+                        s3_reg.data.ip6.dst                 <= nc_in_v6_r;
                         s3_reg.meta.ndp_packet              <= 1;
                         s3_reg.meta.send_from_datapath      <= 1;
                     end

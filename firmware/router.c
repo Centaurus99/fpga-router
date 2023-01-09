@@ -4,8 +4,31 @@
 #include <ripng.h>
 #include <router.h>
 
+#ifndef TEST_DEFINENATION
+#define TEST_DEFINENATION
+#define SINGLE_TEST
+#endif
+
+#ifdef SINGLE_TEST
 uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x30};
 uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+#endif
+
+#ifdef BOARD_0
+uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x30};
+uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+#endif
+
+#ifdef BOARD_1
+uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x34};
+uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+#endif
+
+#ifdef BOARD_2
+uint8_t base_mac[6] = {0x8c, 0x1f, 0x64, 0x69, 0x10, 0x38};
+uint8_t base_gua_ip[16] = {0x2a, 0x0e, 0xaa, 0x06, 0x04, 0x97, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+#endif
+
 in6_addr all_link_local_ip = {
     .s6_addr = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
 
@@ -23,9 +46,11 @@ void init_port_config() {
         }
         gua_ip[7] += port;
     }
+#ifdef SINGLE_TEST
     for (uint8_t port = 0; port < 4; ++port) {
         LOCAL_IP(port) = all_link_local_ip;
     }
+#endif
 }
 
 void icmp_error_gen() {
@@ -113,13 +138,14 @@ void mainloop(bool release_lock) {
             volatile IP6Header *ip6 = IP6_PTR(DMA_PTR);
             if (ip6->next_header == IPPROTO_ICMPV6) {
                 // ICMPv6 包
+                uint16_t original_checksum = ((ICMP6Header *)((uint8_t *)(ip6) + sizeof(IP6Header)))->checksum;
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile ICMP6Header *icmp6 = ICMP6_PTR(DMA_PTR);
                     if (icmp6->type == ICMP6_TYPE_ECHO_REQUEST) {
                         icmp_reply_gen();
                     }
                 } else {
-                    printf("Drop ICMPv6 Packet: checksum error\r\n");
+                    printf("Drop ICMPv6 Packet: checksum %04x error\r\n", original_checksum);
                     printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
                     for (int i = 0; i < DMA_LEN; i++) {
                         printf("%02x ", DMA_PTR[i]);
@@ -128,6 +154,7 @@ void mainloop(bool release_lock) {
                 }
             } else if (ip6->next_header == IPPROTO_UDP) {
                 // UDP 包
+                uint16_t original_checksum = ((UDPHeader *)((uint8_t *)(ip6) + sizeof(IP6Header)))->checksum;
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
                     // dbgprintf("UDP Packet: src = %04x, dest = %04x\r\n", udp->src, udp->dest);
@@ -135,7 +162,7 @@ void mainloop(bool release_lock) {
                         receive_ripng((uint8_t *)DMA_PTR, DMA_LEN);
                     }
                 } else {
-                    printf("Drop UDP Packet: checksum error\r\n");
+                    printf("Drop UDP Packet: checksum %04x error\r\n", original_checksum);
                     printf("PORT[%x] Read: len = %d data = ...\r\n", dma_get_receive_port(), DMA_LEN);
                     for (int i = 0; i < DMA_LEN; i++) {
                         printf("%02x ", DMA_PTR[i]);

@@ -18,6 +18,7 @@ module frame_filter
     output wire s_ready,
 
     input wire drop,
+    output wire drop_led,
 
     output wire [DATA_WIDTH - 1:0] m_data,
     output wire [DATA_WIDTH / 8 - 1:0] m_keep,
@@ -70,4 +71,5 @@ module frame_filter
     wire drop_current = is_first ? drop : drop_packet;
     assign s_ready = m_ready || drop_current;
     assign m_valid = s_valid && !drop_current;
+    assign drop_led = s_valid && is_first && drop;
 endmodule

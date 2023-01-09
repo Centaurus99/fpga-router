@@ -42,6 +42,16 @@ module tb_forwarding_table #(
         .UB_n   (ext_ram_be_n[3])
     );
 
+    // ExtRAM 清零
+    initial begin
+        for (integer i = 0; i < 1048576; i++) begin
+            ext1.mem_array0[i] = 8'b0;
+            ext1.mem_array1[i] = 8'b0;
+            ext2.mem_array0[i] = 8'b0;
+            ext2.mem_array1[i] = 8'b0;
+        end
+    end
+
     wire clk_125M, clk_100M;
     clock clock_i (
         .clk_125M(clk_125M),

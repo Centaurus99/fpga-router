@@ -241,6 +241,11 @@ TEST_DMA:
     li t1, 0x1c
     sb t1, 0(t0)    # Read & Write
 
+.TEST5:
+    li s0, 0x63000000
+    lw t0, 0(s0)
+    j .TEST5
+
 .DONE:
     j .DONE
 

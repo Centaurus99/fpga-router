@@ -1,14 +1,10 @@
-#include <assert.h>
-#include <checksum.h>
-#include <header.h>
+#include <stdio.h>
+#include <stdbool.h>
 #include <stdint.h>
-#include <ripng.h>
+#include <assert.h>
+#include "include/header.h"
 
 bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
-    if(! ripng_mode.checksum) {
-        return true;
-    }
-
     IP6Header *ip6 = (IP6Header *)packet;
 
     uint32_t now_sum = 0;
@@ -95,7 +91,22 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
         }
 
     } else {
-        assert_id(false, 2);
+        assert(false);
     }
     return true;
+}
+
+
+int main() {
+    unsigned char packet[1500];
+    int n = 0;scanf("%d", &n);
+    for (int i = 0; i < n; ++i) {
+        scanf("%hhx", &packet[i]);
+    }
+    if (validateAndFillChecksum(packet + 14, n)) {
+        printf("Y\n");
+    } else {
+        printf("N\n");
+    }
+    return 0;
 }
