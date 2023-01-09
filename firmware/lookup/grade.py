@@ -101,7 +101,7 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
                 query_after_update_complete -= 1
 
 def gen_ionly_input(in_file, N):
-    # random.shuffle(entrys)
+    random.shuffle(entrys)
     with open(in_file, 'w') as f:
         for l in open('data/direct_route.txt', 'r'):
             f.write(l)

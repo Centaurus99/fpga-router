@@ -364,8 +364,7 @@ void update(bool insert, const RoutingTableEntry entry) {
         info->ip = entry.addr;
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
 #ifndef LOOKUP_ONLY
-        if (entry.route_type != 0)
-            timer_start(timeout_timer, leaf._leaf_id);
+        timer_start(timeout_timer, leaf._leaf_id);
 #endif
     } else {
         // assert_id(entry.route_type != 0, 1);
@@ -453,6 +452,7 @@ void _append_answer(RoutingTableEntry *t, in6_addr *ip, int len, const LeafNode 
 // 按照前缀长度从长到短的顺序返回所有匹配的路由
 void _prefix_query_all(int dep, int nid, const in6_addr addr, RoutingTableEntry *checking_entry, int *count, bool checking_all, in6_addr ip) {
     if (dep > 128) return;
+    if (dep == 0 && nid == 0)  nid = node_root;
     TrieNode *now = &NOW;
     // 在当前层匹配所有的前缀
     if (checking_all) {
