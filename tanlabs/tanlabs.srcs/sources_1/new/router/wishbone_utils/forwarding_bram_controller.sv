@@ -62,10 +62,9 @@ module forwarding_bram_controller #(
     always_comb begin
         wb_dat_o = '0;
         unique case (inner_place)
-            2'b00: wb_dat_o = ft_dout[bram_pipeline].child_map;
-            2'b01: wb_dat_o = ft_dout[bram_pipeline].leaf_map;
-            // FIXME: 决定是否区分 tag 和 child_base_addr
-            2'b10: wb_dat_o = {ft_dout[bram_pipeline].tag, ft_dout[bram_pipeline].child_base_addr};
+            2'b00: wb_dat_o = {ft_dout[bram_pipeline].leaf_map, ft_dout[bram_pipeline].child_map};
+            2'b01: wb_dat_o = {ft_dout[bram_pipeline].tag, 6'b0};
+            2'b10: wb_dat_o = ft_dout[bram_pipeline].child_base_addr;
             2'b11: wb_dat_o = ft_dout[bram_pipeline].leaf_base_addr;
         endcase
     end
@@ -77,13 +76,16 @@ module forwarding_bram_controller #(
         end
         unique case (inner_place)
             2'b00: begin
-                ft_din[bram_pipeline].child_map = (ft_dout[bram_pipeline].child_map & (~data_mask)) | (wb_dat_i & data_mask);
+                {ft_din[bram_pipeline].leaf_map, ft_din[bram_pipeline].child_map} =  ({
+                    ft_din[bram_pipeline].leaf_map,
+                    ft_din[bram_pipeline].child_map
+                } & (~data_mask)) | (wb_dat_i & data_mask);
             end
             2'b01: begin
-                ft_din[bram_pipeline].leaf_map = (ft_dout[bram_pipeline].leaf_map & (~data_mask)) | (wb_dat_i & data_mask);
+                ft_din[bram_pipeline].tag = (({ft_dout[bram_pipeline].tag, 6'b0} & (~data_mask)) | (wb_dat_i & data_mask))>>6;
             end
             2'b10: begin
-                {ft_din[bram_pipeline].tag, ft_din[bram_pipeline].child_base_addr} = ({ft_dout[bram_pipeline].tag, ft_dout[bram_pipeline].child_base_addr} & (~data_mask)) | (wb_dat_i & data_mask);
+                ft_din[bram_pipeline].child_base_addr = (ft_dout[bram_pipeline].child_base_addr & (~data_mask)) | (wb_dat_i & data_mask);
             end
             2'b11: begin
                 ft_din[bram_pipeline].leaf_base_addr = (ft_dout[bram_pipeline].leaf_base_addr & (~data_mask)) | (wb_dat_i & data_mask);
