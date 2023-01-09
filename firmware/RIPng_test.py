@@ -101,8 +101,11 @@ def routes_in_pcap(path):
                 # print(p.prefix_or_nh, p.prefixlen)
     return routes
 
-pkt = rdpcap('error.pcap')
-send_frame(0, pkt[0])
+pkt = rdpcap('error.pcap')[0]
+pkt['Ether'].src = MAC_TESTER0
+pkt['Ether'].dst = MAC_DUT0
+pkt.show()
+send_frame(0, pkt)
 exit()
 
 # routes = routes_in_pcap('RIPresponse.pcapng')
