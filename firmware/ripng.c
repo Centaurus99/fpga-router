@@ -282,19 +282,16 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
-    for (uint32_t i = 1; i <= leaf_count; i++) {
-        if (leafs_info[i].valid) {
-            if (ripngentrynum == 0) {
-                if (allow_interrupt) {
+    for (uint32_t i=leafid_iterator(true); i; i=leafid_iterator(false)) {
+        if (ripngentrynum == 0) {
+            if (allow_interrupt) {
 #ifdef TIME_DEBUG
-                    checker.send_time = now_time - checker.send_temp;
+                checker.send_time = now_time - checker.send_temp;
 #endif
-                    mainloop(false);
+                mainloop(false);
 #ifdef TIME_DEBUG
-                    checker.send_temp = now_time;
+                checker.send_temp = now_time;
 #endif
-                }
-                dma_send_request();
             }
             dma_send_request();
         }
