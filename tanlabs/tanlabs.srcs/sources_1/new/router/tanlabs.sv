@@ -109,8 +109,12 @@ module tanlabs #(
     wire [4:0] debug_ingress_interconnect_ready;
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
-    wire [7:0] debug_forwarding_table_core;
-    wire debug_forwarding_table_eth;
+
+    wire [7:0] debug_forwarding_table_core;  // LED 15 ~ 8
+    wire debug_forwarding_table_eth;  // LED 7
+    wire debug_dma_user_error_led;  // LED 6
+    wire debug_datapath_ingress_drop_led;  // LED 5
+    wire [4:0] debug_egress_drop_led;  // LED 4 ~ 0
 
     /* =========== CLOCK and RST =========== */
     wire reset_in = reset_btn;
@@ -750,6 +754,8 @@ module tanlabs #(
         .s_valid(eth_rx_valid),
         .s_ready(debug_datapath_fifo_ready),
 
+        .drop_led(debug_datapath_ingress_drop_led),
+
         .m_data (dp_rx_data),
         .m_keep (dp_rx_keep),
         .m_last (dp_rx_last),
@@ -946,6 +952,8 @@ module tanlabs #(
                 .s_valid(eth_tx_valid[i]),
                 .s_ready(eth_tx_ready[i]),
 
+                .drop_led(debug_egress_drop_led[i]),
+
                 .m_data (eth_tx8_data[i]),
                 .m_last (eth_tx8_last[i]),
                 .m_user (eth_tx8_user[i]),
@@ -962,9 +970,9 @@ module tanlabs #(
         .reset(reset_eth),
         .in_led({
             debug_forwarding_table_eth,
-            ~debug_egress_interconnect_ready,
-            ~debug_datapath_fifo_ready,
-            ~debug_ingress_interconnect_ready
+            debug_dma_user_error_led,
+            debug_datapath_ingress_drop_led,
+            debug_egress_drop_led
         }),
         .out_led(debug_leds[7:0])
     );
@@ -1711,7 +1719,9 @@ module tanlabs #(
         .tx8_last (internal_tx_last),
         .tx8_user (internal_tx_user),
         .tx8_valid(internal_tx_valid),
-        .tx8_ready(1'b1)
+        .tx8_ready(1'b1),
+
+        .drop_led(debug_dma_user_error_led)
     );
 
     /* =========== Load Flash =========== */

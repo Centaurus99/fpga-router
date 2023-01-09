@@ -49,6 +49,11 @@ bool dma_read_need() {
         // }
         // printf(".\r\n");
 #endif
+        if (DMA_LEN == 0) {
+            DMA_CTRL = DMA_REG_WAIT_CPU;
+            printf("NIC Dropped Bad Packet.\r\n");
+            return 0;
+        }
         ++read_count;
         return 1;
     } else {

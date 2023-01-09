@@ -385,7 +385,8 @@ module ndp_datapath #(
         .s_valid(out.valid),
         .s_ready(out_ready),
 
-        .drop(out.meta.drop || drop_by_prev),
+        .drop    (out.meta.drop || drop_by_prev),
+        .drop_led(),
 
         .m_data (filtered.data),
         .m_keep (filtered.keep),
