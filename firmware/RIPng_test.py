@@ -63,7 +63,7 @@ IP_TEST_DST_NO_ROUTE = 'fd00::1'
 IP_RIP = 'ff02::9'  # RIP multicast group address.
 
 # FIXME: change this to your own interfaces
-INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Controller #3']
+INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Controller #8']
 
 # frames.txt format:
 # <Ingress Interface ID> <Frame Length> <Frame Data...>

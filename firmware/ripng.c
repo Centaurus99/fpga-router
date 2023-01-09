@@ -347,14 +347,15 @@ void ripng_timeout(Timer *t, int i) {
     printf("\r\n");
     checker.time = now_time - checker.temp;
     printf(
-        "all: %d \r\n receive: %d \r\n send: %d \r\n request: %d \r\n response: %d \r\n checksum: %d \r\n query table: %d \r\n",
+        "all: %d \r\nreceive: %d \r\nsend: %d \r\nrequest: %d \r\nresponse: %d \r\nchecksum: %d \r\nquery table: %d \r\nupdate table %d \r\n",
         checker.time,
         checker.receive_time,
         checker.send_time,
         checker.receive_request_time,
         checker.receive_response_time,
         checker.receive_checksum_time,
-        checker.receive_table_time);
+        checker.receive_table_time,
+        checker.receive_update_time);
     checker.temp = now_time;
     checker.time = 0;
     checker.receive_time = 0;
@@ -363,6 +364,7 @@ void ripng_timeout(Timer *t, int i) {
     checker.receive_response_time = 0;
     checker.receive_checksum_time = 0;
     checker.receive_table_time = 0;
+    checker.receive_update_time = 0;
 #endif
     printf("\r\n");
     dma_counter_print();

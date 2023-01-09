@@ -19,6 +19,8 @@ typedef struct {
     uint32_t receive_checksum_time;
     uint32_t receive_table_temp;
     uint32_t receive_table_time;
+    uint32_t receive_update_temp;
+    uint32_t receive_update_time;
     uint32_t send_temp;
     uint32_t send_time;
 } Ripng_time_checker;

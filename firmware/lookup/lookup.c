@@ -380,6 +380,9 @@ void update(bool insert, const RoutingTableEntry entry) {
 }
 
 void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type) {
+#ifdef TIME_DEBUG
+    checker.receive_update_temp = now_time;
+#endif
     assert_id(metric < 16 && metric > 0, 3);
     uint32_t lid = leaf->_leaf_id;
     if (metric != 0xff)
@@ -392,6 +395,9 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
 #ifndef LOOKUP_ONLY
     timer_stop(timeout_timer, lid);
     timer_start(timeout_timer, lid);
+#endif
+#ifdef TIME_DEBUG
+    checker.receive_update_time += now_time - checker.receive_update_temp;
 #endif
 }
 
