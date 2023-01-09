@@ -22,14 +22,14 @@ typedef struct {
     uint32_t send_temp;
     uint32_t send_time;
 } Ripng_time_checker;
-Ripng_time_checker checker;
+extern Ripng_time_checker checker;
 #endif
 
 typedef struct {
     bool triggered_update;
     bool checksum;
 } Ripng_mode;
-Ripng_mode ripng_mode;
+extern Ripng_mode ripng_mode;
 
 typedef struct {
     uint8_t command;

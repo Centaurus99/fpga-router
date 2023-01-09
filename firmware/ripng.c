@@ -9,6 +9,9 @@
 #include <stddef.h>
 #include <timer.h>
 
+Ripng_time_checker checker;
+Ripng_mode ripng_mode;
+
 const RipngEntry request_for_all = {
     .addr.s6_addr16 = {0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000}, .route_tag = 0x0000, .prefix_len = 0x00, .metric = 0x10};
 
