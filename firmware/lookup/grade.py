@@ -99,11 +99,11 @@ def gen_input(in_file, in_file2, N, query_after_update_complete=0):
                 query_after_update_complete -= 1
 
 def gen_ionly_input(in_file, N):
-    random.shuffle(entrys)
+    # random.shuffle(entrys)
     with open(in_file, 'w') as f:
-        # for l in open('data/direct_route.txt', 'r'):
-        #     f.write(l)
-        # f.write('\n')
+        for l in open('data/direct_route.txt', 'r'):
+            f.write(l)
+        f.write('\n')
         for i in range(N):
             e = entrys[i]
             f.write(f'I {to_u32s(e[0])} {e[1]} {e[3]} {to_u32s(e[2])} 2\n')
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     
     print("对拍：")
     for i in range(100000):
-        gen_input(in_file, in_file2, 1000)
+        gen_input(in_file, in_file2, 20000)
         run(exe, in_file, out_file)
         run(exe2, in_file, ans_file)
 

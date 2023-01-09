@@ -7,7 +7,7 @@
 #ifndef ON_BOARD
 extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
 #define nodes(i) _nodes[i]
-extern nexthop_id_t leafs[LEAF_COUNT];
+extern nexthop_id_t leafs[LEAF_NODE_COUNT];
 #else
 #define nodes(i) ((volatile TrieNode *)NODE_ADDRESS(i))
 #define leafs ((volatile nexthop_id_t *)LEAF_ADDRESS)
@@ -64,7 +64,7 @@ void print(uint32_t nid, int dep) {
 
 //     // leafs
 //     addr = LEAF_ADDRESS;
-//     for (int i = 0; i < LEAF_COUNT; ++i) {
+//     for (int i = 0; i < LEAF_NODE_COUNT; ++i) {
 //         if (is_leaf_used(i)) {
 //             _write_u32s(f, addr, (uint32_t *)&leafs[i], 1);
 //         }

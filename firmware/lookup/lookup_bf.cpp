@@ -29,46 +29,6 @@ int htonl(int x) {
   return ((x & 0xff) << 24) | ((x & 0xff00) << 8) | ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24);
 }
 
-std::vector<RoutingTableEntry> routing_table;
-
-void update(bool insert, const RoutingTableEntry entry) {
-  for (auto it = routing_table.begin(); it != routing_table.end(); ++it) {
-    if ((*it).addr == entry.addr && (*it).len == entry.len) {
-      if (insert) {
-        (*it) = entry;
-      } else {
-        routing_table.erase(it);
-      }
-      return;
-    }
-  }
-  if (insert) {
-    routing_table.push_back(entry);
-  }
-}
-
-int prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type, LeafInfo *leaf_info) {
-  RoutingTableEntry target;
-  int max_len = -1;
-  for (auto entry : routing_table) {
-    if (max_len >= 0 && entry.len <= max_len) {
-      continue;
-    }
-    in6_addr mask = len_to_mask(entry.len);
-    if (entry.addr == (mask & addr)) {
-      target = entry;
-      max_len = entry.len;
-    }
-  }
-  if (max_len >= 0) {
-    *nexthop = target.nexthop;
-    *if_index = target.if_index;
-    *route_type = target.route_type;
-    return 1;
-  }
-  return -1;
-}
-
 int mask_to_len(const in6_addr mask) {
   int len = 0, i = 0;
   for (; i < 8; ++i) {
@@ -111,6 +71,46 @@ in6_addr len_to_mask(int len) {
     }
   }
   return mask;
+}
+
+std::vector<RoutingTableEntry> routing_table;
+
+void update(bool insert, const RoutingTableEntry entry) {
+  for (auto it = routing_table.begin(); it != routing_table.end(); ++it) {
+    if ((*it).addr == entry.addr && (*it).len == entry.len) {
+      if (insert) {
+        (*it) = entry;
+      } else {
+        routing_table.erase(it);
+      }
+      return;
+    }
+  }
+  if (insert) {
+    routing_table.push_back(entry);
+  }
+}
+
+LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
+  RoutingTableEntry target;
+  int max_len = -1;
+  for (auto entry : routing_table) {
+    if (max_len >= 0 && entry.len <= max_len) {
+      continue;
+    }
+    in6_addr mask = len_to_mask(entry.len);
+    if (entry.addr == (mask & addr)) {
+      target = entry;
+      max_len = entry.len;
+    }
+  }
+  if (max_len >= 0) {
+    *nexthop = target.nexthop;
+    *if_index = target.if_index;
+    *route_type = target.route_type;
+    return (LeafNode *)1;
+  }
+  return 0;
 }
 
 void export_mem(){}

@@ -1,5 +1,5 @@
 CXX ?= g++
-CXXFLAGS ?= --std=c++11 -g -I.
+CXXFLAGS ?= --std=c++11 -g -I. -DLOOKUP_ONLY
 LDFLAGS ?= -g
 
 override TRACE ?= n

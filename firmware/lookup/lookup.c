@@ -2,7 +2,10 @@
 #include <memhelper.h>
 #include <stdio.h>
 #include <assert.h>
+
+#ifndef LOOKUP_ONLY
 #include <timer.h>
+#endif
 
 #ifndef ENABLE_BITMANIP
 int popcnt(uint32_t x) {
@@ -43,9 +46,9 @@ static inline uint32_t INDEX (in6_addr addr, int s, int n) {
     #endif
 
     #define nodes(i) _nodes[i]
-    LeafNode leafs[LEAF_COUNT];
+    LeafNode leafs[LEAF_NODE_COUNT];
     NextHopEntry next_hops[ENTRY_COUNT];
-    LeafInfo leafs_info[LEAF_COUNT];
+    LeafInfo leafs_info[LEAF_INFO_COUNT];
 
 #else
     #define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
@@ -60,7 +63,14 @@ TrieNode stk[33];
 nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     for (nexthop_id_t i = 0; i < entry_count; ++ i) {
         if (next_hops[i].port == port &&
+#ifndef LOOKUP_ONLY
             in6_addr_equal(next_hops[i].ip, ip) &&
+#else
+            next_hops[i].ip.s6_addr32[0] == ip.s6_addr32[0] &&
+            next_hops[i].ip.s6_addr32[1] == ip.s6_addr32[1] &&
+            next_hops[i].ip.s6_addr32[2] == ip.s6_addr32[2] &&
+            next_hops[i].ip.s6_addr32[3] == ip.s6_addr32[3] &&
+#endif
             next_hops[i].route_type == route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
@@ -76,7 +86,7 @@ nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
 LeafNode _new_leaf_node(const RoutingTableEntry entry) {
     LeafNode ret;
     ret.leaf_id = ++leaf_count;
-    assert_id(leaf_count < 131072, 0xff);
+    assert_id(leaf_count < LEAF_INFO_COUNT, 0xff);
     ret._nexthop_id = _new_entry(entry.if_index, entry.nexthop, entry.route_type);
     return ret;
 }
@@ -315,6 +325,7 @@ uint32_t remove_entry(int dep, int nid, in6_addr addr, int len) {
     return -1;
 }
 
+#ifndef LOOKUP_ONLY
 Timer *timeout_timer;
 
 void timeout_timeout(Timer *t, int i) {
@@ -323,6 +334,7 @@ void timeout_timeout(Timer *t, int i) {
         remove_entry(0, node_root, leafs_info[i].ip, leafs_info[i].len);
     }
 }
+#endif
 
 void update(bool insert, const RoutingTableEntry entry) {
     if (insert) {
@@ -334,14 +346,18 @@ void update(bool insert, const RoutingTableEntry entry) {
         info->len = entry.len;
         info->ip = entry.addr;
         insert_entry(0, &nodes(0)[node_root], entry.addr, entry.len, leaf);
+#ifndef LOOKUP_ONLY
         if (entry.route_type != 0)
             timer_start(timeout_timer, leaf._leaf_id);
+#endif
     } else {
         // assert_id(entry.route_type != 0, 1);
         uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
         if (lid != -1) {
             leafs_info[lid].valid = false;
+#ifndef LOOKUP_ONLY
             timer_stop(timeout_timer, lid);
+#endif
         }
     }
 }
@@ -356,8 +372,10 @@ void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_ad
         leafs_info[lid].nexthop_id = nexthopid;
         leaf->_nexthop_id = nexthopid;
     }
+#ifndef LOOKUP_ONLY
     timer_stop(timeout_timer, lid);
     timer_start(timeout_timer, lid);
+#endif
 }
 
 LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint32_t *if_index, uint32_t *route_type) {
@@ -369,7 +387,6 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
         int l = dep + STRIDE - 1;
         for (uint32_t pfx = (idx>>1)|(1<<(STRIDE-1)); pfx; pfx >>= 1, --l) {
             if (VEC_BT(now->leaf_vec, pfx)) {
-                dbgprintf("Match on l=%d %d\n", l, pfx);
                 if (len == 255 || len == l) {
                     leaf = &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
                     break;
@@ -491,6 +508,8 @@ void test() {
 
 void lookup_init() {
     memhelper_init();
-    timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_COUNT);
+#ifndef LOOKUP_ONLY
+    timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_INFO_COUNT);
     timer_set_timeout(timeout_timer, timeout_timeout);
+#endif
 }

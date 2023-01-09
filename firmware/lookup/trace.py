@@ -24,13 +24,13 @@ def init():
     os.system(f'python grade.py gen_ionly {N}')
     os.system('./lookup < data/I_only_input.txt > data/I_only_trace.txt')
 
-def export(ratio=1.0):
+def export(ratio=1.0, offset=5):
     node_cnt = 0
     blk_cnt = 0
     for i in range(8):
         nmax[i][0] = 0
         for j in range(1, 17):
-            nmax[i][j] = int((nmax[i][j]+5)*ratio)
+            nmax[i][j] = int((nmax[i][j]+offset)*ratio)
             nmax[i][0] += nmax[i][j]*j
             blk_cnt += nmax[i][j]
         x = int((1024 - (nmax[i][0] % 1024)) // 16)
@@ -48,25 +48,25 @@ def export(ratio=1.0):
     lmax[16] += x
     blk_cnt += x
     with open('blk_cnt.txt', 'w') as f:
-        f.write(f'// {N} insertions, {M} times, {ratio}x size\n')
+        f.write(f'// {N} insertions, run {M} times, +{offset}, {ratio}x size\n')
         f.write('int node_blk_cnt[8][17] = {\n')
         for i in range(8):
             f.write('\t{')
             for j in range(17):
-                f.write((f'{nmax[i][j]}'+' '*10)[:5] + (',' if j<16 else '}'))
-            f.write(',\n'if i<7 else '};\n')
+                f.write((f'{nmax[i][j]}'+' '*10)[:6] + (',' if j<16 else '}'))
+            f.write((', 'if i<7 else '};') + f' // {int(round(nmax[i][0]/1024) * 2)} BRAMS\n')
 
         f.write('int leaf_blk_cnt[17] = \n\t{')
         for j in range(17):
-            f.write((f'{lmax[j]}'+' '*10)[:5] + (',' if j<16 else '}'))
+            f.write((f'{lmax[j]}'+' '*10)[:6] + (',' if j<16 else '}'))
         f.write(';\n')
         f.write('#ifndef ON_BOARD\n')
-        f.write(f'TrieNode node_pool[{node_cnt}];\n')
+        f.write(f'TrieNode node_pool[{node_cnt}]; // {int(round(node_cnt/1024) * 2)} BRAMS\n')
         f.write('extern TrieNode *_nodes[8];\n')
         f.write('#endif\n')
         f.write(f'int blk_pool[{blk_cnt}];')
 
-def main(N, M, R):
+def main(N, M, R, O):
     global lsum, lsummax
     for x in range(M):
         init()
@@ -118,13 +118,14 @@ def main(N, M, R):
     print((f'{lsummax}'+' '*12)[:12], end=' ')
     print()
 
-    export(R)
+    export(R, O)
             
 import sys
 if __name__ == '__main__':
     N = int(sys.argv[1]) if len(sys.argv) > 1 else 10000
     M = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     R = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
+    O = int(sys.argv[4]) if len(sys.argv) > 4 else 5
     os.system('make clean')
     os.system('make TRACE=y')
-    main(N, M, R)
+    main(N, M, R, O)
