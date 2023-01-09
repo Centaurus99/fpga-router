@@ -5,7 +5,7 @@
 // #include <assert.h>
 
 #ifndef ON_BOARD
-extern TrieNode _nodes[STAGE_COUNT][NODE_COUNT_PER_STAGE];
+extern TrieNode *_nodes[STAGE_COUNT];
 #define nodes(i) _nodes[i]
 extern LeafNode leafs[LEAF_NODE_COUNT];
 #else

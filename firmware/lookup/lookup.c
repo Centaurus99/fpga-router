@@ -507,7 +507,9 @@ void test() {
 }
 
 void lookup_init() {
+    assert(sizeof(TrieNode) == 16);
     memhelper_init();
+    node_root = node_malloc(0, 1);
 #ifndef LOOKUP_ONLY
     timeout_timer = timer_init(ENTRY_TIMEOUT, LEAF_INFO_COUNT);
     timer_set_timeout(timeout_timer, timeout_timeout);
