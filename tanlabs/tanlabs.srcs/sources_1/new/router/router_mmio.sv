@@ -38,8 +38,10 @@ module router_mmio #(
     // 路由器写入 DMA 寄存器请求
     input wire dma_router_request_i,
     input wire dma_router_sent_fin_i,
-    input wire dma_router_read_fin_i
+    input wire dma_router_read_fin_i,
 
+    // 板内统计数据
+    input wire [31:0] cpu_fifo_count
 );
     // 根据 sel 获取 mask
     reg [WISHBONE_DATA_WIDTH-1:0] data_mask;
@@ -200,6 +202,11 @@ module router_mmio #(
                                     dma_cpu_lock_o
                                 };
                             end
+                        end
+                    end
+                    8'h63: begin
+                        if (wb_adr_i[23:4] == 20'h000000 && wb_adr_i[3:2] == 2'b00) begin
+                            wb_dat_o <= cpu_fifo_count & data_mask;
                         end
                     end
                     default: ;

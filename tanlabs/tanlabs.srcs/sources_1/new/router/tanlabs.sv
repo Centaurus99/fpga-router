@@ -110,6 +110,7 @@ module tanlabs #(
     wire debug_datapath_fifo_ready;
     wire debug_egress_interconnect_ready;
 
+    wire [31:0] cpu_fifo_count;  // LED 15 ~ 8
     wire [7:0] debug_forwarding_table_core;  // LED 15 ~ 8
     wire debug_forwarding_table_eth;  // LED 7
     wire debug_dma_user_error_led;  // LED 6
@@ -937,7 +938,7 @@ module tanlabs #(
     );
 
     generate
-        for (i = 0; i < 5; i = i + 1) begin
+        for (i = 0; i < 4; i = i + 1) begin
             egress_wrapper #(
                 .DATA_WIDTH(DATA_WIDTH),
                 .ID_WIDTH  (ID_WIDTH)
@@ -961,6 +962,29 @@ module tanlabs #(
                 .m_ready(eth_tx8_ready[i])
             );
         end
+        egress_wrapper_cpu #(
+            .DATA_WIDTH(DATA_WIDTH),
+            .ID_WIDTH  (ID_WIDTH)
+        ) egress_wrapper_cpu_i (
+            .eth_clk(eth_clk),
+            .reset  (reset_eth),
+
+            .s_data (eth_tx_data[4]),
+            .s_keep (eth_tx_keep[4]),
+            .s_last (eth_tx_last[4]),
+            .s_user (eth_tx_user[4]),
+            .s_valid(eth_tx_valid[4]),
+            .s_ready(eth_tx_ready[4]),
+
+            .drop_led(debug_egress_drop_led[4]),
+            .count   (cpu_fifo_count),
+
+            .m_data (eth_tx8_data[4]),
+            .m_last (eth_tx8_last[4]),
+            .m_user (eth_tx8_user[4]),
+            .m_valid(eth_tx8_valid[4]),
+            .m_ready(eth_tx8_ready[4])
+        );
     endgenerate
 
     /* =========== Debug =========== */
@@ -976,10 +1000,30 @@ module tanlabs #(
         }),
         .out_led(debug_leds[7:0])
     );
+    // led_delayer led_delayer_debug_i2 (
+    //     .clk    (core_clk),
+    //     .reset  (reset_core),
+    //     .in_led (debug_forwarding_table_core),
+    //     .out_led(debug_leds[15:8])
+    // );
+    reg [7:0] cpu_fifo_led;
+    always_comb begin
+        unique case (cpu_fifo_count[12:10])
+            8'd0: cpu_fifo_led[7:1] = 7'b0000000;
+            8'd1: cpu_fifo_led[7:1] = 7'b0000001;
+            8'd2: cpu_fifo_led[7:1] = 7'b0000011;
+            8'd3: cpu_fifo_led[7:1] = 7'b0000111;
+            8'd4: cpu_fifo_led[7:1] = 7'b0001111;
+            8'd5: cpu_fifo_led[7:1] = 7'b0011111;
+            8'd6: cpu_fifo_led[7:1] = 7'b0111111;
+            8'd7: cpu_fifo_led[7:1] = 7'b1111111;
+        endcase
+        cpu_fifo_led[0] = |cpu_fifo_count;
+    end
     led_delayer led_delayer_debug_i2 (
-        .clk    (core_clk),
-        .reset  (reset_core),
-        .in_led (debug_forwarding_table_core),
+        .clk    (eth_clk),
+        .reset  (reset_eth),
+        .in_led (cpu_fifo_led),
         .out_led(debug_leds[15:8])
     );
 
@@ -1678,7 +1722,9 @@ module tanlabs #(
 
         .dma_router_request_i (dma_router_request),
         .dma_router_sent_fin_i(dma_router_sent_fin),
-        .dma_router_read_fin_i(dma_router_read_fin)
+        .dma_router_read_fin_i(dma_router_read_fin),
+
+        .cpu_fifo_count(cpu_fifo_count)
     );
 
     router_dma #(
