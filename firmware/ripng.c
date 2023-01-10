@@ -118,6 +118,11 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
 void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ipv6_header, UDPHeader *udp_header, RipngEntry *ripentry) {
     dma_lock_request();
     dma_send_request();
+    uint16_t tmp_len = DMA_LEN;
+    DMA_LEN = 0;
+    dma_send_finish();
+    dma_send_request();
+    DMA_LEN = tmp_len;
     in6_addr nexthop = ipv6_header->ip6_src;
     uint32_t answer_num = 0;
     for (uint32_t i = 0; i < ripng_num; i++) {
