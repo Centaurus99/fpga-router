@@ -6,7 +6,7 @@ module tanlabs #(
     parameter EXT_RAM_FOR_LEAF = 1,  // 将 ExtRAM 作为叶节点
     parameter ENABLE_VGA = 0,  // 启用 VGA (占用显存)
     parameter SIM = 0,  // 仿真模式
-    parameter SYS_CLK_FREQ = 93_333_333,  // CPU 时钟频率
+    parameter SYS_CLK_FREQ = 95_000_000,  // CPU 时钟频率
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
     parameter WISHBONE_ADDR_WIDTH = 32,
