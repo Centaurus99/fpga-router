@@ -1,155 +1,107 @@
-    j TEST_DMA
+    j DIRECT_ROUTE
 
 DIRECT_ROUTE:
     li s0, 0x40000000
-    li t0, 0x00000004
-    sw t0, 0(s0)
-    li s0, 0x40000004
-    li t0, 0x00000002
+    li t0, 0x00020004
     sw t0, 0(s0)
     li s0, 0x40000008
-    li t0, 0x00000003
+    li t0, 0x00000009
     sw t0, 0(s0)
     li s0, 0x4000000C
-    li t0, 0x00000005
+    li t0, 0x0000A37A
     sw t0, 0(s0)
-    li s0, 0x40000010
+    li s0, 0x40000090
+    li t0, 0x00000400
+    sw t0, 0(s0)
+    li s0, 0x40000098
+    li t0, 0x0000000A
+    sw t0, 0(s0)
+    li s0, 0x400000A0
+    li t0, 0x00000001
+    sw t0, 0(s0)
+    li s0, 0x400000A8
+    li t0, 0x0000000B
+    sw t0, 0(s0)
+    li s0, 0x400000B0
     li t0, 0x00004000
     sw t0, 0(s0)
-    li s0, 0x40000018
-    li t0, 0x00000004
+    li s0, 0x400000B8
+    li t0, 0x00000C71
     sw t0, 0(s0)
-    li s0, 0x40000020
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x40000028
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x40000030
+    li s0, 0x4100C710
     li t0, 0x00000400
     sw t0, 0(s0)
-    li s0, 0x40000038
-    li t0, 0x00000002
+    li s0, 0x4100C718
+    li t0, 0x00000C72
     sw t0, 0(s0)
-    li s0, 0x41000010
+    li s0, 0x4100C720
+    li t0, 0x00000400
+    sw t0, 0(s0)
+    li s0, 0x4100C728
+    li t0, 0x00000C73
+    sw t0, 0(s0)
+    li s0, 0x4100C730
+    li t0, 0x00000001
+    sw t0, 0(s0)
+    li s0, 0x4100C738
+    li t0, 0x00000C74
+    sw t0, 0(s0)
+    li s0, 0x4100C740
     li t0, 0x00000040
     sw t0, 0(s0)
-    li s0, 0x41000018
-    li t0, 0x00000004
+    li s0, 0x4100C748
+    li t0, 0x00006FE6
     sw t0, 0(s0)
-    li s0, 0x41000020
+    li s0, 0x4206FE60
     li t0, 0x00000001
     sw t0, 0(s0)
-    li s0, 0x41000028
-    li t0, 0x00000001
+    li s0, 0x4206FE68
+    li t0, 0x00006FE7
     sw t0, 0(s0)
-    li s0, 0x41000030
-    li t0, 0x00000400
-    sw t0, 0(s0)
-    li s0, 0x41000038
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x41000040
-    li t0, 0x00000400
-    sw t0, 0(s0)
-    li s0, 0x41000048
-    li t0, 0x00000003
-    sw t0, 0(s0)
-    li s0, 0x42000010
-    li t0, 0x00000080
-    sw t0, 0(s0)
-    li s0, 0x42000018
-    li t0, 0x00000004
-    sw t0, 0(s0)
-    li s0, 0x42000020
-    li t0, 0x00000200
-    sw t0, 0(s0)
-    li s0, 0x42000028
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x42000030
+    li s0, 0x4206FE70
     li t0, 0x00000010
     sw t0, 0(s0)
-    li s0, 0x42000038
-    li t0, 0x00000002
+    li s0, 0x4206FE78
+    li t0, 0x00006FE8
     sw t0, 0(s0)
-    li s0, 0x42000040
+    li s0, 0x4206FE80
+    li t0, 0x00000200
+    sw t0, 0(s0)
+    li s0, 0x4206FE88
+    li t0, 0x00006FE9
+    sw t0, 0(s0)
+    li s0, 0x4206FE90
+    li t0, 0x00000080
+    sw t0, 0(s0)
+    li s0, 0x4206FE98
+    li t0, 0x0000000B
+    sw t0, 0(s0)
+    li s0, 0x430000B0
     li t0, 0x00000001
     sw t0, 0(s0)
-    li s0, 0x42000048
-    li t0, 0x00000003
+    li s0, 0x430000B8
+    li t0, 0x0000000C
     sw t0, 0(s0)
-    li s0, 0x43000010
-    li t0, 0x0000000F
-    sw t0, 0(s0)
-    li s0, 0x43000018
-    li t0, 0x00000007
-    sw t0, 0(s0)
-    li s0, 0x43000020
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x43000028
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x43000030
+    li s0, 0x430000C0
     li t0, 0x00000400
     sw t0, 0(s0)
-    li s0, 0x43000038
-    li t0, 0x00000002
+    li s0, 0x430000C8
+    li t0, 0x0000000D
     sw t0, 0(s0)
-    li s0, 0x43000040
+    li s0, 0x430000D0
     li t0, 0x00000001
     sw t0, 0(s0)
-    li s0, 0x43000048
-    li t0, 0x00000003
+    li s0, 0x430000D8
+    li t0, 0x0000000E
     sw t0, 0(s0)
-    li s0, 0x44000074
-    li t0, 0x00000002
+    li s0, 0x430000E0
+    li t0, 0x0000000F
     sw t0, 0(s0)
-    li s0, 0x4400007C
-    li t0, 0x00000001
+    li s0, 0x430000E4
+    li t0, 0x00000080
     sw t0, 0(s0)
-    li s0, 0x44000084
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x4400008C
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x44000094
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x4400009C
-    li t0, 0x00000003
-    sw t0, 0(s0)
-    li s0, 0x440000A4
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x440000AC
-    li t0, 0x00000004
-    sw t0, 0(s0)
-    li s0, 0x80400000
-    li t0, 0x00000000
-    sw t0, 0(s0)
-    li s0, 0x80400004
-    li t0, 0x00000000
-    sw t0, 0(s0)
-    li s0, 0x80400008
-    li t0, 0x00000001
-    sw t0, 0(s0)
-    li s0, 0x8040000C
-    li t0, 0x00000002
-    sw t0, 0(s0)
-    li s0, 0x80400010
-    li t0, 0x00000003
-    sw t0, 0(s0)
-    li s0, 0x80400014
-    li t0, 0x00000003
-    sw t0, 0(s0)
-    li s0, 0x80400018
-    li t0, 0x00000000
-    sw t0, 0(s0)
-    li s0, 0x8040001C
-    li t0, 0x00000000
+    li s0, 0x430000E8
+    li t0, 0x0001470C
     sw t0, 0(s0)
     li s0, 0x51000000
     li t0, 0x06AA0E2A
@@ -195,6 +147,39 @@ DIRECT_ROUTE:
     sw t0, 0(s0)
     li s0, 0x51000070
     li t0, 0x00000003
+    sw t0, 0(s0)
+    li s0, 0x80428DE8
+    li t0, 0x03028483
+    sw t0, 0(s0)
+    li s0, 0x80428DEC
+    li t0, 0x00028487
+    sw t0, 0(s0)
+    li s0, 0x80439200
+    li t0, 0x00028487
+    sw t0, 0(s0)
+    li s0, 0x80439204
+    li t0, 0x01028486
+    sw t0, 0(s0)
+    li s0, 0x80445784
+    li t0, 0x00028487
+    sw t0, 0(s0)
+    li s0, 0x80445788
+    li t0, 0x01028486
+    sw t0, 0(s0)
+    li s0, 0x8044578C
+    li t0, 0x02028485
+    sw t0, 0(s0)
+    li s0, 0x80451C30
+    li t0, 0x00028487
+    sw t0, 0(s0)
+    li s0, 0x80451C34
+    li t0, 0x01028486
+    sw t0, 0(s0)
+    li s0, 0x80451C38
+    li t0, 0x02028485
+    sw t0, 0(s0)
+    li s0, 0x80451C3C
+    li t0, 0x03028484
     sw t0, 0(s0)
 
 TEST_GUA:

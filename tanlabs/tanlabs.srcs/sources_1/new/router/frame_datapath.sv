@@ -182,6 +182,13 @@ module frame_datapath #(
                         s1.meta.drop <= 1;
                     end
                 end
+
+                // 无论发包口, 检查 ip6 version
+                if (in.data.ip6.version != 4'd6) begin
+                    // 参数错误
+                    // TODO: 回发 ICMP Parameter Problem Message
+                    s1.meta.drop <= 1'b1;
+                end
             end
         end
     end
@@ -206,25 +213,17 @@ module frame_datapath #(
         end else if (s2_ready) begin
             s2 <= s1;
             if (`should_handle(s1)) begin
-                if (s1.data.ip6.version != 4'd6) begin
-                    // 参数错误
-                    // TODO: 回发 ICMP Parameter Problem Message
-                    s2.meta.drop <= 1'b1;
-
-                end else if ((s1.data.ip6.dst == local_ip[s1.meta.id] || s1_is_gua || s1.data.ip6.dst[7:0] == 8'hff)) begin
+                if ((s1.data.ip6.dst == local_ip[s1.meta.id] || s1_is_gua || s1.data.ip6.dst[7:0] == 8'hff)) begin
                     // IPv6 目的地址为对应网口可接收地址 (链路本地, GUA, 组播), 需要接收
                     // 需要接收的包不需要转发逻辑处理
                     s2.meta.dont_touch <= 1'b1;
+                    s2.meta.dest       <= ID_CPU;
+                    s2.data.dst        <= {45'b0, s1.meta.id};
 
                     if (s1.data.ip6.next_hdr == IP6_TYPE_ICMP
                         && (s1.data.ip6.p.ns_data.icmp_type == ICMP_TYPE_NS || s1.data.ip6.p.ns_data.icmp_type == ICMP_TYPE_NA)) begin
                         // 如果为 NS 或 NA 包, 则交给 ndp_datapath 处理
                         s2.meta.ndp_packet <= 1'b1;
-
-                    end else begin
-                        // 否则转给软件处理
-                        s2.meta.dest <= ID_CPU;
-                        s2.data.dst  <= {45'b0, s1.meta.id};
                     end
 
                 end else if (s1.meta.id != ID_CPU) begin

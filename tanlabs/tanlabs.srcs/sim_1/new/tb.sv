@@ -218,4 +218,14 @@ module tb
             base2.mem_array1[i] = tmp_array[i][0+:8];
         end
     end
+
+    // ExtRAM 清零
+    initial begin
+        for (integer i = 0; i < 1048576; i++) begin
+            ext1.mem_array0[i] = 8'b0;
+            ext1.mem_array1[i] = 8'b0;
+            ext2.mem_array0[i] = 8'b0;
+            ext2.mem_array1[i] = 8'b0;
+        end
+    end
 endmodule
