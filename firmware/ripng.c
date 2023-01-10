@@ -30,19 +30,21 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         return false;
     }
     char ipbuffer[200];
+#ifdef DEBUG
     printip(&(entry->addr), ipbuffer);
     printip(nexthop, &ipbuffer[100]);
+#endif
     if (entry->metric == 0xff) {
         if (entry->prefix_len == 0x00 && entry->route_tag == 0x0000) {
             *(nexthop) = entry->addr;
             dbgprintf("Set nexthop to %s\r\n", ipbuffer);
         } else {
-            printf("Invalid nexthop RTE: route tag %x prefix length %x\r\n", entry->route_tag, entry->metric);
+            dbgprintf("Invalid nexthop RTE: route tag %x prefix length %x\r\n", entry->route_tag, entry->metric);
         }
         return false;
     }
     if (check_linklocal_address(entry->addr) || entry->addr.s6_addr[0] == 0xff) {
-        printf("\tInvalid RIP entry IP %s \r\n", ipbuffer);
+        dbgprintf("\tInvalid RIP entry IP %s \r\n", ipbuffer);
         return false;
     }
     dbgprintf("\tValid ripentry: %s/%d metric=%d to %d %s\r\n", ipbuffer, entry->prefix_len, entry->metric, port, &ipbuffer[100]);
@@ -407,7 +409,7 @@ void ripng_timeout(Timer *t, int i) {
 
 void ripng_init() {
     // FF02::9
-    ripng_mode.triggered_update = true;
+    ripng_mode.triggered_update = false;
     ripng_mode.checksum = true;
 
     mainloop(false);
