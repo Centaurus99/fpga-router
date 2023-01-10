@@ -220,6 +220,6 @@ bool check_own_address(const in6_addr addr) {
     return in6_addr_equal(addr, RAM_LOCAL_IP(0)) || in6_addr_equal(addr, RAM_LOCAL_IP(1)) || in6_addr_equal(addr, RAM_LOCAL_IP(2)) || in6_addr_equal(addr, RAM_LOCAL_IP(3));
 #endif
 #ifdef CONTINOUS_ADDR
-    return addr.s6_addr32[0] == RAM_LOCAL_IP(0).s6_addr32[0] && addr.s6_addr32[1] == RAM_LOCAL_IP(0).s6_addr32[1] && addr.s6_addr32[2] == RAM_LOCAL_IP(0).s6_addr32[2] && (addr.s6_addr32[3] & 0x03000000) == (RAM_LOCAL_IP(0).s6_addr32[3] & 0x03000000);
+    return addr.s6_addr32[0] == RAM_LOCAL_IP(0).s6_addr32[0] && addr.s6_addr32[1] == RAM_LOCAL_IP(0).s6_addr32[1] && addr.s6_addr32[2] == RAM_LOCAL_IP(0).s6_addr32[2] && (addr.s6_addr32[3] & 0xfcffffff) == (RAM_LOCAL_IP(0).s6_addr32[3] & 0xfcffffff);
 #endif
 }
