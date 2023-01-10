@@ -48,7 +48,13 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
     dbgprintf("\tValid ripentry: %s/%d metric=%d to %d %s\r\n", ipbuffer, entry->prefix_len, entry->metric, port, &ipbuffer[100]);
     if (entry->metric + 1 >= METRIC_INF) { // 尝试删除不可达的路由
         dbgprintf("\tripentry metric is inf so try to find and delete\r\n");
+#ifdef TIME_DEBUG
+        checker.receive_update_temp = now_time;
+#endif
         uint32_t lid = try_remove_entry(entry->addr, entry->prefix_len, true, *nexthop, port);
+#ifdef TIME_DEBUG
+    checker.receive_update_time += now_time - checker.receive_update_temp;
+#endif
         if (lid) {
             dbgprintf("\tnexthop is the same to ripentry so deleted\r\n");
             leafs_info[lid].valid = false;
@@ -59,7 +65,13 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         }
     } else {
         dbgprintf("\ttry to find the ripentry or insert it\r\n");
+#ifdef TIME_DEBUG
+        checker.receive_update_temp = now_time;
+#endif
         LeafNode *leaf = get_leaf_to_insert_entry(entry->addr, entry->prefix_len);
+#ifdef TIME_DEBUG
+    checker.receive_update_time += now_time - checker.receive_update_temp;
+#endif
         if (!leaf->leaf_id) {
             dbgprintf("\tnot in table so insert\r\n");
             leaf->leaf_id = pop_unused_leafid();
