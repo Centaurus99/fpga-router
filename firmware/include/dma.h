@@ -6,6 +6,7 @@
 
 // DMA 控制 / 存储地址
 #define DMA_CTRL_ADDR 0x62000000
+#define DMA_FIFO_ADDR 0x63000000
 #define DMA_BASE_ADDR 0x68000000
 
 #define DMA_CTRL (*(volatile uint8_t *)(DMA_CTRL_ADDR + 0))
@@ -13,6 +14,9 @@
 #define DMA_CHECKSUM (*(volatile uint16_t *)(DMA_BASE_ADDR + 0xffe))
 
 #define DMA_PTR ((volatile uint8_t *)(DMA_BASE_ADDR + 2))
+
+#define DMA_FIFO_LEN (*(volatile uint32_t *)(DMA_FIFO_ADDR + 0))
+#define DMA_FIFO_THRESHOLD 4096
 
 // DMA 控制寄存器的定义
 #define DMA_REG_CHECKSUM_AVAILABLE 0x80 /* Router 校验和是否可用 */
