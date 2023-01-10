@@ -60,7 +60,6 @@ void init_port_config() {
         RAM_GUA_IP(port) = GUA_IP(port);
         RAM_LOCAL_IP(port) = LOCAL_IP(port);
     }
-
 }
 
 void icmp_error_gen() {
@@ -69,6 +68,9 @@ void icmp_error_gen() {
 
     // 将原始包保留至 ICMPv6 错误包的数据部分
     uint16_t len = (DMA_LEN + 48) > 1280 ? 1280 : (DMA_LEN + 48);
+    DMA_LEN = 0;
+    dma_send_finish();
+    dma_send_request();
     DMA_LEN = len;
     for (uint16_t i = len - 1; i >= 62; --i) {
         DMA_PTR[i] = DMA_PTR[i - 48];
