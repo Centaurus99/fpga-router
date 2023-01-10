@@ -10,15 +10,18 @@
 
 #define DMA_CTRL (*(volatile uint8_t *)(DMA_CTRL_ADDR + 0))
 #define DMA_LEN (*(volatile uint16_t *)(DMA_BASE_ADDR + 0))
+#define DMA_CHECKSUM (*(volatile uint16_t *)(DMA_BASE_ADDR + 0xffe))
 
 #define DMA_PTR ((volatile uint8_t *)(DMA_BASE_ADDR + 2))
 
 // DMA 控制寄存器的定义
-#define DMA_REG_RELEASE_LOCK 0x10 /* 等待 Router 读取 */
-#define DMA_REG_WAIT_ROUTER 0x08  /* 等待 Router 读取 */
-#define DMA_REG_WAIT_CPU 0x04     /* 等待 CPU 读取 */
-#define DMA_REG_ROUTER_LOCK 0x02  /* Router 锁 */
-#define DMA_REG_CPU_LOCK 0x01     /* CPU 锁 */
+#define DMA_REG_CHECKSUM_AVAILABLE 0x80 /* Router 校验和是否可用 */
+#define DMA_REG_CHECKSUM_REQUEST 0x40   /* 请求 Router 计算一部分校验和 */
+#define DMA_REG_RELEASE_LOCK 0x10       /* 释放 CPU 锁 */
+#define DMA_REG_WAIT_ROUTER 0x08        /* 等待 Router 读取 */
+#define DMA_REG_WAIT_CPU 0x04           /* 等待 CPU 读取 */
+#define DMA_REG_ROUTER_LOCK 0x02        /* Router 锁 */
+#define DMA_REG_CPU_LOCK 0x01           /* CPU 锁 */
 
 /**
  * 请求获得 DMA 缓存区的写入锁, 阻塞直到获得锁
@@ -52,6 +55,18 @@ bool dma_read_need();
  * 告知读取完成, 将拉低 [等待 CPU 读取] 标志位
  */
 void dma_read_finish();
+
+/**
+ * 请求 Router 计算一部分校验和
+ */
+void dma_checksum_request();
+
+/**
+ * 检查 Router 校验和是否可用
+ *
+ * \return 校验和是否可用
+ */
+bool dma_checksum_available();
 
 /**
  * 根据路由器中魔改的目的 MAC 地址, 判断接收端口

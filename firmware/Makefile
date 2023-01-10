@@ -32,6 +32,11 @@ ifeq ($(EN_VGA), y)
 	CFLAGS += -DENABLE_VGA
 endif
 
+override EN_ROUTE_SUM ?= y
+ifeq ($(EN_ROUTE_SUM), y)
+	CFLAGS += -DENABLE_ROUTE_SUM
+endif
+
 override ON_BOARD ?= y
 ifeq ($(ON_BOARD), y)
 	CFLAGS += -DON_BOARD
