@@ -22,6 +22,14 @@ typedef struct {
     in6_addr gua_ip;
 } PortConfig;
 
+extern mac_addr static_mac[4];
+extern in6_addr static_local_ip[4];
+extern in6_addr static_gua_ip[4];
+
+#define RAM_MAC_ADDR(i) (static_mac[(i)])
+#define RAM_LOCAL_IP(i) (static_local_ip[(i)])
+#define RAM_GUA_IP(i) (static_gua_ip[(i)])
+
 /**
  * 初始化各端口配置
  */

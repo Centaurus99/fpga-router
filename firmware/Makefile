@@ -67,6 +67,11 @@ else ifeq ($(BOARD), S)
 	CFLAGS += -DSINGLE_TEST
 endif
 
+override CONTINOUS_ADDR ?= y
+ifeq ($(CONTINOUS_ADDR), y) 
+	CFLAGS += -DCONTINOUS_ADDR
+endif
+
 HEADERS=$(wildcard include/*.h)
 SOURCES=$(wildcard *.c *.S)
 OBJECTS=$(patsubst %.c,%.o,$(wildcard *.c)) $(patsubst %.S,%.o,$(wildcard *.S))

@@ -243,7 +243,7 @@ void init_direct_route() {
     entry.route_type = 0;
     for (uint8_t port = 0; port < 4; ++port) {
         entry.if_index = port;
-        entry.addr = GUA_IP(port);
+        entry.addr = RAM_GUA_IP(port);
         update(1, entry);
     }
 }

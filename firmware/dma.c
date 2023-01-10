@@ -73,7 +73,7 @@ void dma_set_out_port(uint8_t port) {
         printf("Error: port %d is not valid.\r\n", port);
         return;
     }
-    ETHER_PTR(DMA_PTR)->mac_src = MAC_ADDR(port);
+    ETHER_PTR(DMA_PTR)->mac_src = RAM_MAC_ADDR(port);
 }
 
 void dma_demo() {

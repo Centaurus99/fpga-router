@@ -119,7 +119,7 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
             dma_send_request();
             bool use_gua = !check_multicast_address(ipv6_header->ip6_dst);
             ipv6_header->ip6_dst = ripng_multicast;
-            ipv6_header->ip6_src = use_gua ? GUA_IP(send_port) : LOCAL_IP(send_port);
+            ipv6_header->ip6_src = use_gua ? RAM_GUA_IP(send_port) : RAM_LOCAL_IP(send_port);
             ipv6_header->hop_limit = 0xff;
             ipv6_header->payload_len = __htons(RipngUDPLength(answer_num));
             // 更改udp层的包头
@@ -190,7 +190,7 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             riphead->command = RIPNG_RESPONSE;
             // 更改ip层的包头
             ipv6_header->ip6_dst = ipv6_header->ip6_src;
-            ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
+            ipv6_header->ip6_src = use_gua ? RAM_GUA_IP(port) : RAM_LOCAL_IP(port);
             ipv6_header->hop_limit = 0xff;
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
@@ -257,7 +257,7 @@ void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_
     ipv6_header->payload_len = __htons(RipngUDPLength(EntryNum));
     ipv6_header->next_header = IPPROTO_UDP;
     ipv6_header->hop_limit = 0xff;
-    ipv6_header->ip6_src = use_gua ? GUA_IP(port) : LOCAL_IP(port);
+    ipv6_header->ip6_src = use_gua ? RAM_GUA_IP(port) : RAM_LOCAL_IP(port);
     ipv6_header->ip6_dst = dest_ip;
 
     udp_header->src = __htons(RIPNGPORT);
@@ -386,7 +386,7 @@ void ripng_init() {
         ipv6_header->payload_len = __htons(RipngUDPLength(1));
         ipv6_header->next_header = IPPROTO_UDP;
         ipv6_header->hop_limit = 0xff;
-        ipv6_header->ip6_src = LOCAL_IP(i);
+        ipv6_header->ip6_src = RAM_LOCAL_IP(i);
         ipv6_header->ip6_dst = ripng_multicast;
 
         udp_header->src = __htons(RIPNGPORT);
