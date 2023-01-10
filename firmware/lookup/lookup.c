@@ -59,11 +59,11 @@ static inline uint32_t INDEX (in6_addr addr, int d) {
     #define nodes(i) ((TrieNode *)NODE_ADDRESS(i))
     #define leafs ((LeafNode *)LEAF_ADDRESS)
 #endif
+NextHopEntry next_hops_copy[ENTRY_COUNT];
 nexthop_id_t entry_count;
 uint32_t leaf_count;
 uint32_t unused_leafid[LEAF_INFO_COUNT], unused_leafid_top;
 int node_root;
-TrieNode stk[33];
 
 uint32_t pop_unused_leafid() {
     assert_id(unused_leafid_top > 0, 0xff);
@@ -83,18 +83,19 @@ bool in6_addr_equal(const in6_addr a, const in6_addr b) {
 }
 #endif
 
-nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
-    for (nexthop_id_t i = 0; i < entry_count; ++ i) {
-        if (next_hops[i].port == port &&
-            in6_addr_equal(next_hops[i].ip, ip) &&
-            next_hops[i].route_type == route_type) { // TODO: 在输入中增加对route_type的支持
+nexthop_id_t _new_entry(const uint8_t port, const in6_addr ip, const uint32_t route_type) {
+    // printf("entry count %d\r\n", entry_count);
+    for (int i = entry_count - 1; i >= 0; -- i) {
+        if (next_hops_copy[i].route_type == route_type &&
+            next_hops_copy[i].port == port &&
+            in6_addr_equal(next_hops_copy[i].ip, ip)) {
             return i;
         }
     }
-    next_hops[entry_count].port = port;
-    next_hops[entry_count].ip = ip;
-    next_hops[entry_count].route_type = route_type;
-    assert_id(entry_count < 256, 0xfe);
+    next_hops_copy[entry_count].port = next_hops[entry_count].port = port;
+    next_hops_copy[entry_count].ip = next_hops[entry_count].ip = ip;
+    next_hops_copy[entry_count].route_type = next_hops[entry_count].route_type = route_type;
+    // assert_id(entry_count < 256, 0xfe);
     // routing_table[entry_count] = entry;
     return entry_count++;
 }

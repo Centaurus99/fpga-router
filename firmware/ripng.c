@@ -71,9 +71,6 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
         checker.receive_update_temp = now_time;
 #endif
         LeafNode *leaf = get_leaf_to_insert_entry(entry->addr, entry->prefix_len);
-#ifdef TIME_DEBUG
-    checker.receive_update_time += now_time - checker.receive_update_temp;
-#endif
         if (!leaf->leaf_id) {
             dbgprintf("\tnot in table so insert\r\n");
             leaf->leaf_id = pop_unused_leafid();
@@ -86,7 +83,13 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
             info->ip = entry->addr;
             timer_start(timeout_timer, leaf->_leaf_id);
             return true;
+#ifdef TIME_DEBUG
+            checker.receive_update_time += now_time - checker.receive_update_temp;
+#endif
         }
+#ifdef TIME_DEBUG
+        checker.receive_update_time += now_time - checker.receive_update_temp;
+#endif
         LeafInfo *info = &leafs_info[leaf->_leaf_id];
         dbgprintf("\tIn routing table\r\n");
         if (next_hops[info->nexthop_id].route_type < 2) {
