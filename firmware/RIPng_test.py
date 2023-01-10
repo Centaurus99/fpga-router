@@ -63,7 +63,7 @@ IP_TEST_DST_NO_ROUTE = 'fd00::1'
 IP_RIP = 'ff02::9'  # RIP multicast group address.
 
 # FIXME: change this to your own interfaces
-INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Controller #8']
+INTERFACES = ['Realtek USB GbE Family Controller', 'Realtek USB GbE Family Controller #3']
 
 # frames.txt format:
 # <Ingress Interface ID> <Frame Length> <Frame Data...>
@@ -109,10 +109,10 @@ def checkerror():
     send_frame(0, pkt)
 # exit()
 
-def check_no_response():
+def check_no_response(size):
     routes = routes_in_pcap('RIPresponse.pcapng')
     with open('lookup/fib_shuffled.txt', 'r') as f:
-        for line in f.readlines()[:1000]:
+        for line in f.readlines()[:size]:
             prefix = line.strip().split(' ')[0]
             len = int(line.strip().split(' ')[1])
             if (prefix, len) not in routes:
@@ -181,6 +181,8 @@ def validate():
                 RIPngEntry(prefix_or_nh='2a0e:aa06:497:a01::', prefixlen=64) /
                 RIPngEntry(prefix_or_nh='2a0e:aa06:497:a02::3444', prefixlen=128) /
                 RIPngEntry(prefix_or_nh='::', prefixlen=0, metric=10))
+    
+    # exit()
 
     # RIPng response 2 (unicast)
     send_frame(1, Ether(src=MAC_TESTER1) /
@@ -262,3 +264,5 @@ if __name__ == '__main__':
     elif sys.argv[1] == 'fib':
         fib_shuffled(int(sys.argv[2]) if len(sys.argv) > 2 else 10000,
                      int(sys.argv[3]) if len(sys.argv) > 3 else 0)
+    elif sys.argv[1] == 'check':
+        check_no_response(500)

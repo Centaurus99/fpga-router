@@ -11,7 +11,7 @@
 #define SECOND 10000000
 
 #define ENTRY_TIMEOUT (400u * SECOND)
-#define RIPNG_UPDATE_TIME (20 * SECOND)
+#define RIPNG_UPDATE_TIME (10 * SECOND)
 
 typedef struct _Timer {
     void (*timeout)(struct _Timer*, int);
@@ -19,6 +19,8 @@ typedef struct _Timer {
     uint32_t *nxt, *pre, *start_time;
     uint32_t head, tail, iter;
 } Timer;
+
+extern Timer *timeout_timer;
 
 Timer* timer_init(uint32_t interval, uint32_t pool_size);
 

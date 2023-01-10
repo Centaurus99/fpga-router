@@ -107,7 +107,11 @@ extern uint32_t leaf_count;
  */
 void update(bool insert, const RoutingTableEntry entry);
 
-void update_leaf_info(LeafNode *leafS, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type);
+LeafNode* get_leaf_to_insert_entry(const in6_addr addr, const int len);
+
+uint32_t try_remove_entry(const in6_addr addr, const int len, bool judge_nexthop, const in6_addr nexthop, const uint8_t port);
+
+void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type);
 
 /**
  * @brief 进行一次路由表的查询，len=255时，按照最长前缀匹配原则；否则按照 len 匹配
@@ -140,6 +144,8 @@ LeafNode* prefix_query(const in6_addr addr, uint8_t len, in6_addr *nexthop, uint
 
 void lookup_init();
 
-uint32_t leafid_iterator(bool restart);
+uint32_t pop_unused_leafid();
+void push_unused_leafid(uint32_t id);
+nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type);
 
 #endif

@@ -120,8 +120,8 @@ static inline LeafNode* _insert_leaf(const int dep, TrieNode *now, const uint32_
     int cnt = POPCNT(now->leaf_vec);
     if (!cnt) { // 如果now没有叶子
         now->leaf_base = leaf_malloc(1);
-        leafs[now->leaf_base].leaf_id = 0;
         VEC_SET(now->leaf_vec, pfx);
+        leafs[now->leaf_base].leaf_id = 0;
         return &leafs[now->leaf_base];
     } else {
         const int new_base = leaf_malloc(cnt + 1);
@@ -136,6 +136,7 @@ static inline LeafNode* _insert_leaf(const int dep, TrieNode *now, const uint32_
         leaf_free(now->leaf_base, cnt);
         now->leaf_base = new_base;
         VEC_SET(now->leaf_vec, pfx);
+        leafs[insnp].leaf_id = 0;
         return &leafs[insnp];
     }
 }
@@ -321,12 +322,9 @@ void timeout_timeout(Timer *t, int i) {
     }
     leafs_info[i].valid = false;
     push_unused_leafid(i);
-    remove_entry(0, node_root, leafs_info[i].ip, leafs_info[i].len);
+    try_remove_entry(leafs_info[i].ip, leafs_info[i].len, false, (in6_addr){0}, 0);
 }
 
-uint32_t leafid_iterator(bool restart) {
-    return timer_iterate_id(timeout_timer, restart);
-}
 #endif
 
 void update(bool insert, const RoutingTableEntry entry) {
@@ -363,6 +361,8 @@ void update(bool insert, const RoutingTableEntry entry) {
 
 void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type) {
     assert_id(metric < 16 && metric > 0, 3);
+    if (!leaf->leaf_id)
+        leaf->leaf_id = pop_unused_leafid();
     uint32_t lid = leaf->_leaf_id;
     if (metric != 0xff)
         leafs_info[lid].metric = metric;
