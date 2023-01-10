@@ -314,8 +314,8 @@ module router_dma #(
                 RT_CHECKSUM_CALC: begin
                     router_addr <= router_addr + 1;
                     if (length == 1) begin
-                        checksum <= {1'b0, checksum[15:0]} + router_dout[7:0] + checksum[16];
-                        length   <= '0;
+                        checksum <= {1'b0, checksum[15:0]} + {router_dout[7:0], 8'b0} + checksum[16];
+                        length <= '0;
                     end else begin
                         checksum <= {1'b0, checksum[15:0]} + {router_dout[7:0], router_dout[15:8]} + checksum[16];
                         length <= length - 2;
@@ -411,7 +411,7 @@ module router_dma #(
                                     2'b01: begin
                                         length <= length + 1;
                                         if (length > CHECKSUM_HEADER_LENGTH - 2) begin
-                                            checksum <= {1'b0, checksum[15:0]} + rx_data[7:0] + checksum[16];
+                                            checksum <= {1'b0, checksum[15:0]} + {rx_data[7:0], 8'b0} + checksum[16];
                                         end
                                     end
                                     2'b11: begin
