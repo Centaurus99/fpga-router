@@ -203,6 +203,11 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             }
             dma_lock_request();
             dma_send_request();
+            uint16_t tmp_len = DMA_LEN;
+            DMA_LEN = 0;
+            dma_send_finish();
+            dma_send_request();
+            DMA_LEN = tmp_len;
             dbgprintf("Responsing\r\n");
             for (uint32_t i = 0; i < ripng_num; i++) {
                 // 查路由表并修改 RIPNG 的 metric
@@ -331,6 +336,11 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
 #endif
             }
             dma_send_request();
+            uint16_t tmp_len = DMA_LEN;
+            DMA_LEN = 0;
+            dma_send_finish();
+            dma_send_request();
+            DMA_LEN = tmp_len;
         }
         ++cnt;
         ripentry[ripngentrynum].addr = leafs_info[i].ip;
