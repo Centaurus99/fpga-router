@@ -354,13 +354,16 @@ void debug_ripng() {
 }
 
 void ripng_timeout(Timer *t, int i) {
-    timer_start(t, i);
-    dma_counter_print();
-    for (uint8_t i = 0; i < 4; i++) {
-        int cnt;
-        cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i, ripng_multicast, __htons(RIPNGPORT), 0, 1);
-        printf("S%d:%d ", i, cnt);
+    if (i != 4) {
+        timer_start(t, i + 1);
+    } else {
+        timer_start(t, 1);
     }
+
+    dma_counter_print();
+    int cnt;
+    cnt = send_all_ripngentries((uint8_t *)DMA_PTR, i - 1, ripng_multicast, __htons(RIPNGPORT), 0, 1);
+    printf("S%d:%d ", i - 1, cnt);
 #ifdef TIME_DEBUG
     printf("\r\n");
     checker.time = now_time - checker.temp;
@@ -386,8 +389,8 @@ void ripng_timeout(Timer *t, int i) {
     checker.receive_table_time = 0;
     checker.receive_update_time = 0;
 #endif
-    printf("\r\n");
     dma_counter_print();
+    printf("\r\n");
 }
 
 void ripng_init() {
@@ -431,7 +434,7 @@ void ripng_init() {
         dma_send_finish();
     }
     dma_lock_release();
-    Timer *ripng_timer = timer_init(RIPNG_UPDATE_TIME, 2);
+    Timer *ripng_timer = timer_init(RIPNG_UPDATE_TIME >> 2, 5);
     timer_set_timeout(ripng_timer, ripng_timeout);
     timer_start(ripng_timer, 1);
 
