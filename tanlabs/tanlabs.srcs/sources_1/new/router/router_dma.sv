@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps `default_nettype none
 
+localparam CHECKSUM_START_ADDA = 32;
+localparam CHECKSUM_HEADER_LENGTH = (CHECKSUM_START_ADDA - 1) * 2;
+localparam CHECKSUM_WB_ADDR = 2047;
+
 module router_dma #(
     // Wishbone 总线参数
     parameter WISHBONE_DATA_WIDTH = 32,
@@ -33,6 +37,10 @@ module router_dma #(
     output reg dma_router_request_o,
     output reg dma_router_sent_fin_o,
     output reg dma_router_read_fin_o,
+
+    // 校验和交互
+    input  wire dma_cpu_checksum_request_i,
+    output reg  dma_router_checksum_fin_o,
 
     // AXI Stream
     input  wire [7:0] rx8_data,
@@ -202,7 +210,12 @@ module router_dma #(
         RT_WRITE_CHECK,
         RT_WRITE_RX,
         RT_WRITE_USER_ERR,
-        RT_WRITE_END
+        RT_WRITE_END,
+
+        RT_CHECKSUM_START,
+        RT_CHECKSUM_CALC,
+        RT_CHECKSUM_WB,
+        RT_CHECKSUM_END
 
     } dma_router_state_t;
     dma_router_state_t        dma_router_state;
@@ -230,42 +243,51 @@ module router_dma #(
     end
 
     reg [11:0] length;
+    reg [16:0] checksum;
 
     always_ff @(posedge eth_clk) begin
         if (eth_reset) begin
-            dma_router_request_o  <= 1'b0;
-            dma_router_sent_fin_o <= 1'b0;
-            dma_router_read_fin_o <= 1'b0;
+            dma_router_request_o      <= 1'b0;
+            dma_router_sent_fin_o     <= 1'b0;
+            dma_router_read_fin_o     <= 1'b0;
+            dma_router_checksum_fin_o <= 1'b0;
 
-            dma_router_state      <= RT_IDLE;
-            router_we             <= 1'b0;
-            router_addr           <= '0;
-            router_addr_reg       <= '0;
-            router_din            <= '0;
+            dma_router_state          <= RT_IDLE;
+            router_we                 <= 1'b0;
+            router_addr               <= '0;
+            router_addr_reg           <= '0;
+            router_din                <= '0;
 
-            rx_ready              <= 1'b0;
+            rx_ready                  <= 1'b0;
 
-            tx_valid              <= 1'b0;
-            tx_data               <= '0;
-            tx_keep               <= '0;
-            tx_last               <= 1'b0;
-            tx_user               <= '0;
+            tx_valid                  <= 1'b0;
+            tx_data                   <= '0;
+            tx_keep                   <= '0;
+            tx_last                   <= 1'b0;
+            tx_user                   <= '0;
 
-            length                <= '0;
+            length                    <= '0;
+            checksum                  <= '0;
 
-            drop_led              <= 1'b0;
+            drop_led                  <= 1'b0;
 
         end else begin
-            dma_router_request_o  <= 1'b0;
-            dma_router_sent_fin_o <= 1'b0;
-            dma_router_read_fin_o <= 1'b0;
-            router_we             <= 1'b0;
-            router_addr_reg       <= router_addr;
-            drop_led              <= 1'b0;
+            dma_router_request_o      <= 1'b0;
+            dma_router_sent_fin_o     <= 1'b0;
+            dma_router_read_fin_o     <= 1'b0;
+            dma_router_checksum_fin_o <= 1'b0;
+            router_we                 <= 1'b0;
+            router_addr_reg           <= router_addr;
+            drop_led                  <= 1'b0;
             case (dma_router_state)
                 RT_IDLE: begin
                     // RT_IDLE 状态 addr 须为 0
-                    if (!dma_router_request_o && !dma_router_sent_fin_o && !dma_router_read_fin_o) begin
+                    if (dma_cpu_checksum_request_i) begin
+                        // 处理校验和请求
+                        // 流水线读取, 预先读取下一个数据
+                        router_addr      <= CHECKSUM_START_ADDA;
+                        dma_router_state <= RT_CHECKSUM_START;
+                    end else if (!dma_router_request_o && !dma_router_sent_fin_o && !dma_router_read_fin_o) begin
                         if (dma_wait_router_i) begin
                             // 先处理读取
                             router_addr <= 1'b1;  // 流水线读取, 预先读取下一个数据
@@ -276,6 +298,47 @@ module router_dma #(
                             dma_router_state     <= RT_WRITE_INIT;
                         end
                     end
+                end
+
+                RT_CHECKSUM_START: begin
+                    length      <= router_dout - CHECKSUM_HEADER_LENGTH;
+                    router_addr <= router_addr + 1;
+                    checksum    <= '0;
+                    if (router_dout <= CHECKSUM_HEADER_LENGTH) begin
+                        dma_router_state <= RT_CHECKSUM_WB;
+                    end else begin
+                        dma_router_state <= RT_CHECKSUM_CALC;
+                    end
+                end
+
+                RT_CHECKSUM_CALC: begin
+                    router_addr <= router_addr + 1;
+                    if (length == 1) begin
+                        checksum <= {1'b0, checksum[15:0]} + router_dout[7:0] + checksum[16];
+                        length   <= '0;
+                    end else begin
+                        checksum <= {1'b0, checksum[15:0]} + {router_dout[7:0], router_dout[15:8]} + checksum[16];
+                        length <= length - 2;
+                    end
+                    if (length > 2) begin
+                        dma_router_state <= RT_CHECKSUM_CALC;
+                    end else begin
+                        dma_router_state <= RT_CHECKSUM_WB;
+                    end
+                end
+
+                RT_CHECKSUM_WB: begin
+                    router_din       <= checksum[15:0] + checksum[16];
+                    router_we        <= 1'b1;
+                    router_addr      <= CHECKSUM_WB_ADDR;
+                    dma_router_state <= RT_CHECKSUM_END;
+                end
+
+                RT_CHECKSUM_END: begin
+                    router_addr               <= '0;
+                    length                    <= '0;
+                    dma_router_checksum_fin_o <= 1'b1;
+                    dma_router_state          <= RT_IDLE;
                 end
 
                 RT_READ_START: begin
@@ -321,6 +384,7 @@ module router_dma #(
                     if (dma_router_lock_i) begin
                         length           <= '0;
                         rx_ready         <= 1'b1;
+                        checksum         <= '0;
                         dma_router_state <= RT_WRITE_RX;
                     end else begin
                         dma_router_state <= RT_IDLE;
@@ -344,13 +408,26 @@ module router_dma #(
                             router_addr <= router_addr + 1;
                             if (rx_last) begin
                                 unique case (rx_keep)
-                                    2'b01: length <= length + 1;
-                                    2'b11: length <= length + 2;
+                                    2'b01: begin
+                                        length <= length + 1;
+                                        if (length > CHECKSUM_HEADER_LENGTH - 2) begin
+                                            checksum <= {1'b0, checksum[15:0]} + rx_data[7:0] + checksum[16];
+                                        end
+                                    end
+                                    2'b11: begin
+                                        length <= length + 2;
+                                        if (length > CHECKSUM_HEADER_LENGTH - 2) begin
+                                            checksum <= {1'b0, checksum[15:0]} + {rx_data[7:0], rx_data[15:8]} + checksum[16];
+                                        end
+                                    end
                                 endcase
                                 rx_ready         <= 1'b0;
                                 dma_router_state <= RT_WRITE_END;
                             end else begin
                                 length <= length + 2;
+                                if (length > CHECKSUM_HEADER_LENGTH - 2) begin
+                                    checksum <= {1'b0, checksum[15:0]} + {rx_data[7:0], rx_data[15:8]} + checksum[16];
+                                end
                             end
                         end
                     end else begin
@@ -369,7 +446,7 @@ module router_dma #(
                     router_addr           <= '0;
                     length                <= '0;
                     dma_router_sent_fin_o <= 1'b1;
-                    dma_router_state      <= RT_IDLE;
+                    dma_router_state      <= RT_CHECKSUM_WB;
                 end
 
                 default: begin

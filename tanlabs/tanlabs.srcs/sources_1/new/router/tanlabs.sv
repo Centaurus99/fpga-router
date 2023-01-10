@@ -1649,6 +1649,9 @@ module tanlabs #(
     wire                             dma_router_sent_fin;
     wire                             dma_router_read_fin;
 
+    wire                             dma_cpu_checksum_request;
+    wire                             dma_router_checksum_fin;
+
     wishbone_cdc_handshake #(
         .WISHBONE_DATA_WIDTH(WISHBONE_DATA_WIDTH),
         .WISHBONE_ADDR_WIDTH(WISHBONE_ADDR_WIDTH)
@@ -1724,6 +1727,10 @@ module tanlabs #(
         .dma_router_sent_fin_i(dma_router_sent_fin),
         .dma_router_read_fin_i(dma_router_read_fin),
 
+        .dma_checksum_valid_o      (),
+        .dma_cpu_checksum_request_o(dma_cpu_checksum_request),
+        .dma_router_checksum_fin_i (dma_router_checksum_fin),
+
         .cpu_fifo_count(cpu_fifo_count)
     );
 
@@ -1754,6 +1761,9 @@ module tanlabs #(
         .dma_router_request_o (dma_router_request),
         .dma_router_sent_fin_o(dma_router_sent_fin),
         .dma_router_read_fin_o(dma_router_read_fin),
+
+        .dma_cpu_checksum_request_i(dma_cpu_checksum_request),
+        .dma_router_checksum_fin_o (dma_router_checksum_fin),
 
         .rx8_data (internal_rx_data),
         .rx8_last (internal_rx_last),

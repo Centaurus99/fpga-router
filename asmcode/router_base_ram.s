@@ -1,4 +1,4 @@
-    j DIRECT_ROUTE
+    j TEST_DMA
 
 DIRECT_ROUTE:
     li s0, 0x40000000
@@ -222,6 +222,17 @@ TEST_DMA:
     addi s2, s2, 1
     bne s2, s1, .loop
 
+.TEST6: # Checksum
+    li s0, 0x62000000
+    li s1, 0x68000FFC
+    li t1, 0x40
+    sb t1, 0(s0)
+.loop6:
+    lb t1, 0(s0)
+    andi t1, t1, 0x80  # Checksum Fin?
+    beqz t1, .loop6
+    lw t1, 0(s1)
+
 .TEST4:
     li t1, 0x1c
     sb t1, 0(t0)    # Read & Write
@@ -229,7 +240,6 @@ TEST_DMA:
 .TEST5:
     li s0, 0x63000000
     lw t0, 0(s0)
-    j .TEST5
 
 .DONE:
     j .DONE
