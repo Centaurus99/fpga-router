@@ -92,7 +92,7 @@ module cpu_pipeline #(
         if (ENABLE_BRANCH_PREDICT) begin
             branch_target_buffer #(
                 .LOG_WAY_NUMBER(2),
-                .IDX_BIT       (4)
+                .IDX_BIT       (7)
             ) u_branch_target_buffer (
                 .clk      (clk),
                 .rst      (rst),
@@ -123,7 +123,10 @@ module cpu_pipeline #(
     reg         fencei;
     generate
         if (ENABLE_IF_CACHE) begin
-            if_cache u_if_cache (
+            if_cache #(
+                .LOG_WAY_NUMBER(2),
+                .IDX_BIT       (8)
+            ) u_if_cache (
                 .clk      (clk),
                 .rst      (rst),
                 .wbm_cyc_i(if_cache_cyc_o),
