@@ -99,7 +99,6 @@ module router_dma #(
 
     typedef enum {
         CPU_IDLE,
-        CPU_WAIT,
         CPU_READ,
         CPU_WRITE
     } dma_cpu_state_t;
@@ -114,16 +113,13 @@ module router_dma #(
             case (dma_cpu_state)
                 CPU_IDLE: begin
                     if (request) begin
-                        dma_cpu_state <= CPU_WAIT;
-                    end
-                end
-                CPU_WAIT: begin
-                    wb_ack_o <= 1'b1;
-                    if (wb_we_i == 1'b0) begin
-                        dma_cpu_state <= CPU_READ;
-                    end else begin
-                        bram_cpu_we   <= 4'b1111;
-                        dma_cpu_state <= CPU_WRITE;
+                        wb_ack_o <= 1'b1;
+                        if (wb_we_i == 1'b0) begin
+                            dma_cpu_state <= CPU_READ;
+                        end else begin
+                            bram_cpu_we   <= 4'b1111;
+                            dma_cpu_state <= CPU_WRITE;
+                        end
                     end
                 end
                 CPU_READ: begin

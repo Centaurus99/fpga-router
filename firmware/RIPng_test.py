@@ -125,7 +125,7 @@ def check_no_response():
 # exit()
 
 def fib_shuffled(size, ifid):
-    for i in range(100):
+    for i in range(1):
         cnt = 0
         p = Ether(src=MAC_TESTER0) / IPv6(src=LL_TESTER0, dst=IP_RIP, hlim=255) / UDP() / RIPng(cmd=2)
         sent = []

@@ -15,6 +15,9 @@ typedef struct {
     uint32_t receive_request_time;
     uint32_t receive_response_temp;
     uint32_t receive_response_time;
+    uint32_t sending_tag;
+    uint32_t send_checksum_temp;
+    uint32_t send_checksum_time;
     uint32_t receive_checksum_temp;
     uint32_t receive_checksum_time;
     uint32_t receive_table_temp;
