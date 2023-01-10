@@ -74,17 +74,19 @@ void push_unused_leafid(uint32_t id) {
     unused_leafid[unused_leafid_top++] = id;
 }
 
+#ifdef LOOKUP_ONLY
+bool in6_addr_equal(const in6_addr a, const in6_addr b) {
+    return a.s6_addr32[0] == b.s6_addr32[0] &&
+           a.s6_addr32[1] == b.s6_addr32[1] &&
+           a.s6_addr32[2] == b.s6_addr32[2] &&
+           a.s6_addr32[3] == b.s6_addr32[3];
+}
+#endif
+
 nexthop_id_t _new_entry(uint8_t port, const in6_addr ip, uint32_t route_type) {
     for (nexthop_id_t i = 0; i < entry_count; ++ i) {
         if (next_hops[i].port == port &&
-#ifndef LOOKUP_ONLY
             in6_addr_equal(next_hops[i].ip, ip) &&
-#else
-            next_hops[i].ip.s6_addr32[0] == ip.s6_addr32[0] &&
-            next_hops[i].ip.s6_addr32[1] == ip.s6_addr32[1] &&
-            next_hops[i].ip.s6_addr32[2] == ip.s6_addr32[2] &&
-            next_hops[i].ip.s6_addr32[3] == ip.s6_addr32[3] &&
-#endif
             next_hops[i].route_type == route_type) { // TODO: 在输入中增加对route_type的支持
             return i;
         }
@@ -238,65 +240,73 @@ LeafNode* get_leaf_to_insert_entry(const in6_addr addr, const int len) {
     }
 }
 
-// HACK: 为了方便，即使是没有叶子的点也会保留在树里
-// 返回被删除的叶子的leaf_id
-uint32_t remove_entry(const int dep, const int nid, const in6_addr addr, const int len) {
-    TrieNode *now = &NOW;
-    uint32_t idx = INDEX(addr, dep);
-    if (dep + STRIDE > len) {
-        int l = len - dep;
-        uint32_t pfx = (idx >> (4-l)) | (1 << l);
-        if (VEC_BT(now->leaf_vec, pfx)) { // remove
-            // 移除now的pfx位置的叶子（保证存在）然后把后面的往前挪
-            int p = POPCNT_LS(now->leaf_vec, pfx);
-            // assert_id(next_hops[leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1]._nexthop_id].route_type != 0, 1);
-            const uint32_t lid = leafs[now->leaf_base + p - 1]._leaf_id;    
-            if (p <= 1) {
-                VEC_CLEAR(now->leaf_vec, pfx);
-                if (!now->leaf_vec)
-                    leaf_free(now->leaf_base, 1);
-                ++(now->leaf_base);
-            } else {
-                p = now->leaf_base + p - 1;  // 要删掉的叶子
-                const int p_until = now->leaf_base + POPCNT(now->leaf_vec) - 1;
-                for (; p < p_until; ++p) {
-                    _copy_leaf(p+1, p);
+// 为了方便，即使是没有叶子的点也会保留在树里
+// 返回被删除的叶子的leaf_id或0如果没删除
+uint32_t try_remove_entry(const in6_addr addr, const int len, bool judge_nexthop, const in6_addr nexthop, const uint8_t port) {
+    TrieNode *now = &nodes(0)[node_root];
+    int dep = 0;
+    for (; dep + STRIDE <= len; dep += STRIDE) {
+        uint32_t idx = INDEX(addr, dep);
+        if (!VEC_BT(now->vec, idx))  return 0;
+        if (now->tag) { // 要删的是在LIN优化里的
+            if (dep + STRIDE == len) {
+                int p = POPCNT_LS(now->vec, idx);
+                const LeafNode *leaf = &leafs[now->child_base + p - 1];
+                if (judge_nexthop) {
+                    NextHopEntry *entry = &next_hops[leaf->_nexthop_id];
+                    if (entry->route_type < 2 || !in6_addr_equal(entry->ip, nexthop) || entry->port != port)
+                        return 0;
                 }
-                VEC_CLEAR(now->leaf_vec, pfx);
-            }
-            return lid;
-        }
-    } else {
-        if (VEC_BT(now->vec, idx)) {
-            if (now->tag) { // 要删的是在LIN优化里的
-                if (dep + STRIDE == len) {
-                    int p = POPCNT_LS(now->vec, idx);
-                    const uint32_t lid = leafs[now->child_base + p - 1]._leaf_id;
-                    // remove LIN
-                    if (p <= 1) {
-                        VEC_CLEAR(now->vec, idx);
-                        if (!now->vec) {
-                            now->tag = 0;  // LIN子节点都删没了 tag也要清掉
-                            leaf_free(now->child_base, 1);
-                        }
-                        ++(now->child_base);
-                    } else {
-                        p = now->child_base + p - 1;  // 要删掉的LIN子节点
-                        const int p_until = now->child_base + POPCNT(now->vec) - 1;
-                        for (; p < p_until; ++p) {
-                            _copy_leaf(p+1, p);
-                        }
-                        VEC_CLEAR(now->vec, idx);
-                        // leaf_free(p, 1);
+                const uint32_t lid = leaf->_leaf_id;
+                // remove LIN
+                if (p <= 1) {
+                    VEC_CLEAR(now->vec, idx);
+                    if (!now->vec) {
+                        now->tag = 0;  // LIN子节点都删没了 tag也要清掉
+                        leaf_free(now->child_base, 1);
                     }
-                    return lid;
+                    ++(now->child_base);
+                } else {
+                    p = now->child_base + p - 1;  // 要删掉的LIN子节点
+                    const int p_until = now->child_base + POPCNT(now->vec) - 1;
+                    for (; p < p_until; ++p) {
+                        _copy_leaf(p+1, p);
+                    }
+                    VEC_CLEAR(now->vec, idx);
                 }
-            } else {
-                return remove_entry(dep + STRIDE, now->child_base + POPCNT_LS(now->vec, idx) - 1, addr, len);
+                return lid;
             }
+        } else {
+            now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
         }
     }
-    return -1;
+    uint32_t idx = INDEX(addr, dep);
+    int l = len - dep;
+    uint32_t pfx = (idx >> (4-l)) | (1 << l);
+    if (!VEC_BT(now->leaf_vec, pfx)) return 0;
+    // 移除now的pfx位置的叶子然后把后面的往前挪
+    int p = POPCNT_LS(now->leaf_vec, pfx);
+    const LeafNode *leaf = &leafs[now->leaf_base + p - 1];
+    if (judge_nexthop) {
+        NextHopEntry *entry = &next_hops[leaf->_nexthop_id];
+        if (entry->route_type < 2 || !in6_addr_equal(entry->ip, nexthop) || entry->port != port)
+            return 0;
+    }
+    const uint32_t lid = leaf->_leaf_id;    
+    if (p <= 1) {
+        VEC_CLEAR(now->leaf_vec, pfx);
+        if (!now->leaf_vec)
+            leaf_free(now->leaf_base, 1);
+        ++(now->leaf_base);
+    } else {
+        p = now->leaf_base + p - 1;  // 要删掉的叶子
+        const int p_until = now->leaf_base + POPCNT(now->leaf_vec) - 1;
+        for (; p < p_until; ++p) {
+            _copy_leaf(p+1, p);
+        }
+        VEC_CLEAR(now->leaf_vec, pfx);
+    }
+    return lid;
 }
 
 #ifndef LOOKUP_ONLY
@@ -336,8 +346,8 @@ void update(bool insert, const RoutingTableEntry entry) {
 #endif
     } else {
         // assert_id(entry.route_type != 0, 1);
-        uint32_t lid = remove_entry(0, node_root, entry.addr, entry.len);
-        if (lid != -1) {
+        uint32_t lid = try_remove_entry(entry.addr, entry.len, false, (in6_addr){0}, 0);
+        if (lid) {
             leafs_info[lid].valid = false;
             push_unused_leafid(lid);
 #ifndef LOOKUP_ONLY
