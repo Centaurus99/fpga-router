@@ -276,6 +276,7 @@ uint32_t try_remove_entry(const in6_addr addr, const int len, bool judge_nexthop
                 }
                 return lid;
             }
+            return 0;
         } else {
             now = &nodes(STAGE(dep + STRIDE))[now->child_base + POPCNT_LS(now->vec, idx) - 1];
         }
