@@ -40,6 +40,11 @@ module router_mmio #(
     input wire dma_router_sent_fin_i,
     input wire dma_router_read_fin_i,
 
+    // 校验和交互
+    output reg  dma_checksum_valid_o,
+    output reg  dma_cpu_checksum_request_o,
+    input  wire dma_router_checksum_fin_i,
+
     // 板内统计数据
     input wire [31:0] cpu_fifo_count
 );
@@ -110,13 +115,22 @@ module router_mmio #(
                 local_ip[i] <= preset_local_ip[i];
                 gua_ip[i]   <= 128'h0;
             end
-            dma_cpu_lock_o    <= 1'b0;
-            dma_router_lock_o <= 1'b0;
-            dma_wait_cpu_o    <= 1'b0;
-            dma_wait_router_o <= 1'b0;
+            dma_cpu_lock_o             <= 1'b0;
+            dma_router_lock_o          <= 1'b0;
+            dma_wait_cpu_o             <= 1'b0;
+            dma_wait_router_o          <= 1'b0;
+            dma_checksum_valid_o       <= 1'b0;
+            dma_cpu_checksum_request_o <= 1'b0;
         end else begin
-            wb_dat_o <= '0;
-            wb_ack_o <= 1'b0;
+            wb_dat_o                   <= '0;
+            wb_ack_o                   <= 1'b0;
+            dma_cpu_checksum_request_o <= 1'b0;
+
+            // 低优先级
+            if (dma_router_checksum_fin_i) begin
+                dma_checksum_valid_o <= 1'b1;
+            end
+
             if (request && !wb_ack_o) begin
                 wb_ack_o <= 1'b1;
                 case (wb_adr_i[31:24])
@@ -189,13 +203,23 @@ module router_mmio #(
                                     dma_wait_cpu_o <= 1'b0;
                                 end
                                 if (wb_dat_i[3]) begin
-                                    dma_wait_router_o <= 1'b1;
+                                    dma_wait_router_o    <= 1'b1;
+                                    dma_checksum_valid_o <= 1'b0;
                                 end
                                 if (wb_dat_i[4]) begin
-                                    dma_cpu_lock_o <= 1'b0;
+                                    dma_cpu_lock_o       <= 1'b0;
+                                    dma_checksum_valid_o <= 1'b0;
+                                end
+                                if (wb_dat_i[6]) begin
+                                    dma_checksum_valid_o       <= 1'b0;
+                                    dma_cpu_checksum_request_o <= 1'b1;
                                 end
                             end else begin
                                 wb_dat_o <= {
+                                    dma_checksum_valid_o,
+                                    1'b0,
+                                    1'b0,
+                                    1'b0,
                                     dma_wait_router_o,
                                     dma_wait_cpu_o,
                                     dma_router_lock_o,
@@ -213,7 +237,8 @@ module router_mmio #(
                 endcase
             end
             if (dma_router_request_i && !dma_cpu_lock_o) begin
-                dma_router_lock_o <= 1'b1;
+                dma_router_lock_o    <= 1'b1;
+                dma_checksum_valid_o <= 1'b0;
             end
             if (dma_router_sent_fin_i) begin
                 dma_router_lock_o <= 1'b0;

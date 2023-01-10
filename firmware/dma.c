@@ -1,8 +1,8 @@
 #include <dma.h>
 #include <printf.h>
 #include <router.h>
-#include <uart.h>
 #include <timer.h>
+#include <uart.h>
 
 uint32_t read_count, write_count;
 uint32_t last_read_count, last_write_count, last_time;
@@ -58,6 +58,14 @@ bool dma_read_need() {
     } else {
         return 0;
     }
+}
+
+void dma_checksum_request() {
+    DMA_CTRL = DMA_REG_CHECKSUM_REQUEST;
+}
+
+bool dma_checksum_available() {
+    return DMA_CTRL & DMA_REG_CHECKSUM_AVAILABLE;
 }
 
 void dma_read_finish() {
