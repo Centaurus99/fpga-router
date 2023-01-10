@@ -21,7 +21,11 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
     if (nxt_header == IPPROTO_UDP) {
         // UDP
 #ifdef TIME_DEBUG
-        checker.receive_checksum_temp = now_time;
+        if(checker.sending_tag == 0 || checker.sending_tag == 1) {
+            checker.receive_checksum_temp = now_time;
+        } else if (checker.sending_tag == 2) {
+            checker.send_checksum_temp = now_time;
+        }
 #endif
         UDPHeader *udp = (UDPHeader *)&packet[sizeof(IP6Header)];
         // length: udp->length
@@ -51,7 +55,11 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
 
         if (udp_sum == 0) {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            if(checker.sending_tag == 0 || checker.sending_tag == 1) {
+                checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            } else if (checker.sending_tag == 2) {
+                checker.send_checksum_time += now_time - checker.send_checksum_temp;
+            }
 #endif
             return false;
         }
@@ -61,12 +69,20 @@ bool validateAndFillChecksum(uint8_t *packet, uint16_t len) {
         }
         if (now_sum == 0xffff) {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            if(checker.sending_tag == 0 || checker.sending_tag == 1) {
+                checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            } else if (checker.sending_tag == 2) {
+                checker.send_checksum_time += now_time - checker.send_checksum_temp;
+            }
 #endif
             return true;
         } else {
 #ifdef TIME_DEBUG
-            checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            if(checker.sending_tag == 0 || checker.sending_tag == 1) {
+                checker.receive_checksum_time += now_time - checker.receive_checksum_temp;
+            } else if (checker.sending_tag == 2) {
+                checker.send_checksum_time += now_time - checker.send_checksum_temp;
+            }
 #endif
             return false;
         }

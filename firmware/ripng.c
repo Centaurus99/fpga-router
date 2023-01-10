@@ -126,6 +126,9 @@ void update_with_response_packet(uint8_t port, uint32_t ripng_num, IP6Header *ip
             udp_header->dest = __htons(RIPNGPORT);
             udp_header->src = __htons(RIPNGPORT);
             udp_header->length = __htons(RipngUDPLength(answer_num));
+#ifdef TIME_DEBUG
+            checker.sending_tag = 1;
+#endif
             validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(answer_num));
             DMA_LEN = RipngETHLength(answer_num);
             dma_set_out_port(send_port);
@@ -195,6 +198,9 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
             // 更改udp层的包头
             udp_header->dest = udp_header->src;
             udp_header->src = __htons(RIPNGPORT);
+#ifdef TIME_DEBUG
+            checker.sending_tag = 1;
+#endif
             validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(ripng_num));
             dma_set_out_port(port);
             dma_send_finish();
@@ -308,6 +314,9 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         ripngentrynum += 1;
 
         if (ripngentrynum == MAXRipngEntryNum) {
+#ifdef TIME_DEBUG
+            checker.sending_tag = allow_interrupt ? 2 : 1;
+#endif
             _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
             dma_set_out_port(port);
             dma_send_finish();
@@ -318,6 +327,9 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         }
     }
     if (ripngentrynum > 0) {
+#ifdef TIME_DEBUG
+        checker.sending_tag = allow_interrupt ? 2 : 1;
+#endif
         _send_all_fill_dma(packet, port, dest_ip, dest_port, use_gua, ripngentrynum);
         dma_set_out_port(port);
         dma_send_finish();
@@ -347,10 +359,11 @@ void ripng_timeout(Timer *t, int i) {
     printf("\r\n");
     checker.time = now_time - checker.temp;
     printf(
-        "all: %d \r\nreceive: %d \r\nsend: %d \r\nrequest: %d \r\nresponse: %d \r\nchecksum: %d \r\nquery table: %d \r\nupdate table %d \r\n",
+        "all: %d \r\nreceive: %d \r\nsend: %d \r\nsend checksum: %d \r\nrequest: %d \r\nresponse: %d \r\nreceive checksum: %d \r\nquery table: %d \r\nupdate table %d \r\n",
         checker.time,
         checker.receive_time,
         checker.send_time,
+        checker.send_checksum_time,
         checker.receive_request_time,
         checker.receive_response_time,
         checker.receive_checksum_time,
@@ -362,6 +375,7 @@ void ripng_timeout(Timer *t, int i) {
     checker.send_time = 0;
     checker.receive_request_time = 0;
     checker.receive_response_time = 0;
+    checker.send_checksum_time = 0;
     checker.receive_checksum_time = 0;
     checker.receive_table_time = 0;
     checker.receive_update_time = 0;
@@ -400,6 +414,11 @@ void ripng_init() {
         *ripentry = request_for_all;
 
         DMA_LEN = RipngETHLength(1);
+
+#ifdef TIME_DEBUG
+        checker.sending_tag = 2;
+#endif
+
         validateAndFillChecksum((uint8_t *)ipv6_header, RipngIP6Length(1));
 
         dma_set_out_port(i);

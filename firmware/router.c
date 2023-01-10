@@ -97,6 +97,10 @@ void icmp_error_gen() {
         dma_set_out_port(dma_get_receive_port());
     }
 
+#ifdef TIME_DEBUG
+    checker.sending_tag = 3;
+#endif
+
     validateAndFillChecksum((uint8_t *)ip6, len - sizeof(EtherHeader));
 
     dma_send_finish();
@@ -129,6 +133,10 @@ void icmp_reply_gen() {
         dma_set_out_port(dma_get_receive_port());
     }
 
+#ifdef TIME_DEBUG
+    checker.sending_tag = 3;
+#endif
+
     validateAndFillChecksum((uint8_t *)ip6, DMA_LEN - sizeof(EtherHeader));
 
     dma_send_finish();
@@ -149,6 +157,9 @@ void mainloop(bool release_lock) {
             if (ip6->next_header == IPPROTO_ICMPV6) {
                 // ICMPv6 包
                 uint16_t original_checksum = ((ICMP6Header *)((uint8_t *)(ip6) + sizeof(IP6Header)))->checksum;
+#ifdef TIME_DEBUG
+                checker.sending_tag = 3;
+#endif
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile ICMP6Header *icmp6 = ICMP6_PTR(DMA_PTR);
                     if (icmp6->type == ICMP6_TYPE_ECHO_REQUEST) {
@@ -165,6 +176,9 @@ void mainloop(bool release_lock) {
             } else if (ip6->next_header == IPPROTO_UDP) {
                 // UDP 包
                 uint16_t original_checksum = ((UDPHeader *)((uint8_t *)(ip6) + sizeof(IP6Header)))->checksum;
+#ifdef TIME_DEBUG
+                checker.sending_tag = 0;
+#endif
                 if (validateAndFillChecksum((uint8_t *)(ip6), DMA_LEN - sizeof(EtherHeader))) {
                     volatile UDPHeader *udp = UDP_PTR(DMA_PTR);
                     // dbgprintf("UDP Packet: src = %04x, dest = %04x\r\n", udp->src, udp->dest);
