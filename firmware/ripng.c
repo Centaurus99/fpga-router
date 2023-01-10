@@ -22,11 +22,11 @@ const in6_addr ripng_multicast = {
 
 bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) {
     if (entry->metric > METRIC_INF && entry->metric != 0xff) {
-        printf("Invalid metric: %x", entry->metric);
+        printf("Invalid metric: %x\r\n", entry->metric);
         return false;
     }
     if (entry->prefix_len > 128) {
-        printf("Invalid prefix len: %x", entry->prefix_len);
+        printf("Invalid prefix len: %x\r\n", entry->prefix_len);
         return false;
     }
     char ipbuffer[200];
@@ -37,40 +37,53 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
             *(nexthop) = entry->addr;
             dbgprintf("Set nexthop to %s\r\n", ipbuffer);
         } else {
-            printf("Invalid nexthop RTE: route tag %x prefix length %x", entry->route_tag, entry->metric);
+            printf("Invalid nexthop RTE: route tag %x prefix length %x\r\n", entry->route_tag, entry->metric);
         }
         return false;
     }
     if (check_linklocal_address(entry->addr) || entry->addr.s6_addr[0] == 0xff) {
-        printf("Invalid RIP entry IP %s \r\n", ipbuffer);
+        printf("\tInvalid RIP entry IP %s \r\n", ipbuffer);
         return false;
     }
     dbgprintf("\tValid ripentry: %s/%d metric=%d to %d %s\r\n", ipbuffer, entry->prefix_len, entry->metric, port, &ipbuffer[100]);
-    LeafNode *leaf = prefix_query(entry->addr, entry->prefix_len, NULL, NULL, NULL);
-    if (leaf != NULL) {
-        LeafInfo *info = &leafs_info[leaf->_leaf_id];
-        if (next_hops[info->nexthop_id].route_type == 0 || next_hops[info->nexthop_id].route_type == 1) {
-            dbgprintf("\treject static or linklocal nexthop update\r\n");
-            return false;
+    if (entry->metric + 1 >= METRIC_INF) { // 尝试删除不可达的路由
+        dbgprintf("\tripentry metric is inf so try to find and delete\r\n");
+        uint32_t lid = try_remove_entry(entry->addr, entry->prefix_len, true, *nexthop, port);
+        if (lid) {
+            dbgprintf("\tnexthop is the same to ripentry so deleted\r\n");
+            leafs_info[lid].valid = false;
+            push_unused_leafid(lid);
+            timer_stop(timeout_timer, lid);
+            // 回发告知我们删除了这个路由
+            return true;
         }
+    } else {
+        dbgprintf("\ttry to find the ripentry or insert it\r\n");
+        LeafNode *leaf = get_leaf_to_insert_entry(entry->addr, entry->prefix_len);
+        if (!leaf->leaf_id) {
+            dbgprintf("\tnot in table so insert\r\n");
+            leaf->leaf_id = pop_unused_leafid();
+            leaf->_nexthop_id = _new_entry(port, *nexthop, 2);
+            LeafInfo *info = &leafs_info[leaf->_leaf_id];
+            info->valid = true;
+            info->metric = entry->metric + 1;
+            info->nexthop_id = leaf->_nexthop_id;
+            info->len = entry->prefix_len;
+            info->ip = entry->addr;
+            timer_start(timeout_timer, leaf->_leaf_id);
+            return true;
+        }
+        LeafInfo *info = &leafs_info[leaf->_leaf_id];
         dbgprintf("\tIn routing table\r\n");
-        if (next_hops[info->nexthop_id].port == port && in6_addr_equal(*nexthop, next_hops[info->nexthop_id].ip)) {
+        if (next_hops[info->nexthop_id].route_type < 2) {
+            dbgprintf("\tdirect routing dont modify\r\n");
+        } else if (next_hops[info->nexthop_id].port == port && in6_addr_equal(*nexthop, next_hops[info->nexthop_id].ip)) {
             // 相同nexthop时，更新metric并重启计时器
-            if (entry->metric + 1 >= METRIC_INF) {
-                dbgprintf("\tripentry metric is inf so delete\r\n");
-                // 删除不可达的路由
-                RoutingTableEntry table_entry = {
-                    .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2};
-                update(false, table_entry);
-                // 回发告知我们删除了这个路由
+            bool is_same_metric = (entry->metric + 1 == info->metric);
+            update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
+            if (!is_same_metric) {
+                // 回发告知我们更新了metric
                 return true;
-            } else {
-                // 更新metric，重置计时器
-                update_leaf_info(leaf, entry->metric + 1, 0xff, (in6_addr){0}, 2);
-                if (entry->metric + 1 != info->metric) {
-                    // 回发告知我们更新了metric
-                    return true;
-                } // else all the same, do nothing
             }
         } else {
             // 不同nexthop时，比较metric的大小，选取最优的metric
@@ -79,15 +92,8 @@ bool update_with_ripngentry(RipngEntry *entry, in6_addr *nexthop, uint8_t port) 
                 update_leaf_info(leaf, entry->metric + 1, port, *(nexthop), 2);
                 // 回发告知我们更新了路由信息
                 return true;
-            } // else do nothing
+            }
         }
-    } else if (entry->metric + 1 < METRIC_INF) {
-        dbgprintf("\tNot in routing table so add\r\n");
-        RoutingTableEntry table_entry = {
-            .addr = entry->addr, .len = entry->prefix_len, .if_index = port, .nexthop = *nexthop, .route_type = 2, .metric = entry->metric + 1};
-        update(true, table_entry);
-        // 回发告知我们更新了路由信息
-        return true;
     }
     return false;
 }
@@ -293,7 +299,7 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
     uint32_t ripngentrynum = 0;
     RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
-    for (uint32_t i = leafid_iterator(true); i; i = leafid_iterator(false)) {
+    for (uint32_t i = timer_iterate_id(timeout_timer, true); i; i = timer_iterate_id(timeout_timer, false)) {
         if (ripngentrynum == 0) {
             if (allow_interrupt) {
 #ifdef TIME_DEBUG
