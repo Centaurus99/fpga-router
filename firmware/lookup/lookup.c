@@ -113,12 +113,14 @@ static inline void _set_leaf(int i, const LeafNode leaf) {
 }
 
 // 在now的pfx处增加一个新叶子（保证之前不存在），必要时整体移动叶子
-void _insert_leaf(int dep, TrieNode *now, uint32_t pfx, const LeafNode leaf) {
+static inline LeafNode* _insert_leaf(const int dep, TrieNode *now, const uint32_t pfx) {
     // printf("~INSERT LEAF: %x %x\n", pfx, entry_id);
     int cnt = POPCNT(now->leaf_vec);
     if (!cnt) { // 如果now没有叶子
         now->leaf_base = leaf_malloc(1);
-        _set_leaf(now->leaf_base, leaf);
+        leafs[now->leaf_base].leaf_id = 0;
+        VEC_SET(now->leaf_vec, pfx);
+        return &leafs[now->leaf_base];
     } else {
         const int new_base = leaf_malloc(cnt + 1);
         const int insnp = new_base + POPCNT_LS(now->leaf_vec, pfx);
@@ -126,17 +128,17 @@ void _insert_leaf(int dep, TrieNode *now, uint32_t pfx, const LeafNode leaf) {
         for (; np < insnp; ++np, ++op) {
             _copy_leaf(op, np);
         }
-        _set_leaf(np, leaf);
         for (++np; np <= new_base + cnt; ++np, ++op) {
             _copy_leaf(op, np);
         }
         leaf_free(now->leaf_base, cnt);
         now->leaf_base = new_base;
+        VEC_SET(now->leaf_vec, pfx);
+        return &leafs[insnp];
     }
-    VEC_SET(now->leaf_vec, pfx);
 }
 
-static inline void _set_node_from_lin_leaf(TrieNode* p, int op) {
+static inline void _set_node_from_lin_leaf(TrieNode* p, const int op) {
     p->tag = 0;
     p->vec = 0;
     p->leaf_vec = 2;
@@ -144,7 +146,7 @@ static inline void _set_node_from_lin_leaf(TrieNode* p, int op) {
     _copy_leaf(op, p->leaf_base);
 }
 
-void insert_entry(const in6_addr addr, const int len, const LeafNode leaf) {
+LeafNode* get_leaf_to_insert_entry(const in6_addr addr, const int len) {
     TrieNode *now = &nodes(0)[node_root];
     int dep = 0;
     for (; dep + STRIDE <= len; dep += STRIDE) {
@@ -156,8 +158,8 @@ void insert_entry(const in6_addr addr, const int len, const LeafNode leaf) {
             if (dep + STRIDE == len) {
                 now->tag = 0xff;
                 now->child_base = leaf_malloc(1);
-                leafs[now->child_base] = leaf;
-                return;
+                leafs[now->child_base].leaf_id = 0;
+                return &leafs[now->child_base];
             } else {
                 now->child_base = node_malloc(child_stage, 1);
                 now = &nodes(child_stage)[now->child_base];
@@ -172,16 +174,16 @@ void insert_entry(const in6_addr addr, const int len, const LeafNode leaf) {
                     int op = now->child_base, np = new_base;
                     for (; np < insnp; ++np, ++op)
                         _copy_leaf(op, np);
-                    _set_leaf(np, leaf);
                     for (++np; np <= new_base + cnt; ++np, ++op)
                         _copy_leaf(op, np);
                     leaf_free(now->child_base, cnt);
                     now->child_base = new_base;
                     VEC_SET(now->vec, idx);
+                    leafs[insnp].leaf_id = 0;
+                    return &leafs[insnp];
                 } else {
-                    _set_leaf(now->child_base + POPCNT_LS(now->vec, idx) - 1, leaf);
+                    return &leafs[now->child_base + POPCNT_LS(now->vec, idx) - 1];
                 }
-                return;
             } else { // 需要取消
                 const int cnt = POPCNT(now->vec);
                 const int new_base = node_malloc(child_stage, cnt + !have);
@@ -230,9 +232,9 @@ void insert_entry(const in6_addr addr, const int len, const LeafNode leaf) {
     const uint32_t idx = INDEX(addr, dep);
     const uint32_t pfx = (idx >> (4-l)) | (1 << l);
     if (VEC_BT(now->leaf_vec, pfx)) { // change
-        _set_leaf(now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1, leaf);
+        return &leafs[now->leaf_base + POPCNT_LS(now->leaf_vec, pfx) - 1];
     } else { // add
-        _insert_leaf(dep, now, pfx, leaf);
+        return _insert_leaf(dep, now, pfx);
     }
 }
 
@@ -321,16 +323,16 @@ void update(bool insert, const RoutingTableEntry entry) {
     checker.receive_update_temp = now_time;
 #endif
     if (insert) {
-        LeafNode leaf = _new_leaf_node(entry);
-        LeafInfo *info = &leafs_info[leaf._leaf_id];
+        LeafNode *leaf = get_leaf_to_insert_entry(entry.addr, entry.len);
+        *leaf = _new_leaf_node(entry);
+        LeafInfo *info = &leafs_info[leaf->_leaf_id];
         info->valid = true;
         info->metric = entry.metric;
-        info->nexthop_id = leaf._nexthop_id;
+        info->nexthop_id = leaf->_nexthop_id;
         info->len = entry.len;
         info->ip = entry.addr;
-        insert_entry(entry.addr, entry.len, leaf);
 #ifndef LOOKUP_ONLY
-        timer_start(timeout_timer, leaf._leaf_id);
+        timer_start(timeout_timer, leaf->_leaf_id);
 #endif
     } else {
         // assert_id(entry.route_type != 0, 1);
@@ -349,7 +351,6 @@ void update(bool insert, const RoutingTableEntry entry) {
 }
 
 void update_leaf_info(LeafNode *leaf, uint8_t metric, uint8_t port, const in6_addr nexthop, uint8_t route_type) {
-
     assert_id(metric < 16 && metric > 0, 3);
     uint32_t lid = leaf->_leaf_id;
     if (metric != 0xff)

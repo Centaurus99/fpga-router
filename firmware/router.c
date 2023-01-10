@@ -4,6 +4,10 @@
 #include <ripng.h>
 #include <router.h>
 
+mac_addr static_mac[4];
+in6_addr static_local_ip[4];
+in6_addr static_gua_ip[4];
+
 #ifndef TEST_DEFINENATION
 #define TEST_DEFINENATION
 #define SINGLE_TEST
@@ -51,6 +55,12 @@ void init_port_config() {
         LOCAL_IP(port) = all_link_local_ip;
     }
 #endif
+    for (uint8_t port = 0; port < 4; ++port) {
+        RAM_MAC_ADDR(port) = MAC_ADDR(port);
+        RAM_GUA_IP(port) = GUA_IP(port);
+        RAM_LOCAL_IP(port) = LOCAL_IP(port);
+    }
+
 }
 
 void icmp_error_gen() {
@@ -192,5 +202,10 @@ bool check_multicast_address(const in6_addr addr) {
 }
 
 bool check_own_address(const in6_addr addr) {
-    return in6_addr_equal(addr, LOCAL_IP(0)) || in6_addr_equal(addr, LOCAL_IP(1)) || in6_addr_equal(addr, LOCAL_IP(2)) || in6_addr_equal(addr, LOCAL_IP(3));
+#ifndef CONTINOUS_ADDR
+    return in6_addr_equal(addr, RAM_LOCAL_IP(0)) || in6_addr_equal(addr, RAM_LOCAL_IP(1)) || in6_addr_equal(addr, RAM_LOCAL_IP(2)) || in6_addr_equal(addr, RAM_LOCAL_IP(3));
+#endif
+#ifdef CONTINOUS_ADDR
+    return addr.s6_addr32[0] == RAM_LOCAL_IP(0).s6_addr32[0] && addr.s6_addr32[1] == RAM_LOCAL_IP(0).s6_addr32[1] && addr.s6_addr32[2] == RAM_LOCAL_IP(0).s6_addr32[2] && (addr.s6_addr32[3] & 0x3) == (RAM_LOCAL_IP(0).s6_addr32[3] & 0x3);
+#endif
 }
