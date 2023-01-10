@@ -10,7 +10,7 @@ bool _timer_expired(Timer *t, uint32_t id) {
     return now_time - t->start_time[id] >= t->interval;
 }
 
-Timer* timer_init(uint32_t interval, uint32_t pool_size) {
+Timer *timer_init(uint32_t interval, uint32_t pool_size) {
     Timer *t = &_timers[_timer_count++];
     t->head = 0;
     t->tail = 0;
@@ -23,7 +23,7 @@ Timer* timer_init(uint32_t interval, uint32_t pool_size) {
     return t;
 }
 
-void timer_set_timeout(Timer *t, void (*timeout)(Timer*, int)) {
+void timer_set_timeout(Timer *t, void (*timeout)(Timer *, int)) {
     t->timeout = timeout;
 }
 
@@ -59,11 +59,9 @@ void timer_start(Timer *t, uint32_t id) {
 
 void timer_tick(Timer *t) {
     uint32_t id = t->head;
-    while (id != 0) {
-        if (_timer_expired(t, id)) {
-            timer_stop(t, id);
-            (*t->timeout)(t, id);
-        }
+    while (id && _timer_expired(t, id)) {
+        timer_stop(t, id);
+        (*t->timeout)(t, id);
         id = t->nxt[id];
     }
 }
@@ -75,7 +73,7 @@ void timer_tick_all() {
 }
 
 uint32_t timer_iterate_id(Timer *t, bool restart) {
-    if (restart) 
+    if (restart)
         return t->iter = t->head;
     else if (t->iter == 0)
         return 0;
