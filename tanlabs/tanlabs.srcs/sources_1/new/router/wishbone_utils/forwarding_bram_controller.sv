@@ -29,11 +29,11 @@ module forwarding_bram_controller #(
     input  FTE_node                          ft_dout[PIPELINE_LENGTH-1:0]
 );
     // 解析 Wishbone 总线地址
-    logic [                   3:0] bram_pipeline;
+    logic [                   2:0] bram_pipeline;
     logic [                   1:0] inner_place;
     logic [CHILD_ADDR_WIDTH - 1:0] bram_num;
     always_comb begin
-        bram_pipeline = wb_adr_i[WISHBONE_ADDR_WIDTH-5:WISHBONE_ADDR_WIDTH-8];
+        bram_pipeline = wb_adr_i[WISHBONE_ADDR_WIDTH-6:WISHBONE_ADDR_WIDTH-8];
         inner_place   = wb_adr_i[3:2];
         bram_num      = wb_adr_i[WISHBONE_ADDR_WIDTH-9:4];
     end
@@ -117,7 +117,16 @@ module forwarding_bram_controller #(
             case (state)
                 ST_IDLE: begin
                     if (is_request) begin
-                        state <= ST_WAIT;
+                        if (bram_pipeline == 3'b010) begin
+                            state <= ST_WAIT;
+                        end else begin
+                            if (wb_we_i == 1'b0) begin
+                                state <= ST_READ;
+                            end else begin
+                                ft_we[bram_pipeline] <= 1'b1;
+                                state                <= ST_WRITE;
+                            end
+                        end
                     end
                 end
                 ST_WAIT: begin
