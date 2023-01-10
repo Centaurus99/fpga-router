@@ -278,9 +278,9 @@ void receive_ripng(uint8_t *packet, uint16_t length) {
 }
 
 void _send_all_fill_dma(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint16_t dest_port, bool use_gua, uint8_t EntryNum) {
-    IP6Header *ipv6_header = IP6_PTR(packet);
-    UDPHeader *udp_header = UDP_PTR(packet);
-    RipngHead *riphead = RipngHead_PTR(packet);
+    volatile IP6Header *ipv6_header = IP6_PTR(packet);
+    volatile UDPHeader *udp_header = UDP_PTR(packet);
+    volatile RipngHead *riphead = RipngHead_PTR(packet);
 
     ipv6_header->flow = IP6_DEFAULT_FLOW;
     ipv6_header->payload_len = __htons(RipngUDPLength(EntryNum));
@@ -314,7 +314,7 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
         dma_lock_request();
     }
     uint32_t ripngentrynum = 0;
-    RipngEntry *ripentry = RipngEntries_PTR(packet);
+    volatile RipngEntry *ripentry = RipngEntries_PTR(packet);
     int cnt = 0;
     for (uint32_t i = timer_iterate_id(timeout_timer, true); i; i = timer_iterate_id(timeout_timer, false)) {
         if (ripngentrynum == 0) {
