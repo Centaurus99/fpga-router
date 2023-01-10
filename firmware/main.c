@@ -244,6 +244,8 @@ void init_direct_route() {
     for (uint8_t port = 0; port < 4; ++port) {
         entry.if_index = port;
         entry.addr = RAM_GUA_IP(port);
+        entry.addr.s6_addr32[3] = 0;
+        entry.addr.s6_addr32[2] = 0;
         update(1, entry);
     }
 }

@@ -415,7 +415,7 @@ void ripng_timeout(Timer *t, int i) {
 
 void ripng_init() {
     // FF02::9
-    ripng_mode.triggered_update = false;
+    ripng_mode.triggered_update = true;
     ripng_mode.checksum = true;
 
     mainloop(false);
