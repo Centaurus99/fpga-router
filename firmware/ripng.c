@@ -332,9 +332,10 @@ int send_all_ripngentries(uint8_t *packet, uint8_t port, in6_addr dest_ip, uint1
 #ifdef TIME_DEBUG
                 checker.send_time = now_time - checker.send_temp;
 #endif
-                while (DMA_FIFO_LEN > DMA_FIFO_THRESHOLD) {
-                    mainloop(true);
-                }
+                // FIXME
+                // while (DMA_FIFO_LEN > DMA_FIFO_THRESHOLD) {
+                //     mainloop(true);
+                // }
                 mainloop(false);
 #ifdef TIME_DEBUG
                 checker.send_temp = now_time;
