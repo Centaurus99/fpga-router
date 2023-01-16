@@ -70,6 +70,9 @@ else ifeq ($(BOARD), 2)
 else ifeq ($(BOARD), S)
 	CFLAGS += -DTEST_DEFINENATION
 	CFLAGS += -DSINGLE_TEST
+else ifeq ($(BOARD), G)
+	CFLAGS += -DTEST_DEFINENATION
+	CFLAGS += -DGROUP_TEST
 endif
 
 override CONTINOUS_ADDR ?= y
